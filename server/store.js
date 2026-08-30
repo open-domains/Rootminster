@@ -9,7 +9,7 @@ export const ENTITY_NAMES = new Set([
 
 const USER_COLUMNS = new Set([
   'email', 'password_hash', 'full_name', 'display_name', 'role', 'status',
-  'email_verified_at', 'tos_accepted_at', 'ns_unlocked', 'legacy_donor',
+  'email_verified_at', 'tos_accepted_at', 'tos_accepted_version', 'ns_unlocked', 'legacy_donor',
   'disable_email_notifications', 'totp_secret', 'totp_enabled', 'metadata',
 ]);
 
@@ -28,6 +28,7 @@ function serializeUser(row) {
     status: row.status,
     email_verified_at: row.email_verified_at?.toISOString?.() || row.email_verified_at,
     tos_accepted_at: row.tos_accepted_at?.toISOString?.() || row.tos_accepted_at,
+    tos_accepted_version: row.tos_accepted_version,
     ns_unlocked: row.ns_unlocked,
     legacy_donor: row.legacy_donor,
     disable_email_notifications: row.disable_email_notifications,

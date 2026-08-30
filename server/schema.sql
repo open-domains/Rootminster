@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('pending', 'active', 'disabled')),
   email_verified_at timestamptz,
   tos_accepted_at timestamptz,
+  tos_accepted_version text,
   ns_unlocked boolean NOT NULL DEFAULT false,
   legacy_donor boolean NOT NULL DEFAULT false,
   disable_email_notifications boolean NOT NULL DEFAULT false,

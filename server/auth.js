@@ -141,7 +141,7 @@ export async function registerAuthRoutes(app) {
   app.patch('/api/auth/me', async (request, reply) => {
     const user = await authenticateRequest(request);
     if (!user) return reply.code(401).send({ error: 'Unauthorized' });
-    const allowed = ['display_name', 'full_name', 'tos_accepted_at', 'disable_email_notifications'];
+    const allowed = ['display_name', 'full_name', 'tos_accepted_at', 'tos_accepted_version', 'disable_email_notifications'];
     const updates = Object.fromEntries(Object.entries(request.body || {}).filter(([key]) => allowed.includes(key)));
     const fields = [];
     const values = [];
