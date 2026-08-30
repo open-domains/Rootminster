@@ -1,0 +1,18 @@
+services:
+  app:
+    networks:
+      - rootminster-internal
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
+      - traefik.http.routers.rootminster.rule=Host(`${APP_HOST}`)
+      - traefik.http.routers.rootminster.entrypoints=websecure
+      - traefik.http.routers.rootminster.tls=true
+      - traefik.http.routers.rootminster.tls.certresolver=${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      - traefik.http.services.rootminster.loadbalancer.server.port=3001
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}

@@ -1,0 +1,205 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* OpenDomains brand typography */
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-heading: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    /* Light mode: clean, neutral product UI */
+    --background: 220 33% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 83% 53%;
+
+    --chart-1: 221 83% 53%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 35 92% 50%;
+    --chart-4: 199 89% 48%;
+    --chart-5: 262 83% 58%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 16% 40%;
+    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 33% 97%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 221 83% 53%;
+  }
+
+  .dark {
+    /* Dark mode from the design guide: navy, not pitch black */
+    --background: 219 48% 7%;
+    --foreground: 210 40% 98%;
+    --card: 217 39% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 217 39% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 221 83% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 28% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 28% 14%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 28% 15%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 25% 18%;
+    --input: 217 25% 18%;
+    --ring: 221 83% 60%;
+    --chart-1: 221 83% 60%;
+    --chart-2: 160 84% 45%;
+    --chart-3: 35 92% 55%;
+    --chart-4: 199 89% 55%;
+    --chart-5: 262 83% 65%;
+    --sidebar-background: 219 50% 6%;
+    --sidebar-foreground: 215 20% 67%;
+    --sidebar-primary: 221 83% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 30% 13%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 25% 16%;
+    --sidebar-ring: 221 83% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    background-image: none;
+  }
+
+  .dark body {
+    background-image: linear-gradient(to bottom, hsl(219 48% 8%), hsl(219 48% 7%));
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--foreground));
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading tracking-tight;
+  }
+}
+
+/* Custom modal scrollbar */
+.review-modal-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.review-modal-scroll::-webkit-scrollbar-track { background: transparent; }
+.review-modal-scroll::-webkit-scrollbar-thumb { background: hsl(217 28% 26%); border-radius: 9999px; }
+.review-modal-scroll::-webkit-scrollbar-thumb:hover { background: hsl(217 28% 34%); }
+.review-modal-scroll { scrollbar-width: thin; scrollbar-color: hsl(217 28% 26%) transparent; }
+
+/* Mobile resilience shared across public and authenticated surfaces */
+html, body, #root {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+img, video, canvas, svg {
+  max-width: 100%;
+}
+
+main, main > *, [role="dialog"] > * {
+  min-width: 0;
+}
+
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 639px) {
+  body {
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  button, a, input, select, textarea {
+    touch-action: manipulation;
+  }
+
+  button:not([role="switch"]),
+  [role="button"],
+  [role="menuitem"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  [role="dialog"] {
+    max-height: calc(100dvh - 1rem);
+    max-width: calc(100vw - 1rem);
+    border-radius: 0.75rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  [role="menu"],
+  [data-radix-popper-content-wrapper] {
+    max-width: calc(100vw - 1rem) !important;
+  }
+
+  pre, code {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  pre {
+    white-space: pre-wrap;
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .review-modal-scroll,
+  .overflow-x-auto {
+    overscroll-behavior: contain;
+    scroll-snap-type: none;
+  }
+
+  h1 {
+    text-wrap: balance;
+  }
+}
+
+@media (hover: none) {
+  .group-hover\:opacity-100 {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,56 @@
+services:
+  app:
+    build: .
+    image: ${ROOTMINSTER_IMAGE:-rootminster-v2:latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rootminster:${POSTGRES_PASSWORD}@postgres:5432/rootminster
+      HOST: 0.0.0.0
+      PORT: 3001
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3001"
+    networks:
+      - rootminster-internal
+
+  jobs:
+    image: ${ROOTMINSTER_IMAGE:-rootminster-v2:latest}
+    build: .
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    command: ["node", "server/jobs.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://rootminster:${POSTGRES_PASSWORD}@postgres:5432/rootminster
+    networks:
+      - rootminster-internal
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rootminster
+      POSTGRES_USER: rootminster
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rootminster -d rootminster"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    shm_size: 256mb
+    networks:
+      - rootminster-internal
+
+volumes:
+  postgres_data:
+
+networks:
+  rootminster-internal:
+    internal: true
