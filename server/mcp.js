@@ -256,20 +256,37 @@ export async function registerMcpRoutes(app) {
     if (problem) return reply.code(400).type('text/plain').send(problem);
     const user = await authenticateRequest(request);
     if (!user) return reply.redirect(`/login?return_to=${encodeURIComponent(request.url)}`);
-    const fields = ['client_id', 'redirect_uri', 'response_type', 'state', 'code_challenge', 'code_challenge_method', 'resource', 'scope']
-      .map((key) => `<input type="hidden" name="${key}" value="${escapeHtml(query[key])}">`).join('');
+    const consentToken = randomToken(32);
+    const requestData = Object.fromEntries(
+      ['client_id', 'redirect_uri', 'response_type', 'state', 'code_challenge', 'code_challenge_method', 'resource', 'scope']
+        .map((key) => [key, query[key] || '']),
+    );
+    await pool.query(
+      `INSERT INTO mcp_oauth_consents(token_hash, user_id, client_id, request_data, expires_at)
+       VALUES ($1, $2, $3, $4::jsonb, now() + interval '10 minutes')`,
+      [sha256(consentToken), user.id, query.client_id, JSON.stringify(requestData)],
+    );
+    const fields = `<input type="hidden" name="consent_token" value="${escapeHtml(consentToken)}">`;
     reply.header('Cache-Control', 'no-store');
     return reply.type('text/html; charset=utf-8').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Authorize Rootminster</title><style>body{font-family:system-ui;background:#111827;color:#f9fafb;display:grid;min-height:100vh;place-items:center;margin:0}.card{max-width:520px;padding:32px;border:1px solid #374151;border-radius:16px;background:#1f2937}button{padding:12px 18px;border:0;border-radius:8px;font-weight:700;cursor:pointer}.allow{background:#7c3aed;color:white}.deny{background:#374151;color:white}form{display:flex;gap:12px}</style></head><body><main class="card"><h1>Connect ${escapeHtml(client.client_name)}</h1><p>This connection uses your Rootminster account as <strong>${escapeHtml(user.email)}</strong>. It can read your account data. Staff and admins can also review, approve, and reject subdomain requests according to their current Rootminster role.</p><form method="post" action="/oauth/authorize">${fields}<button class="allow" name="decision" value="allow">Authorize</button><button class="deny" name="decision" value="deny">Cancel</button></form></main></body></html>`);
   });
 
   app.post('/oauth/authorize', async (request, reply) => {
-    const body = Object.fromEntries(Object.entries(request.body || {}).map(([key, value]) => [key, String(value)]));
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).type('text/plain').send('Sign in before authorizing this connection');
+    const consentToken = String(request.body?.consent_token || '');
+    const consentResult = await pool.query(
+      `DELETE FROM mcp_oauth_consents
+       WHERE token_hash = $1 AND user_id = $2 AND expires_at > now()
+       RETURNING request_data`,
+      [sha256(consentToken), user.id],
+    );
+    if (!consentResult.rowCount) return reply.code(400).type('text/plain').send('This authorization request is invalid or has expired');
+    const body = Object.fromEntries(Object.entries(consentResult.rows[0].request_data || {}).map(([key, value]) => [key, String(value)]));
     const client = await getOauthClient(body.client_id);
     const problem = validateAuthorizeRequest(body, client);
     if (problem) return reply.code(400).type('text/plain').send(problem);
-    const user = await authenticateRequest(request);
-    if (!user) return reply.code(401).type('text/plain').send('Sign in before authorizing this connection');
-    if (body.decision !== 'allow') return reply.redirect(redirectWithParams(body.redirect_uri, { error: 'access_denied', state: body.state }));
+    if (String(request.body?.decision || '') !== 'allow') return reply.redirect(redirectWithParams(body.redirect_uri, { error: 'access_denied', state: body.state }));
     const code = `rmcp_code_${randomToken(32)}`;
     await pool.query(
       `INSERT INTO mcp_oauth_codes(code_hash, client_id, user_id, redirect_uri, code_challenge, resource, scope, expires_at)
