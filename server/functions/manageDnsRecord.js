@@ -272,8 +272,8 @@ export default async function (req) {
         // Browser sessions. The API passes the already-resolved token ID; we re-check
         // it here so direct callers cannot impersonate an owner by supplying email/ID.
         if (!user && body.api_token_id) {
-            const tokens = await platform.asServiceRole.entities.ApiToken.filter({ id: body.api_token_id, revoked: false });
-            const token = tokens[0];
+            const tokens = await platform.asServiceRole.entities.ApiToken.filter({ id: body.api_token_id });
+            const token = tokens.find(item => item.revoked !== true);
             const tokenEmail = token?.user_email || token?.owner_email || token?.created_by;
             if (tokenEmail) {
                 const users = await platform.asServiceRole.entities.User.filter({ email: tokenEmail });

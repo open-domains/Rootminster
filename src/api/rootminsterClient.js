@@ -26,7 +26,10 @@ async function request(path, options = {}) {
     : await response.text();
 
   if (!response.ok) {
-    const error = new Error(data?.error || data?.message || `Request failed (${response.status})`);
+    const responseError = data?.error;
+    const message = typeof responseError === 'string' ? responseError : responseError?.message;
+    const error = new Error(message || data?.message || `Request failed (${response.status})`);
+    error.code = typeof responseError === 'object' ? responseError?.code : undefined;
     error.status = response.status;
     error.data = data;
     error.response = { status: response.status, data };
@@ -101,6 +104,20 @@ export const rootminster = {
     },
     async unlink() {
       return request('/api/discord/link', { method: 'DELETE' });
+    },
+  },
+  apiTokens: {
+    async list() {
+      const result = await request('/api/auth/tokens');
+      return result.data;
+    },
+    async create(name) {
+      const result = await request('/api/auth/tokens', { method: 'POST', body: { name } });
+      return result.data;
+    },
+    async revoke(id) {
+      const result = await request(`/api/auth/tokens/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      return result.data;
     },
   },
   config: {

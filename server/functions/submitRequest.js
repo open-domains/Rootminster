@@ -102,7 +102,7 @@ export default async function (req) {
     if (!user)
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
-    const trustedDiscord = user.trusted_source === 'discord';
+    const trustedClient = ['api', 'discord'].includes(user.trusted_source);
     const { subdomain, root_domain, reason, preview_link, recaptcha_token } = body;
     const requestPolicy = await getRequestPolicy(platform);
     if (requestPolicy.locked && !['staff', 'admin'].includes(user.role)) {
@@ -137,10 +137,10 @@ export default async function (req) {
         return Response.json({ error: 'A preview link is required' }, { status: 400 });
     }
     // Turnstile — verified ONCE for the whole batch (tokens are single-use)
-    if (config.turnstileSecret && !trustedDiscord && !recaptcha_token) {
+    if (config.turnstileSecret && !trustedClient && !recaptcha_token) {
         return Response.json({ error: 'Please complete the CAPTCHA' }, { status: 400 });
     }
-    if (config.turnstileSecret && !trustedDiscord) {
+    if (config.turnstileSecret && !trustedClient) {
         const turnstileRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

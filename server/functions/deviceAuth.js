@@ -108,6 +108,7 @@ async function handlePoll(platform, body, respond) {
             name: code.token_name || 'Device Token',
             token_hash: tokenHash,
             token_prefix: tokenPrefix,
+            revoked: false,
         });
         // Mark code as used
         await platform.asServiceRole.entities.DeviceCode.update(code.id, {

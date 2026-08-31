@@ -21,10 +21,10 @@ async function resolveToken(platform, req) {
     if (!raw)
         return null;
     const hash = await sha256hex(raw);
-    const tokens = await platform.asServiceRole.entities.ApiToken.filter({ token_hash: hash, revoked: false });
-    if (!tokens.length)
+    const tokens = await platform.asServiceRole.entities.ApiToken.filter({ token_hash: hash });
+    const token = tokens.find(item => item.revoked !== true);
+    if (!token)
         return null;
-    const token = tokens[0];
     await platform.asServiceRole.entities.ApiToken.update(token.id, { last_used: new Date().toISOString() });
     return token;
 }

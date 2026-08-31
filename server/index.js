@@ -15,6 +15,7 @@ import { registerFunctionRoutes } from './function-runner.js';
 import { registerMcpRoutes } from './mcp.js';
 import { registerSetupRoutes } from './setup.js';
 import { registerDiscordRoutes } from './discord.js';
+import { registerPublicApiRoutes } from './public-api.js';
 
 assertProductionConfiguration();
 
@@ -26,7 +27,16 @@ const app = Fastify({
 
 await app.register(cookie);
 await app.register(helmet, { contentSecurityPolicy: false });
-await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
+await app.register(rateLimit, {
+  max: 300,
+  timeWindow: '1 minute',
+  errorResponseBuilder: (_request, context) => ({
+    error: {
+      code: 'rate_limit_exceeded',
+      message: `Too many requests. Try again in ${context.after}.`,
+    },
+  }),
+});
 await app.register(rawBody, { field: 'rawBody', global: false, encoding: 'utf8', runFirst: true });
 app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
   try {
@@ -73,6 +83,7 @@ app.get('/api/config', async () => ({
 await registerAuthRoutes(app);
 await registerSetupRoutes(app);
 await registerDiscordRoutes(app);
+await registerPublicApiRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
 if (config.mcpEnabled) await registerMcpRoutes(app);

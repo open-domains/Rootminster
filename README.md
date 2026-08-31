@@ -94,7 +94,7 @@ The complete list is in `.env.example`. Only configure integrations that are act
 
 - `CLOUDFLARE_API_TOKEN` enables DNS creation, editing, deletion, and synchronization.
 - `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` protect request and abuse forms.
-- SMTP settings enable verification, password-reset, request, and abuse-report email.
+- SMTP settings enable verification, password-reset, request status, and abuse-report email. Creating a request does not send email; approval, rejection, and requests for information do.
 - On a brand-new database, set `INITIAL_SETUP_KEY` to a long random value and open `/setup` to create the first administrator. Remove the key after setup is complete.
 - `DONATIONS_ENABLED=false` removes the donation UI, disables Stripe endpoints and jobs, and makes NS records available without a donation unlock. When enabled, configure the Stripe webhook as `https://your-host/api/webhooks/stripe`.
 - Google credentials enable the existing Google login buttons.
@@ -113,6 +113,12 @@ The MCP server uses OAuth 2.1 authorization-code flow with PKCE, dynamic client 
 - Changing or disabling a staff account takes effect on the next MCP call. OAuth tokens do not preserve an old role.
 
 Write tools are marked as write/destructive where appropriate so compatible clients ask for confirmation. Keep `APP_URL` on HTTPS in production and only connect MCP clients you trust.
+
+## User API
+
+The versioned REST API is available at `/api/v1`, with interactive documentation at `/api-docs` and an OpenAPI 3.1 document at `/api/v1/openapi.json`. Users create hashed bearer tokens under Settings → API Tokens. The legacy `/functions/publicApi?action=…` endpoint remains available for compatibility.
+
+Rate limits are enforced globally and per route. Public reads are normally limited to 60 requests per minute per IP, authenticated reads to 120 per minute per token, and authenticated writes to 30 per minute per token. Responses expose the standard limit, remaining, reset, and retry headers.
 
 ## Commands
 

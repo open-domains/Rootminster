@@ -13,15 +13,18 @@ import ApiTokenManager from '@/components/ApiTokenManager';
 import TwoFactorSetup from '@/components/TwoFactorSetup';
 import TrustedBrowsers from '@/components/TrustedBrowsers';
 import { usePublicConfig } from '@/lib/public-config';
+import { useSearchParams } from 'react-router-dom';
 
 export default function Settings() {
   const { t } = useTranslation();
   const { config: publicConfig } = usePublicConfig();
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [fullName, setFullName] = useState('');
   const [saving, setSaving] = useState(false);
   const [togglingEmail, setTogglingEmail] = useState(false);
-  const [active, setActive] = useState('profile');
+  const requestedSection = searchParams.get('section');
+  const [active, setActive] = useState(['profile', 'security', 'api', 'support'].includes(requestedSection) ? requestedSection : 'profile');
 
   const sections = [
     { id: 'profile', label: t('settings.navProfile'), icon: User },
