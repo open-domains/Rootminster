@@ -215,7 +215,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TosModal open={showTos} isUpdate={tosIsUpdate} onAccepted={() => setShowTos(false)} />
+      <TosModal open={showTos} isUpdate={tosIsUpdate} onAccepted={(updatedUser) => { setUser(updatedUser); setShowTos(false); }} />
 
       <div className="flex min-h-screen">
         <ProductSidebar user={user} />
