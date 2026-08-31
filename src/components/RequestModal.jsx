@@ -35,6 +35,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
   const [checkingAvail, setCheckingAvail] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState('');
   const [siteKey, setSiteKey] = useState('');
+  const [verificationLoading, setVerificationLoading] = useState(true);
   const turnstileRef = useRef(null);
   const widgetIdRef = useRef(null);
   const debounceRef = useRef(null);
@@ -44,7 +45,13 @@ export default function RequestModal({ open, onClose, onSuccess }) {
       rootminster.entities.Domain.filter({ allow_new_requests: true }).then(setDomains).catch(() => {});
       rootminster.auth.me().then(u => setNsUnlocked(!nsRequiresDonation || !!u?.ns_unlocked)).catch(() => {});
       if (!siteKey) {
-        rootminster.functions.invoke('getRecaptchaSiteKey', {}).then(res => setSiteKey(res.data?.site_key || '')).catch(() => {});
+        setVerificationLoading(true);
+        rootminster.functions.invoke('getRecaptchaSiteKey', {})
+          .then(res => setSiteKey(res.data?.site_key || ''))
+          .catch(() => setSiteKey(''))
+          .finally(() => setVerificationLoading(false));
+      } else {
+        setVerificationLoading(false);
       }
     } else {
       reset();
@@ -132,8 +139,10 @@ export default function RequestModal({ open, onClose, onSuccess }) {
 
   const hasCname = rows.some(r => r.record_type === 'CNAME');
   const hasOtherWithCname = hasCname && rows.length > 1;
+  const verificationRequired = Boolean(siteKey);
+  const verificationComplete = !verificationLoading && (!verificationRequired || !!recaptchaToken);
   const canSubmit = !hasOtherWithCname && availability?.status === 'available' && subdomain && rootDomain &&
-    rows.every(r => !getRowError(r)) && reason.trim().length > 0 && previewLink.trim().length > 0 && !!recaptchaToken;
+    rows.every(r => !getRowError(r)) && reason.trim().length > 0 && previewLink.trim().length > 0 && verificationComplete;
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -321,9 +330,9 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                   </div>
                 </section>
 
-                <section className="border-t border-border pt-6">
+                {verificationRequired && <section className="border-t border-border pt-6">
                   <div className="flex justify-center"><div ref={turnstileRef} /></div>
-                </section>
+                </section>}
               </div>
             </div>
 
@@ -349,7 +358,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-muted-foreground">Verification</span>
-                    <span className={recaptchaToken ? 'text-emerald-400' : 'text-muted-foreground'}>{recaptchaToken ? 'Complete' : 'Required'}</span>
+                    <span className={verificationComplete ? 'text-emerald-400' : 'text-muted-foreground'}>{verificationLoading ? 'Loading…' : verificationRequired ? (recaptchaToken ? 'Complete' : 'Required') : 'Not required'}</span>
                   </div>
                 </div>
 
