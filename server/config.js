@@ -41,6 +41,13 @@ export const config = Object.freeze({
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   githubClientId: process.env.GITHUB_CLIENT_ID || '',
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  discordBot: {
+    enabled: boolean('DISCORD_BOT_ENABLED', false),
+    applicationId: process.env.DISCORD_APPLICATION_ID || '',
+    publicKey: process.env.DISCORD_PUBLIC_KEY || '',
+    token: process.env.DISCORD_BOT_TOKEN || '',
+    guildId: process.env.DISCORD_GUILD_ID || '',
+  },
   mcpEnabled: boolean('MCP_ENABLED', true),
   umami: {
     apiUrl: process.env.UMAMI_API_URL || '',

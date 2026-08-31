@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Cloud, Database, Github, HeartHandshake, Loader2, Lock, Mail, Network, Rocket, ShieldCheck, User } from 'lucide-react';
+import { CheckCircle2, Circle, Cloud, Database, Github, HeartHandshake, Loader2, Lock, Mail, MessageCircle, Network, Rocket, ShieldCheck, User } from 'lucide-react';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ const integrationLabels = {
   turnstile: ['Turnstile protection', ShieldCheck],
   google_oauth: ['Google sign-in', User],
   github_oauth: ['GitHub sign-in', Github],
+  discord_bot: ['Discord bot', MessageCircle],
   mcp: ['MCP server', Network],
   donations: ['Stripe donations', HeartHandshake],
 };

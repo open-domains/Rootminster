@@ -99,6 +99,7 @@ The complete list is in `.env.example`. Only configure integrations that are act
 - `DONATIONS_ENABLED=false` removes the donation UI, disables Stripe endpoints and jobs, and makes NS records available without a donation unlock. When enabled, configure the Stripe webhook as `https://your-host/api/webhooks/stripe`.
 - Google credentials enable the existing Google login buttons.
 - GitHub credentials enable GitHub login. Set the OAuth callback URL to `https://your-host/api/auth/oauth/github/callback`.
+- The optional Discord bot uses signed interactions rather than a permanently connected gateway. Set `DISCORD_BOT_ENABLED=true`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, and `DISCORD_BOT_TOKEN`, then use `https://your-host/api/discord/interactions` as the Discord application's Interactions Endpoint URL. `DISCORD_GUILD_ID` is optional and makes command registration immediate in one server; omit it for global commands.
 - `MCP_ENABLED=true` exposes the OAuth 2.1-protected MCP endpoint at `https://your-host/mcp`. Add that URL as a custom connector in ChatGPT or Claude; the client will register itself and prompt the Rootminster user to sign in and authorize access.
 - Umami settings enable per-subdomain analytics.
 

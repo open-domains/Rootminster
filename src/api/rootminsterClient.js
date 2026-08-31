@@ -92,6 +92,17 @@ export const rootminster = {
       return request('/api/setup/initialize', { method: 'POST', body: data });
     },
   },
+  discord: {
+    async status() {
+      return request('/api/discord/status');
+    },
+    async link(token) {
+      return request('/api/discord/link', { method: 'POST', body: { token } });
+    },
+    async unlink() {
+      return request('/api/discord/link', { method: 'DELETE' });
+    },
+  },
   config: {
     async getPublic() {
       return request('/api/config');

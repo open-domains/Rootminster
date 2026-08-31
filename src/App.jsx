@@ -84,6 +84,7 @@ import SubdomainDnsManager from '@/pages/SubdomainDnsManager.jsx';
 import MyRequests from '@/pages/MyRequests';
 import Settings from '@/pages/Settings';
 import Analytics from '@/pages/Analytics';
+import DiscordLink from '@/pages/DiscordLink';
 
 // Admin pages
 import AdminDashboard from '@/pages/AdminDashboard';
@@ -107,6 +108,7 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/discord-link" element={<DiscordLink />} />
 
       {/* Public routes (no auth required, no layout) */}
       <Route path="/" element={<Landing />} />

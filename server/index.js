@@ -14,6 +14,7 @@ import { registerEntityRoutes } from './entity-routes.js';
 import { registerFunctionRoutes } from './function-runner.js';
 import { registerMcpRoutes } from './mcp.js';
 import { registerSetupRoutes } from './setup.js';
+import { registerDiscordRoutes } from './discord.js';
 
 assertProductionConfiguration();
 
@@ -66,10 +67,12 @@ app.get('/api/config', async () => ({
     google: Boolean(config.googleClientId && config.googleClientSecret),
     github: Boolean(config.githubClientId && config.githubClientSecret),
   },
+  discordBot: Boolean(config.discordBot.enabled && config.discordBot.applicationId && config.discordBot.publicKey && config.discordBot.token),
 }));
 
 await registerAuthRoutes(app);
 await registerSetupRoutes(app);
+await registerDiscordRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
 if (config.mcpEnabled) await registerMcpRoutes(app);

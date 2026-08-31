@@ -96,39 +96,13 @@ async function sendDiscord(platform, fields, title, color) {
     }
     catch (_) { }
 }
-function confirmationEmailHtml(subdomain, domain, recordTypes) {
-    const typeList = Array.isArray(recordTypes) ? recordTypes.join(', ') : recordTypes;
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;margin:0;padding:0}
-  .container{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,.08)}
-  .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px;text-align:center}
-  .header h1{color:#fff;margin:0;font-size:28px;font-weight:700}
-  .body{padding:40px}
-  .record-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:20px 0}
-  .footer{text-align:center;padding:24px;color:#94a3b8;font-size:13px;border-top:1px solid #f1f5f9}
-  </style></head><body>
-  <div class="container">
-    <div class="header"><h1>Request Submitted</h1><p style="color:rgba(255,255,255,.85)">Open Domains Platform</p></div>
-    <div class="body">
-      <span style="display:inline-block;background:#fef3c7;color:#92400e;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:24px">⏳ PENDING REVIEW</span>
-      <h2 style="margin:0 0 8px;color:#1e293b">We received your subdomain request!</h2>
-      <p style="color:#64748b">Your request is now in the queue for review. You'll receive an email once a decision is made.</p>
-      <div class="record-box">
-        <p style="margin:0 0 8px;font-weight:600;color:#1e293b">Request Summary</p>
-        <p style="margin:4px 0;color:#475569">Subdomain: <strong>${subdomain}.${domain}</strong></p>
-        <p style="margin:4px 0;color:#475569">Record Type: <strong>${typeList}</strong></p>
-      </div>
-      <p style="color:#64748b;font-size:14px">Review typically takes 1-2 business days.</p>
-    </div>
-    <div class="footer">Open Domains · Free Subdomain Management</div>
-  </div></body></html>`;
-}
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
     if (!user)
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
+    const trustedDiscord = user.trusted_source === 'discord';
     const { subdomain, root_domain, reason, preview_link, recaptcha_token } = body;
     const requestPolicy = await getRequestPolicy(platform);
     if (requestPolicy.locked && !['staff', 'admin'].includes(user.role)) {
@@ -163,10 +137,10 @@ export default async function (req) {
         return Response.json({ error: 'A preview link is required' }, { status: 400 });
     }
     // Turnstile — verified ONCE for the whole batch (tokens are single-use)
-    if (config.turnstileSecret && !recaptcha_token) {
+    if (config.turnstileSecret && !trustedDiscord && !recaptcha_token) {
         return Response.json({ error: 'Please complete the CAPTCHA' }, { status: 400 });
     }
-    if (config.turnstileSecret) {
+    if (config.turnstileSecret && !trustedDiscord) {
         const turnstileRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -300,15 +274,6 @@ export default async function (req) {
     }
     const typeList = recordList.map(r => r.record_type);
     const valueList = recordList.map(r => r.record_value);
-    // Email notification to the requester
-    try {
-        await platform.asServiceRole.integrations.Core.SendEmail({
-            to: user.email,
-            subject: `Request Submitted: ${subdomain}.${root_domain}`,
-            body: confirmationEmailHtml(subdomain, root_domain, typeList)
-        });
-    }
-    catch (_) { }
     // Discord notification
     await sendDiscord(platform, [
         { name: 'Subdomain', value: String(subdomain + '.' + root_domain) },

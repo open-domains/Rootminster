@@ -14,6 +14,23 @@ const TABS = [
 { id: 'zones', label: 'Zones & Requests' },
 { id: 'blocklist', label: 'Blocklist' }];
 
+const SectionCard = ({ icon: Icon, title, description, iconTint = 'primary', children }) =>
+  <div className="rounded-lg border border-border bg-card p-5">
+    <div className="flex items-center gap-3 mb-5">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+        iconTint === 'accent' ? 'bg-accent/10 text-accent' :
+        iconTint === 'emerald' ? 'bg-emerald-500/10 text-emerald-400' :
+        'bg-primary/10 text-primary'}`}>
+        <Icon size={16} />
+      </div>
+      <div>
+        <h2 className="text-foreground font-semibold text-sm">{title}</h2>
+        <p className="text-muted-foreground text-xs">{description}</p>
+      </div>
+    </div>
+    {children}
+  </div>;
+
 
 export default function AdminSettings() {const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('general');
@@ -34,12 +51,14 @@ export default function AdminSettings() {const { t } = useTranslation();
   const [reservedDrafts, setReservedDrafts] = useState({});
   const [requestsLocked, setRequestsLocked] = useState(false);
   const [requestsLockedMessage, setRequestsLockedMessage] = useState('New subdomain requests are temporarily closed.');
+  const [discordBotStatus, setDiscordBotStatus] = useState(null);
 
   const load = async () => {
-    const [me, all, domainRows] = await Promise.all([
+    const [me, all, domainRows, botStatus] = await Promise.all([
     rootminster.auth.me(),
     rootminster.entities.PlatformSettings.list(),
-    rootminster.entities.Domain.list()]
+    rootminster.entities.Domain.list(),
+    rootminster.discord.status()]
     );
     setCurrentUser(me);
     const map = {};
@@ -56,6 +75,7 @@ export default function AdminSettings() {const { t } = useTranslation();
     setRequestsLockedMessage(map['requests_locked_message']?.value || 'New subdomain requests are temporarily closed.');
     setDomains(domainRows);
     setReservedDrafts(Object.fromEntries(domainRows.map((domain) => [domain.id, (domain.reserved_names || []).join('\n')])));
+    setDiscordBotStatus(botStatus);
     setLoading(false);
   };
 
@@ -152,25 +172,6 @@ export default function AdminSettings() {const { t } = useTranslation();
       toast.error(t("operational.admin_settings.failed_to_send_test_notification_0471e1"));
     }
   };
-
-  const SectionCard = ({ icon: Icon, title, description, iconTint = 'primary', children }) =>
-  <div className="rounded-lg border border-border bg-card p-5">
-      <div className="flex items-center gap-3 mb-5">
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-      iconTint === 'accent' ? 'bg-accent/10 text-accent' :
-      iconTint === 'emerald' ? 'bg-emerald-500/10 text-emerald-400' :
-      'bg-primary/10 text-primary'}`
-      }>
-          <Icon size={16} />
-        </div>
-        <div>
-          <h2 className="text-foreground font-semibold text-sm">{title}</h2>
-          <p className="text-muted-foreground text-xs">{description}</p>
-        </div>
-      </div>
-      {children}
-    </div>;
-
 
   return (
     <div className="space-y-6">
@@ -311,6 +312,14 @@ export default function AdminSettings() {const { t } = useTranslation();
             </Button>
               </div>
           }
+          </SectionCard>
+
+          <SectionCard icon={MessageCircle} iconTint={discordBotStatus?.enabled ? 'emerald' : 'accent'} title="Discord request bot" description="Let linked users submit requests and let staff review them with slash commands.">
+            <div className="space-y-3 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-3 py-2.5"><span>Environment status</span><span className={discordBotStatus?.enabled ? 'text-emerald-400' : 'text-amber-300'}>{discordBotStatus?.enabled ? 'Enabled' : 'Not configured'}</span></div>
+              <p>Commands: <code>/link</code>, <code>/request</code>, <code>/requests</code>, <code>/request-view</code>, and staff-only <code>/request-manage</code>.</p>
+              <p>Set the Discord application interaction endpoint to <code className="break-all">{window.location.origin}/api/discord/interactions</code>. Bot credentials remain server-side environment variables.</p>
+            </div>
           </SectionCard>
 
           <SectionCard icon={Bell} title={t("operational.admin_settings.discord_weekly_public_stats_1c3f22")} description="Posts a weekly stats summary every Sunday at 11 PM GMT to a public channel.">

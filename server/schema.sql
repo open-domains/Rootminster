@@ -38,6 +38,28 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);
 
+CREATE TABLE IF NOT EXISTS discord_accounts (
+  discord_user_id text PRIMARY KEY,
+  user_id uuid NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  discord_username text,
+  linked_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS discord_link_tokens (
+  token_hash text PRIMARY KEY,
+  discord_user_id text NOT NULL,
+  discord_username text,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS discord_link_tokens_expiry_idx ON discord_link_tokens(expires_at);
+
+CREATE TABLE IF NOT EXISTS discord_interactions (
+  interaction_id text PRIMARY KEY,
+  received_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS email_verifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

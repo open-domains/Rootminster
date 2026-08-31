@@ -36,6 +36,7 @@ async function setupStatus() {
       turnstile: Boolean(config.turnstileSiteKey && config.turnstileSecret),
       google_oauth: Boolean(config.googleClientId && config.googleClientSecret),
       github_oauth: Boolean(config.githubClientId && config.githubClientSecret),
+      discord_bot: Boolean(config.discordBot.enabled && config.discordBot.applicationId && config.discordBot.publicKey && config.discordBot.token),
       mcp: config.mcpEnabled,
       donations: config.donationsEnabled,
     },
