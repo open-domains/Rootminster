@@ -1,4 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
@@ -9,6 +10,10 @@ export default async function (req) {
     const { subdomain, root_domain } = body;
     if (!subdomain || !root_domain) {
         return Response.json({ status: 'invalid', message: 'Subdomain and root domain required' });
+    }
+    const requestPolicy = await getRequestPolicy(platform);
+    if (requestPolicy.locked && !['staff', 'admin'].includes(user.role)) {
+        return Response.json({ status: 'locked', message: requestPolicy.message });
     }
     // Format validation
     if (subdomain.length > 63) {
@@ -24,9 +29,12 @@ export default async function (req) {
         return Response.json({ status: 'invalid', message: 'Domain not found' });
     }
     const domain = domains[0];
+    if (!domain.allow_new_requests) {
+        return Response.json({ status: 'locked', message: 'New requests are disabled for this domain' });
+    }
     // Check reserved names
     const reserved = domain.reserved_names || [];
-    if (reserved.includes(subdomain.toLowerCase())) {
+    if (isReservedName(subdomain, reserved)) {
         return Response.json({ status: 'reserved', message: 'This subdomain name is reserved' });
     }
     // Ownership persists even when the subdomain temporarily has zero DNS records.

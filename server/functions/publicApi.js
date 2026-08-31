@@ -9,6 +9,7 @@
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
+import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
 async function sha256hex(str) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -88,8 +89,13 @@ export default async function (req) {
             const domains = await platform.asServiceRole.entities.Domain.filter({ name: domain });
             if (!domains.length)
                 return respond({ status: 'invalid', message: 'Domain not found' }, 404);
+            const requestPolicy = await getRequestPolicy(platform);
+            if (requestPolicy.locked)
+                return respond({ status: 'locked', message: requestPolicy.message });
+            if (!domains[0].allow_new_requests)
+                return respond({ status: 'locked', message: 'New requests are disabled for this domain' });
             const reserved = domains[0].reserved_names || [];
-            if (reserved.includes(subdomain.toLowerCase())) {
+            if (isReservedName(subdomain, reserved)) {
                 return respond({ status: 'reserved', message: 'This subdomain name is reserved' });
             }
             const fullName = `${subdomain}.${domain}`;
@@ -219,6 +225,9 @@ export default async function (req) {
             if (!subdomain || !root_domain || !record_type || !record_value) {
                 return respond({ error: 'Missing required fields: subdomain, root_domain, record_type, record_value' }, 400);
             }
+            const requestPolicy = await getRequestPolicy(platform);
+            if (requestPolicy.locked && !['staff', 'admin'].includes(user.role))
+                return respond({ error: requestPolicy.message }, 423);
             if (subdomain.length > 63 || !SUBDOMAIN_REGEX.test(subdomain)) {
                 return respond({ error: 'Invalid subdomain format' }, 400);
             }
@@ -235,7 +244,7 @@ export default async function (req) {
             if (!d.allow_new_requests)
                 return respond({ error: 'New requests are disabled for this domain' }, 403);
             const reserved = d.reserved_names || [];
-            if (reserved.includes(subdomain.toLowerCase()))
+            if (isReservedName(subdomain, reserved))
                 return respond({ error: 'Subdomain is reserved' }, 409);
             const existing = await platform.asServiceRole.entities.DnsRecord.filter({ name: `${subdomain}.${root_domain}` });
             if (record_type === 'CNAME' && existing.length > 0)

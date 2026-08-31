@@ -5,6 +5,7 @@ import { config } from './config.js';
 const PUBLIC_SETTINGS = new Set([
   'maintenance_mode', 'maintenance_message', 'notification_banner_enabled',
   'notification_banner_text', 'external_link_warning_enabled',
+  'requests_locked', 'requests_locked_message',
 ]);
 
 const STAFF_WRITABLE = new Set([

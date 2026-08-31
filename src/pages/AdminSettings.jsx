@@ -2,14 +2,16 @@ import { useTranslation } from "react-i18next";import { useState, useEffect } fr
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Save, Bell, MessageCircle, WrenchIcon, Megaphone, ExternalLink } from 'lucide-react';
+import { Loader2, Save, Bell, MessageCircle, WrenchIcon, Megaphone, ExternalLink, Globe2, RefreshCw, Plus, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import BlocklistManager from '@/components/BlocklistManager';
 
 const TABS = [
 { id: 'general', label: 'General' },
+{ id: 'zones', label: 'Zones & Requests' },
 { id: 'blocklist', label: 'Blocklist' }];
 
 
@@ -26,11 +28,18 @@ export default function AdminSettings() {const { t } = useTranslation();
   const [bannerEnabled, setBannerEnabled] = useState(false);
   const [bannerText, setBannerText] = useState('');
   const [externalLinkWarning, setExternalLinkWarning] = useState(true);
+  const [domains, setDomains] = useState([]);
+  const [cloudflareZones, setCloudflareZones] = useState([]);
+  const [loadingZones, setLoadingZones] = useState(false);
+  const [reservedDrafts, setReservedDrafts] = useState({});
+  const [requestsLocked, setRequestsLocked] = useState(false);
+  const [requestsLockedMessage, setRequestsLockedMessage] = useState('New subdomain requests are temporarily closed.');
 
   const load = async () => {
-    const [me, all] = await Promise.all([
+    const [me, all, domainRows] = await Promise.all([
     rootminster.auth.me(),
-    rootminster.entities.PlatformSettings.list()]
+    rootminster.entities.PlatformSettings.list(),
+    rootminster.entities.Domain.list()]
     );
     setCurrentUser(me);
     const map = {};
@@ -43,10 +52,70 @@ export default function AdminSettings() {const { t } = useTranslation();
     setBannerEnabled(map['notification_banner_enabled']?.value === 'true');
     setBannerText(map['notification_banner_text']?.value || '');
     setExternalLinkWarning(map['external_link_warning_enabled']?.value !== 'false');
+    setRequestsLocked(map['requests_locked']?.value === 'true');
+    setRequestsLockedMessage(map['requests_locked_message']?.value || 'New subdomain requests are temporarily closed.');
+    setDomains(domainRows);
+    setReservedDrafts(Object.fromEntries(domainRows.map((domain) => [domain.id, (domain.reserved_names || []).join('\n')])));
     setLoading(false);
   };
 
   useEffect(() => {load();}, []);
+
+  const fetchCloudflareZones = async () => {
+    setLoadingZones(true);
+    try {
+      const result = await rootminster.functions.invoke('getCloudflareZones', {});
+      setCloudflareZones(result.data?.zones || []);
+    } catch (error) {
+      toast.error(error.message || 'Failed to load Cloudflare zones');
+    } finally {
+      setLoadingZones(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'zones' && cloudflareZones.length === 0) fetchCloudflareZones();
+  }, [activeTab]);
+
+  const importZone = async (zone) => {
+    setSaving((state) => ({ ...state, [`zone-${zone.id}`]: true }));
+    try {
+      await rootminster.entities.Domain.create({ zone_id: zone.id, name: zone.name, status: zone.status, nameservers: zone.nameservers || [], allow_new_requests: true, reserved_names: [] });
+      toast.success(`${zone.name} added for requests`);
+      await load();
+    } catch (error) {
+      toast.error(error.message || 'Failed to add zone');
+    } finally {
+      setSaving((state) => ({ ...state, [`zone-${zone.id}`]: false }));
+    }
+  };
+
+  const toggleDomainRequests = async (domain, enabled) => {
+    setSaving((state) => ({ ...state, [`requests-${domain.id}`]: true }));
+    try {
+      await rootminster.entities.Domain.update(domain.id, { allow_new_requests: enabled });
+      toast.success(`${domain.name} requests ${enabled ? 'unlocked' : 'locked'}`);
+      await load();
+    } catch (error) {
+      toast.error(error.message || 'Failed to update zone');
+    } finally {
+      setSaving((state) => ({ ...state, [`requests-${domain.id}`]: false }));
+    }
+  };
+
+  const saveReservedNames = async (domain) => {
+    setSaving((state) => ({ ...state, [`reserved-${domain.id}`]: true }));
+    try {
+      const reservedNames = [...new Set(String(reservedDrafts[domain.id] || '').split(/[\n,]+/).map((name) => name.trim().toLowerCase()).filter(Boolean))];
+      await rootminster.entities.Domain.update(domain.id, { reserved_names: reservedNames });
+      toast.success(`Reserved records updated for ${domain.name}`);
+      await load();
+    } catch (error) {
+      toast.error(error.message || 'Failed to save reserved records');
+    } finally {
+      setSaving((state) => ({ ...state, [`reserved-${domain.id}`]: false }));
+    }
+  };
 
   const saveSetting = async (key, value) => {
     setSaving((s) => ({ ...s, [key]: true }));
@@ -129,6 +198,95 @@ export default function AdminSettings() {const { t } = useTranslation();
 
       {loading ?
       <div className="flex justify-center py-20"><Loader2 className="animate-spin text-muted-foreground" /></div> :
+      activeTab === 'zones' ?
+      <div className="space-y-5">
+        <SectionCard icon={LockKeyhole} iconTint={requestsLocked ? 'accent' : 'emerald'} title="Global request gate" description="Immediately lock or unlock new requests across every managed zone.">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">Lock all new requests</p>
+                <p className="text-xs text-muted-foreground">Staff and admins can still test submissions while the public gate is locked.</p>
+              </div>
+              <Switch checked={requestsLocked} onCheckedChange={async (value) => {
+                setRequestsLocked(value);
+                await saveSetting('requests_locked', value ? 'true' : 'false');
+              }} />
+            </div>
+            <div className="space-y-1.5 border-t border-border pt-4">
+              <Label className="text-xs">Message shown while requests are locked</Label>
+              <div className="flex gap-2">
+                <Input value={requestsLockedMessage} onChange={(event) => setRequestsLockedMessage(event.target.value)} placeholder="New requests are temporarily closed." />
+                <Button onClick={() => saveSetting('requests_locked_message', requestsLockedMessage)} disabled={saving.requests_locked_message}>
+                  {saving.requests_locked_message ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard icon={Globe2} title="Cloudflare zone catalogue" description="Import Cloudflare zones into Rootminster so they can receive subdomain requests.">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">{cloudflareZones.length} zones returned by Cloudflare</p>
+            <Button size="sm" variant="outline" onClick={fetchCloudflareZones} disabled={loadingZones} className="gap-2">
+              <RefreshCw size={13} className={loadingZones ? 'animate-spin' : ''} /> Refresh
+            </Button>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {cloudflareZones.map((zone) => {
+              const existing = domains.find((domain) => domain.zone_id === zone.id);
+              return <div key={zone.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background/40 p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-mono text-sm font-medium text-foreground">{zone.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{zone.status}</p>
+                </div>
+                {existing ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-400">Added</span> :
+                  <Button size="sm" onClick={() => importZone(zone)} disabled={saving[`zone-${zone.id}`]} className="h-7 gap-1 px-2 text-xs">
+                    {saving[`zone-${zone.id}`] ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Add
+                  </Button>}
+              </div>;
+            })}
+            {!loadingZones && cloudflareZones.length === 0 && <p className="text-sm text-muted-foreground">No zones returned. Check the Cloudflare API token.</p>}
+          </div>
+        </SectionCard>
+
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Managed request zones</h2>
+              <p className="text-xs text-muted-foreground">Control requests and reserve subdomain names for each zone.</p>
+            </div>
+            <span className="text-xs text-muted-foreground">{domains.length} configured</span>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            {domains.map((domain) => <div key={domain.id} className="rounded-lg border border-border bg-card p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Globe2 size={15} className="text-primary" />
+                    <h3 className="font-mono text-sm font-semibold text-foreground">{domain.name}</h3>
+                  </div>
+                  <p className="mt-1 font-mono text-[10px] text-muted-foreground">{domain.zone_id}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs ${domain.allow_new_requests ? 'text-emerald-400' : 'text-destructive'}`}>{domain.allow_new_requests ? 'Unlocked' : 'Locked'}</span>
+                  {saving[`requests-${domain.id}`] ? <Loader2 size={14} className="animate-spin" /> : <Switch checked={!!domain.allow_new_requests} onCheckedChange={(value) => toggleDomainRequests(domain, value)} />}
+                </div>
+              </div>
+              <div className="mt-4 space-y-2 border-t border-border pt-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={13} className="text-muted-foreground" />
+                  <Label className="text-xs">Reserved subdomain records</Label>
+                </div>
+                <p className="text-[11px] text-muted-foreground">One name per line. Wildcards are supported, for example <code>admin</code>, <code>mail-*</code>, or <code>*.internal</code>.</p>
+                <Textarea value={reservedDrafts[domain.id] || ''} onChange={(event) => setReservedDrafts((state) => ({ ...state, [domain.id]: event.target.value }))} placeholder={'www\nmail\nadmin\nstatus-*'} className="min-h-28 font-mono text-xs" />
+                <Button size="sm" variant="outline" onClick={() => saveReservedNames(domain)} disabled={saving[`reserved-${domain.id}`]} className="gap-2">
+                  {saving[`reserved-${domain.id}`] ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save reservations
+                </Button>
+              </div>
+            </div>)}
+          </div>
+        </div>
+      </div> :
       activeTab === 'blocklist' ?
       <div className="max-w-2xl">
           <BlocklistManager currentUser={currentUser} />

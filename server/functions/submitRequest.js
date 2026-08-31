@@ -1,5 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
+import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
 const SINGLE_VALUE_TYPES = ['CNAME'];
@@ -129,6 +130,10 @@ export default async function (req) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     const { subdomain, root_domain, reason, preview_link, recaptcha_token } = body;
+    const requestPolicy = await getRequestPolicy(platform);
+    if (requestPolicy.locked && !['staff', 'admin'].includes(user.role)) {
+        return Response.json({ error: requestPolicy.message }, { status: 423 });
+    }
     // Build the record list. Supports a `records` array (batch submission) and
     // falls back to legacy single-record fields for backward compatibility.
     let recordList;
@@ -231,7 +236,7 @@ export default async function (req) {
         return Response.json({ error: 'New requests are disabled for this domain' }, { status: 403 });
     // Reserved names
     const reserved = d.reserved_names || [];
-    if (reserved.includes(subdomain.toLowerCase())) {
+    if (isReservedName(subdomain, reserved)) {
         return Response.json({ error: 'This subdomain name is reserved' }, { status: 409 });
     }
     // Existing DNS records for this hostname
