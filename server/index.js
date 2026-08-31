@@ -12,6 +12,7 @@ import { pool } from './database.js';
 import { registerAuthRoutes } from './auth.js';
 import { registerEntityRoutes } from './entity-routes.js';
 import { registerFunctionRoutes } from './function-runner.js';
+import { registerMcpRoutes } from './mcp.js';
 
 assertProductionConfiguration();
 
@@ -25,6 +26,13 @@ await app.register(cookie);
 await app.register(helmet, { contentSecurityPolicy: false });
 await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
 await app.register(rawBody, { field: 'rawBody', global: false, encoding: 'utf8', runFirst: true });
+app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_request, body, done) => {
+  try {
+    done(null, Object.fromEntries(new URLSearchParams(body)));
+  } catch (error) {
+    done(error);
+  }
+});
 
 const applicationOrigin = new URL(config.appUrl).origin;
 app.addHook('preHandler', async (request, reply) => {
@@ -46,9 +54,21 @@ app.get('/api/health', async (_request, reply) => {
   }
 });
 
+app.get('/api/config', async () => ({
+  features: {
+    donations: config.donationsEnabled,
+    nsRequiresDonation: config.donationsEnabled,
+  },
+  oauth: {
+    google: Boolean(config.googleClientId && config.googleClientSecret),
+    github: Boolean(config.githubClientId && config.githubClientSecret),
+  },
+}));
+
 await registerAuthRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
+if (config.mcpEnabled) await registerMcpRoutes(app);
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, '..', 'dist');

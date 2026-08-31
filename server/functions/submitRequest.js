@@ -177,7 +177,7 @@ export default async function (req) {
         return Response.json({ error: 'Invalid subdomain format' }, { status: 400 });
     }
     // NS records require donation unlock (if any record in the batch is NS)
-    if (recordList.some(r => r.record_type === 'NS')) {
+    if (config.donationsEnabled && recordList.some(r => r.record_type === 'NS')) {
         const userRecord = await platform.asServiceRole.entities.User.filter({ email: user.email });
         if (!userRecord?.[0]?.ns_unlocked) {
             return Response.json({ error: 'NS records require a £2+ donation to unlock. See Settings.' }, { status: 403 });

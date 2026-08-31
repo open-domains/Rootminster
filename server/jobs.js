@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { pool, withAdvisoryLock } from './database.js';
 import { invokeInternal } from './function-runner.js';
+import { config } from './config.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', display_name: 'Rootminster Jobs' };
 
@@ -15,7 +16,9 @@ async function run(name, body = {}) {
   });
 }
 
-cron.schedule('15 3 * * *', () => run('cleanupPendingDonations'), { timezone: 'UTC' });
+if (config.donationsEnabled) {
+  cron.schedule('15 3 * * *', () => run('cleanupPendingDonations'), { timezone: 'UTC' });
+}
 cron.schedule('30 3 * * 0', () => run('cleanupSuspendedRecords'), { timezone: 'UTC' });
 cron.schedule('0 2 */6 * *', () => run('scheduledSync'), { timezone: 'UTC' });
 cron.schedule('0 3 1 */2 *', () => run('verifyDnsRecords'), { timezone: 'UTC' });

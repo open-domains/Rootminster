@@ -83,14 +83,16 @@ export function getRecordValuePlaceholder(type) {
   }
 }
 
-export function getRecordTypeHint(type) {
+export function getRecordTypeHint(type, nsRequiresDonation = true) {
   switch (type) {
     case 'A': return 'Points to an IPv4 address. Multiple A records allowed for redundancy.';
     case 'AAAA': return 'Points to an IPv6 address. Multiple records allowed.';
     case 'CNAME': return 'Alias to another hostname. Cannot be combined with other record types.';
     case 'MX': return 'Mail server hostname. Priority is optional — defaults to 10 if omitted. Multiple allowed.';
     case 'TXT': return 'Arbitrary text. Used for SPF, DKIM, domain verification, etc.';
-    case 'NS': return 'Delegates this subdomain to another nameserver. Requires £2+ donation unlock.';
+    case 'NS': return nsRequiresDonation
+      ? 'Delegates this subdomain to another nameserver. Requires £2+ donation unlock.'
+      : 'Delegates this subdomain to another nameserver.';
     default: return '';
   }
 }

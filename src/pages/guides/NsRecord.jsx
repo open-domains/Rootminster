@@ -37,7 +37,7 @@ dev.example.com. 3600 NS ns2.devteam-dns.com.
 
 # Now the dev team manages all records under dev.example.com independently`}
       </CodeBlock>
-      <Note>On Open Domains, NS record support requires a small donation unlock. This is to prevent abuse and ensure the platform is used for legitimate purposes.</Note>
+      <Note>When the donation feature is enabled, Open Domains requires a small donation unlock for NS record support. Installations with donations disabled make NS records available without that unlock.</Note>
 
       <H2>NS Records and Cloudflare</H2>
       <P>When you add a domain to Cloudflare, they assign you two nameservers (e.g., <InlineCode>hazel.ns.cloudflare.com</InlineCode> and <InlineCode>pete.ns.cloudflare.com</InlineCode>). You update these at your registrar, pointing the global DNS system to Cloudflare's servers. All your DNS records then live inside Cloudflare's zone editor.</P>

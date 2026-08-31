@@ -1,16 +1,24 @@
 import { useTranslation } from "react-i18next";import { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { rootminster } from '@/api/rootminsterClient';
 import DataTable from '@/components/DataTable';
 import StatusBadge from '@/components/StatusBadge';
 import { format } from 'date-fns';
+import { usePublicConfig } from '@/lib/public-config';
 
 export default function AdminDonations() {const { t } = useTranslation();
+  const { config, loading: configLoading } = usePublicConfig();
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    rootminster.entities.Donation.list('-created_date', 500).then(setDonations).finally(() => setLoading(false));
-  }, []);
+    if (config.features.donations) {
+      rootminster.entities.Donation.list('-created_date', 500).then(setDonations).finally(() => setLoading(false));
+    }
+  }, [config.features.donations]);
+
+  if (configLoading) return <div className="flex justify-center py-20"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (!config.features.donations) return <Navigate to="/admin-dashboard" replace />;
 
   const succeeded = donations.filter((d) => d.status === 'succeeded');
   const totalGbp = (succeeded.reduce((sum, d) => sum + (d.amount_pence || 0), 0) / 100).toFixed(2);

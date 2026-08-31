@@ -1,4 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { config } from '../config.js';
 const CF_BASE = 'https://api.cloudflare.com/client/v4';
 const CF_TOKEN = process.env['CLOUDFLARE_API_TOKEN'];
 const PROXYABLE = new Set(['A', 'AAAA', 'CNAME']);
@@ -369,7 +370,7 @@ export default async function (req) {
             if (normalizeName(zone.name) !== normalizeName(old.zone_name) || zone.zone_id !== old.zone_id) {
                 return Response.json({ error: 'Moving a DNS record between Cloudflare zones is not supported' }, { status: 400 });
             }
-            if (candidate.record_type === 'NS' && !user.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
+            if (config.donationsEnabled && candidate.record_type === 'NS' && !user.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
                 return Response.json({ error: 'NS records are not unlocked for this account' }, { status: 403 });
             }
             if (!old.cloudflare_record_id || !old.zone_id)
@@ -424,7 +425,7 @@ export default async function (req) {
                 return Response.json({ error: `No user found for ${body.owner_email}` }, { status: 404 });
             owner = ownerRows[0];
         }
-        if (recordType === 'NS' && !owner.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
+        if (config.donationsEnabled && recordType === 'NS' && !owner.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
             return Response.json({ error: 'NS records are not unlocked for this account' }, { status: 403 });
         }
         const zone = await findZone(platform, name);

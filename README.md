@@ -1,6 +1,8 @@
 # Rootminster V2
 
-Rootminster V2 is the standalone Open Domains management platform. 
+Rootminster V2 is the standalone Open Domains management platform. It retains the supplied React interface while replacing the hosted application runtime with a self-hosted Fastify API, PostgreSQL, local authentication, and a separate scheduled-job process.
+
+The V2 runtime includes an optional remote MCP connection for role-aware use from ChatGPT or Claude. Rootminster remains the authorization source and performs every permission check server-side.
 
 ## Stack
 
@@ -8,7 +10,7 @@ Rootminster V2 is the standalone Open Domains management platform.
 - Fastify API running on Node.js 24
 - PostgreSQL 17 with JSONB and targeted indexes
 - Argon2id password hashing and database-backed sessions
-- SMTP email, Cloudflare DNS, Stripe, Umami, Discord, Google OAuth, and Hostinger integrations
+- SMTP email, Cloudflare DNS, optional Stripe donations, Umami, Discord, Google OAuth, and GitHub OAuth
 - Separate job runner with PostgreSQL advisory locks
 - Docker Compose, with an optional Traefik overlay
 
@@ -93,10 +95,22 @@ The complete list is in `.env.example`. Only configure integrations that are act
 - `CLOUDFLARE_API_TOKEN` enables DNS creation, editing, deletion, and synchronization.
 - `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` protect request and abuse forms.
 - SMTP settings enable verification, password-reset, request, and abuse-report email.
-- Stripe settings enable donations. Configure the webhook as `https://your-host/api/webhooks/stripe`.
+- `DONATIONS_ENABLED=false` removes the donation UI, disables Stripe endpoints and jobs, and makes NS records available without a donation unlock. When enabled, configure the Stripe webhook as `https://your-host/api/webhooks/stripe`.
 - Google credentials enable the existing Google login buttons.
+- GitHub credentials enable GitHub login. Set the OAuth callback URL to `https://your-host/api/auth/oauth/github/callback`.
+- `MCP_ENABLED=true` exposes the OAuth 2.1-protected MCP endpoint at `https://your-host/mcp`. Add that URL as a custom connector in ChatGPT or Claude; the client will register itself and prompt the Rootminster user to sign in and authorize access.
 - Umami settings enable per-subdomain analytics.
-- `HOSTINGER_API_KEY` enables the Docker Engine page inherited from the supplied interface.
+
+## MCP access
+
+The MCP server uses OAuth 2.1 authorization-code flow with PKCE, dynamic client registration, short-lived access tokens, rotating refresh tokens, and live Rootminster role checks.
+
+- All authenticated users can inspect their account, subdomains, and requests.
+- Staff and administrators can also list pending reviews, inspect a request, approve it, or reject it.
+- Approval and rejection remain normal Rootminster review operations: they are audited, notifications are sent, and the existing Cloudflare integration is used.
+- Changing or disabling a staff account takes effect on the next MCP call. OAuth tokens do not preserve an old role.
+
+Write tools are marked as write/destructive where appropriate so compatible clients ask for confirmation. Keep `APP_URL` on HTTPS in production and only connect MCP clients you trust.
 
 ## Commands
 
