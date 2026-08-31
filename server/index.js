@@ -39,6 +39,7 @@ app.addHook('preHandler', async (request, reply) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return;
   if (!request.cookies?.[config.cookieName]) return;
   if (request.url === '/api/webhooks/stripe') return;
+  if (request.method === 'POST' && request.url.split('?')[0] === '/oauth/authorize') return;
   const origin = request.headers.origin;
   if (!origin || origin !== applicationOrigin) {
     return reply.code(403).send({ error: 'Cross-origin request rejected' });

@@ -92,6 +92,17 @@ CREATE TABLE IF NOT EXISTS mcp_oauth_codes (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS mcp_oauth_consents (
+  token_hash text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id text NOT NULL REFERENCES mcp_oauth_clients(client_id) ON DELETE CASCADE,
+  request_data jsonb NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS mcp_oauth_consents_expiry_idx ON mcp_oauth_consents(expires_at);
+
 CREATE TABLE IF NOT EXISTS mcp_oauth_tokens (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id text NOT NULL REFERENCES mcp_oauth_clients(client_id) ON DELETE CASCADE,
