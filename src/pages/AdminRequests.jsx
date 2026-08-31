@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { rootminster } from '@/api/rootminsterClient';
 import StatusBadge from '@/components/StatusBadge';
 import ReviewRequestModal from '@/components/ReviewRequestModal';
+import SafetyBadge from '@/components/SafetyBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Eye, AlertTriangle, Loader2, Search, RefreshCw } from 'lucide-react';
@@ -30,6 +31,11 @@ function RequestCard({ request, onReview, userNames = {} }) {
           ))}
         </div>
         <span className="text-muted-foreground text-xs shrink-0">{request.created_date ? format(new Date(request.created_date), 'MMM d, yyyy') : '—'}</span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+        <span className="text-[11px] text-muted-foreground">Automated safety</span>
+        <SafetyBadge verdict={request._safety?.verdict || request.safety_verdict} score={request._safety?.score ?? request.safety_score} overridden={request._safety?.overridden || request.safety_overridden} />
       </div>
 
       <Button size="sm" onClick={() => onReview(request)} className="w-full h-8 text-xs gap-1.5">
@@ -61,9 +67,11 @@ export default function AdminRequests() {
   const { t } = useTranslation();
   const [tab, setTab] = useState('subdomain');
   const [requests, setRequests] = useState([]);
+  const [safetyAssessments, setSafetyAssessments] = useState([]);
   const [dnsIssues, setDnsIssues] = useState([]);
   const [userNames, setUserNames] = useState({});
   const [statusFilter, setStatusFilter] = useState('all');
+  const [riskFilter, setRiskFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -73,14 +81,16 @@ export default function AdminRequests() {
   const load = async () => {
     setLoading(true);
     try {
-      const [u, reqs, dnsRecs] = await Promise.all([
+      const [u, reqs, dnsRecs, assessments] = await Promise.all([
         rootminster.auth.me(),
         rootminster.entities.SubdomainRequest.list('-created_date', 200),
         rootminster.entities.DnsRecord.filter({ managed: true, dns_verified: false }),
+        rootminster.entities.SafetyAssessment.list('-created_date', 1000),
       ]);
       setUser(u);
       setRequests(reqs);
       setDnsIssues(dnsRecs);
+      setSafetyAssessments(assessments);
       try {
         const users = await rootminster.entities.User.list();
         const map = {};
@@ -113,17 +123,29 @@ export default function AdminRequests() {
 
   useEffect(() => { load(); }, []);
 
+  const assessmentByRequest = new Map();
+  safetyAssessments.forEach((assessment) => {
+    if (!assessmentByRequest.has(assessment.request_id)) assessmentByRequest.set(assessment.request_id, assessment);
+  });
+
   const groupRequests = (reqs) => {
     const map = new Map();
     reqs.forEach(r => {
       const key = `${r.subdomain}.${r.root_domain}`;
+      const enriched = { ...r, _safety: assessmentByRequest.get(r.id) || null };
       if (!map.has(key)) {
-        map.set(key, { ...r, _records: [r] });
+        map.set(key, { ...enriched, _records: [enriched] });
       } else {
         const group = map.get(key);
-        group._records.push(r);
+        group._records.push(enriched);
         const priority = { pending: 4, needs_info: 3, approved: 2, rejected: 1 };
         if ((priority[r.status] || 0) > (priority[group.status] || 0)) group.status = r.status;
+        if (Number(enriched._safety?.score || r.safety_score || 0) > Number(group._safety?.score || group.safety_score || 0)) {
+          group._safety = enriched._safety;
+          group.safety_score = r.safety_score;
+          group.safety_verdict = r.safety_verdict;
+          group.safety_overridden = r.safety_overridden;
+        }
       }
     });
     return Array.from(map.values());
@@ -133,9 +155,15 @@ export default function AdminRequests() {
     ? requests.filter(r => r.status === 'pending' || r.status === 'user_responded')
     : requests.filter(r => r.status === statusFilter);
   const grouped = groupRequests(filteredRaw);
-  const filtered = search
-    ? grouped.filter(r => `${r.subdomain}.${r.root_domain} ${r.requester_email}`.toLowerCase().includes(search.toLowerCase()))
-    : grouped;
+  const riskFiltered = riskFilter === 'all' ? grouped : grouped.filter((request) => {
+    const assessment = request._safety;
+    if (riskFilter === 'overridden') return assessment?.overridden || request.safety_overridden;
+    if (riskFilter === 'incomplete') return !assessment || ['incomplete', 'disabled'].includes(assessment.verdict) || assessment.provider_status === 'failed';
+    return (assessment?.verdict || request.safety_verdict) === riskFilter;
+  });
+  const filtered = (search
+    ? riskFiltered.filter(r => `${r.subdomain}.${r.root_domain} ${r.requester_email}`.toLowerCase().includes(search.toLowerCase()))
+    : riskFiltered).sort((a, b) => Number(b._safety?.score || b.safety_score || 0) - Number(a._safety?.score || a.safety_score || 0));
 
   const dnsFiltered = search
     ? dnsIssues.filter(r => `${r.name} ${r.owner_email} ${r.dns_mismatch_reason}`.toLowerCase().includes(search.toLowerCase()))
@@ -196,13 +224,23 @@ export default function AdminRequests() {
             <Input placeholder={t('adminRequests.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-sm" />
           </div>
           {tab === 'subdomain' && (
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
+              <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground">
+                <option value="all">All risk levels</option>
+                <option value="high_risk">High risk</option>
+                <option value="review">Needs review</option>
+                <option value="clear">Clear</option>
+                <option value="incomplete">Incomplete</option>
+                <option value="overridden">Staff overrides</option>
+              </select>
+              <div className="flex gap-1 flex-wrap">
               {['all', 'pending', 'approved', 'rejected', 'needs_info'].map(s => (
                 <button key={s} onClick={() => setStatusFilter(s)}
                   className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors capitalize ${statusFilter === s ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>
                   {filterLabels[s]}
                 </button>
               ))}
+              </div>
             </div>
           )}
       </div>

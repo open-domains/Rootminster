@@ -100,6 +100,7 @@ The complete list is in `.env.example`. Only configure integrations that are act
 - Google credentials enable the existing Google login buttons.
 - GitHub credentials enable GitHub login. Set the OAuth callback URL to `https://your-host/api/auth/oauth/github/callback`.
 - The optional Discord bot uses signed interactions rather than a permanently connected gateway. Set `DISCORD_BOT_ENABLED=true`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, and `DISCORD_BOT_TOKEN`, then use `https://your-host/api/discord/interactions` as the Discord application's Interactions Endpoint URL. `DISCORD_GUILD_ID` is optional and makes command registration immediate in one server; omit it for global commands.
+- Deterministic request safety screening is enabled by default. Set `SAFETY_SCREENING_ENABLED=false` to disable scoring without bypassing hard blocklist rules. An optional reputation service can be added with `SAFETY_REPUTATION_API_URL`, `SAFETY_REPUTATION_API_TOKEN`, and `SAFETY_REPUTATION_TIMEOUT_MS`; it receives request metadata by POST and Rootminster never fetches preview URLs itself.
 - `MCP_ENABLED=true` exposes the OAuth 2.1-protected MCP endpoint at `https://your-host/mcp`. Add that URL as a custom connector in ChatGPT or Claude; the client will register itself and prompt the Rootminster user to sign in and authorize access.
 - Umami settings enable per-subdomain analytics.
 
@@ -119,6 +120,10 @@ Write tools are marked as write/destructive where appropriate so compatible clie
 The versioned REST API is available at `/api/v1`, with interactive documentation at `/api-docs` and an OpenAPI 3.1 document at `/api/v1/openapi.json`. Users create hashed bearer tokens under Settings → API Tokens. The legacy `/functions/publicApi?action=…` endpoint remains available for compatibility.
 
 Rate limits are enforced globally and per route. Public reads are normally limited to 60 requests per minute per IP, authenticated reads to 120 per minute per token, and authenticated writes to 30 per minute per token. Responses expose the standard limit, remaining, reset, and retry headers.
+
+## Safety screening
+
+Accepted requests receive a versioned, explainable risk assessment covering suspicious wording, preview URL structure, protected brands, account age, request velocity, rejection history, sensitive record types, and shared DNS targets. Scores guide the staff queue but never approve requests automatically. Staff can inspect each signal, re-run screening, or override a verdict with a mandatory audited reason. Detailed signals are limited to staff surfaces, including Discord and MCP review tools.
 
 ## Commands
 

@@ -10,6 +10,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
+import { screenRequest } from '../lib/safety-screening.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
 async function sha256hex(str) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -262,9 +263,18 @@ export default async function (req) {
                 subdomain, root_domain, full_name: `${subdomain}.${root_domain}`,
                 record_type, record_value: normalisedValue, ttl: ttl || 3600,
                 proxied: record_type === 'NS' ? false : (proxied || false),
-                reason: reason || '', status: 'pending', zone_id: d.zone_id
+                reason: reason || '', preview_link: body.preview_link || '', status: 'pending', zone_id: d.zone_id
             });
-            return respond({ success: true, request_id: request.id, status: 'pending' });
+            let assessment;
+            try {
+                assessment = await screenRequest(platform, request, user, 'legacy_api');
+            }
+            catch (_) {
+                await platform.asServiceRole.entities.SubdomainRequest.update(request.id, {
+                    safety_score: 0, safety_verdict: 'incomplete', safety_screened_at: new Date().toISOString()
+                }).catch(() => {});
+            }
+            return respond({ success: true, request_id: request.id, status: 'pending', safety: assessment ? { score: assessment.score, verdict: assessment.verdict } : { score: 0, verdict: 'incomplete' } });
         }
         // POST action=update — direct DNS mutation.
         if (action === 'update') {

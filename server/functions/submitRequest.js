@@ -1,6 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
+import { screenRequest } from '../lib/safety-screening.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
 const SINGLE_VALUE_TYPES = ['CNAME'];
@@ -274,13 +275,38 @@ export default async function (req) {
     }
     const typeList = recordList.map(r => r.record_type);
     const valueList = recordList.map(r => r.record_value);
+    const screened = [];
+    for (const request of created) {
+        try {
+            const assessment = await screenRequest(platform, request, user);
+            Object.assign(request, {
+                safety_assessment_id: assessment.id,
+                safety_score: assessment.score,
+                safety_verdict: assessment.verdict,
+                safety_screened_at: assessment.screened_at,
+                safety_ruleset_version: assessment.ruleset_version,
+            });
+            screened.push(assessment);
+        }
+        catch (_) {
+            await platform.asServiceRole.entities.SubdomainRequest.update(request.id, {
+                safety_score: 0,
+                safety_verdict: 'incomplete',
+                safety_screened_at: new Date().toISOString(),
+            }).catch(() => {});
+            request.safety_score = 0;
+            request.safety_verdict = 'incomplete';
+        }
+    }
+    const highestRisk = screened.sort((a, b) => Number(b.score) - Number(a.score))[0];
     // Discord notification
     await sendDiscord(platform, [
         { name: 'Subdomain', value: String(subdomain + '.' + root_domain) },
         { name: 'Types', value: typeList.join(', ') },
         { name: 'Values', value: valueList.join(', ') },
         { name: 'Requested By', value: String(user.email) },
-        { name: 'Status', value: 'Pending Review' }
+        { name: 'Status', value: 'Pending Review' },
+        { name: 'Safety', value: highestRisk ? `${highestRisk.verdict} (${highestRisk.score}/100)` : 'Screening incomplete' }
     ], 'New Subdomain Request', 0x6366f1);
     await platform.asServiceRole.entities.AuditLog.create({
         actor_email: user.email, actor_role: user.role || 'user',

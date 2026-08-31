@@ -5,13 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Save, Bell, MessageCircle, WrenchIcon, Megaphone, ExternalLink, Globe2, RefreshCw, Plus, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { Loader2, Save, Bell, MessageCircle, WrenchIcon, Megaphone, ExternalLink, Globe2, RefreshCw, Plus, LockKeyhole, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import BlocklistManager from '@/components/BlocklistManager';
 
 const TABS = [
 { id: 'general', label: 'General' },
 { id: 'zones', label: 'Zones & Requests' },
+{ id: 'safety', label: 'Safety Screening' },
 { id: 'blocklist', label: 'Blocklist' }];
 
 const SectionCard = ({ icon: Icon, title, description, iconTint = 'primary', children }) =>
@@ -52,6 +53,8 @@ export default function AdminSettings() {const { t } = useTranslation();
   const [requestsLocked, setRequestsLocked] = useState(false);
   const [requestsLockedMessage, setRequestsLockedMessage] = useState('New subdomain requests are temporarily closed.');
   const [discordBotStatus, setDiscordBotStatus] = useState(null);
+  const [safetyEnabled, setSafetyEnabled] = useState(true);
+  const [protectedBrands, setProtectedBrands] = useState('');
 
   const load = async () => {
     const [me, all, domainRows, botStatus] = await Promise.all([
@@ -73,6 +76,8 @@ export default function AdminSettings() {const { t } = useTranslation();
     setExternalLinkWarning(map['external_link_warning_enabled']?.value !== 'false');
     setRequestsLocked(map['requests_locked']?.value === 'true');
     setRequestsLockedMessage(map['requests_locked_message']?.value || 'New subdomain requests are temporarily closed.');
+    setSafetyEnabled(map['safety_screening_enabled']?.value !== 'false');
+    setProtectedBrands(map['safety_protected_brands']?.value || '');
     setDomains(domainRows);
     setReservedDrafts(Object.fromEntries(domainRows.map((domain) => [domain.id, (domain.reserved_names || []).join('\n')])));
     setDiscordBotStatus(botStatus);
@@ -292,6 +297,44 @@ export default function AdminSettings() {const { t } = useTranslation();
       <div className="max-w-2xl">
           <BlocklistManager currentUser={currentUser} />
         </div> :
+      activeTab === 'safety' ?
+      <div className="grid gap-5 xl:grid-cols-2">
+        <SectionCard icon={ShieldAlert} iconTint={safetyEnabled ? 'emerald' : 'accent'} title="Automated request screening" description="Score accepted requests and explain potential safety risks to staff reviewers.">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">Enable deterministic screening</p>
+                <p className="text-xs text-muted-foreground">Hard blocklist rules still apply even when scoring is disabled.</p>
+              </div>
+              <Switch checked={safetyEnabled} onCheckedChange={async (value) => {
+                setSafetyEnabled(value);
+                await saveSetting('safety_screening_enabled', value ? 'true' : 'false');
+              }} />
+            </div>
+            <div className="rounded-lg border border-border bg-background/40 p-3 text-xs text-muted-foreground">
+              Screening checks suspicious wording, preview URL structure, account age, request velocity, prior rejections, sensitive record types and shared DNS targets. It never visits the preview URL.
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard icon={ShieldCheck} title="Protected brands" description="Flag subdomains that may impersonate names your team wants to protect.">
+          <div className="space-y-2">
+            <Label className="text-xs">One brand per line</Label>
+            <p className="text-[11px] text-muted-foreground">Use simple ASCII names such as <code>cloudflare</code> or <code>open-domains</code>. Matches are flagged for review, never automatically rejected.</p>
+            <Textarea value={protectedBrands} onChange={(event) => setProtectedBrands(event.target.value)} placeholder={'cloudflare\nopen-domains\nexample-brand'} className="min-h-40 font-mono text-xs" />
+            <Button size="sm" variant="outline" onClick={() => saveSetting('safety_protected_brands', protectedBrands)} disabled={saving.safety_protected_brands} className="gap-2">
+              {saving.safety_protected_brands ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save protected brands
+            </Button>
+          </div>
+        </SectionCard>
+
+        <SectionCard icon={ExternalLink} title="Optional reputation provider" description="Add a server-side reputation service without exposing credentials to the browser.">
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>Configure <code>SAFETY_REPUTATION_API_URL</code> and optionally <code>SAFETY_REPUTATION_API_TOKEN</code> in the environment.</p>
+            <p>The provider receives request metadata by POST. Provider failures are recorded for staff and never prevent request creation.</p>
+          </div>
+        </SectionCard>
+      </div> :
 
       <div className="grid gap-5 xl:grid-cols-2">
           <SectionCard icon={Bell} title={t("operational.admin_settings.discord_notifications_a5bf38")} description="Receive real-time alerts for requests, approvals, and system events.">

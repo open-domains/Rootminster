@@ -10,6 +10,7 @@ const FUNCTION_NAMES = new Set([
   'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
   'getRecaptchaSiteKey', 'getTurnstileSiteKey', 'githubMigrate',
   'githubMigrateVerify', 'manageDnsRecord', 'postComment', 'publicApi',
+  'manageSafetyAssessment',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
   'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest',
   'syncCloudflare', 'twoFactorAuth', 'updateDnsRecord', 'verifyDnsRecords',

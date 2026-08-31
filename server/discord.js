@@ -83,9 +83,10 @@ async function linkedUser(discordUserId) {
   return store.get('User', result.rows[0].id);
 }
 
-function formatRequest(record) {
+function formatRequest(record, includeSafety = false) {
   const name = `${record.subdomain}.${record.root_domain}`;
-  return `**${name}** · ${record.record_type} · ${record.status}\n\`${record.id}\``;
+  const safety = includeSafety ? `\nSafety: **${record.safety_verdict || 'incomplete'}** (${Number(record.safety_score) || 0}/100)${record.safety_overridden ? ' · staff override' : ''}` : '';
+  return `**${name}** · ${record.record_type} · ${record.status}${safety}\n\`${record.id}\``;
 }
 
 async function makeLink(interaction) {
@@ -126,7 +127,7 @@ async function listRequests(interaction, actor) {
     ? await store.filter('SubdomainRequest', { status: { $in: ['pending', 'user_responded', 'needs_info'] } }, '-created_date', 10)
     : await store.filter('SubdomainRequest', { requester_id: actor.id }, '-created_date', 10);
   if (!rows.length) return scope === 'pending' ? 'The review queue is empty.' : 'You have no requests yet.';
-  return `${scope === 'pending' ? '**Pending review queue**' : '**Your recent requests**'}\n\n${rows.map(formatRequest).join('\n\n')}`;
+  return `${scope === 'pending' ? '**Pending review queue**' : '**Your recent requests**'}\n\n${rows.map((record) => formatRequest(record, scope === 'pending')).join('\n\n')}`;
 }
 
 async function viewRequest(interaction, actor) {
@@ -138,7 +139,10 @@ async function viewRequest(interaction, actor) {
   if (!elevated && record.requester_id !== actor.id && record.requester_email !== actor.email) {
     throw Object.assign(new Error('You do not have access to that request.'), { userMessage: true });
   }
-  return `${formatRequest(record)}\nValue: \`${record.record_value}\`\nRequested by: ${record.requester_email}\nReason: ${record.reason || '—'}\nPreview: ${record.preview_link || '—'}${record.rejection_reason ? `\nDecision: ${record.rejection_reason}` : ''}`;
+  const assessmentRows = elevated ? await store.filter('SafetyAssessment', { request_id: record.id }, '-created_date', 1) : [];
+  const assessment = assessmentRows[0];
+  const signalSummary = assessment?.signals?.length ? `\nSignals: ${assessment.signals.map((item) => item.label).join('; ')}` : '';
+  return `${formatRequest(record, elevated)}${signalSummary}\nValue: \`${record.record_value}\`\nRequested by: ${record.requester_email}\nReason: ${record.reason || '—'}\nPreview: ${record.preview_link || '—'}${record.rejection_reason ? `\nDecision: ${record.rejection_reason}` : ''}`;
 }
 
 async function manageRequest(interaction, actor) {

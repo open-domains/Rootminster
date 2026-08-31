@@ -48,6 +48,12 @@ export const config = Object.freeze({
     token: process.env.DISCORD_BOT_TOKEN || '',
     guildId: process.env.DISCORD_GUILD_ID || '',
   },
+  safety: {
+    enabled: boolean('SAFETY_SCREENING_ENABLED', true),
+    providerUrl: process.env.SAFETY_REPUTATION_API_URL || '',
+    providerToken: process.env.SAFETY_REPUTATION_API_TOKEN || '',
+    providerTimeoutMs: integer('SAFETY_REPUTATION_TIMEOUT_MS', 4000),
+  },
   mcpEnabled: boolean('MCP_ENABLED', true),
   umami: {
     apiUrl: process.env.UMAMI_API_URL || '',

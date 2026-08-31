@@ -156,16 +156,24 @@ async function ownedRecords(entity, user, limit) {
   return [...new Map([...byId, ...byEmail].map((item) => [item.id, item])).values()].slice(0, limit);
 }
 
+async function reviewWithSafety(request) {
+  const rows = await store.filter('SafetyAssessment', { request_id: request.id }, '-created_date', 1);
+  return { ...request, safety_assessment: rows[0] || null };
+}
+
 async function callTool(name, args, user) {
   if (name === 'get_my_account') return toolResult({ account: { id: user.id, email: user.email, first_name: user.full_name, display_name: user.display_name, role: user.role } });
   if (name === 'list_my_subdomains') return toolResult({ subdomains: await ownedRecords('DnsRecord', user, limitValue(args.limit)) });
   if (name === 'list_my_requests') return toolResult({ requests: await ownedRecords('SubdomainRequest', user, limitValue(args.limit)) });
   if (!STAFF_ROLES.has(user.role)) throw Object.assign(new Error('This tool requires a staff or admin role'), { status: 403 });
-  if (name === 'list_pending_reviews') return toolResult({ requests: await store.filter('SubdomainRequest', { status: 'pending' }, 'created_date', limitValue(args.limit)) });
+  if (name === 'list_pending_reviews') {
+    const requests = await store.filter('SubdomainRequest', { status: { $in: ['pending', 'user_responded', 'needs_info'] } }, 'created_date', limitValue(args.limit));
+    return toolResult({ requests: await Promise.all(requests.map(reviewWithSafety)) });
+  }
   if (name === 'get_review_request') {
     const request = await store.get('SubdomainRequest', args.request_id);
     if (!request) throw Object.assign(new Error('Request not found'), { status: 404 });
-    return toolResult({ request });
+    return toolResult({ request: await reviewWithSafety(request) });
   }
   if (name === 'approve_review' || name === 'reject_review') {
     if (!args.request_id) throw Object.assign(new Error('request_id is required'), { status: 400 });
