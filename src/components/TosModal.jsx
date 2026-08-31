@@ -8,15 +8,19 @@ import { CURRENT_TERMS_VERSION } from '@/lib/terms';
 
 export default function TosModal({ open, isUpdate = false, onAccepted }) {
   const [accepting, setAccepting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleAccept = async () => {
+    setError('');
     setAccepting(true);
     try {
-      await rootminster.auth.updateMe({
+      const updatedUser = await rootminster.auth.updateMe({
         tos_accepted_at: new Date().toISOString(),
         tos_accepted_version: CURRENT_TERMS_VERSION,
       });
-      onAccepted();
+      onAccepted(updatedUser);
+    } catch (err) {
+      setError(err?.message || 'Could not save your acceptance. Please try again.');
     } finally {
       setAccepting(false);
     }
@@ -87,6 +91,12 @@ export default function TosModal({ open, isUpdate = false, onAccepted }) {
             pages.
           </p>
         </ScrollArea>
+
+        {error && (
+          <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+            {error}
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 pt-1">
           <Button
