@@ -13,6 +13,7 @@ import { registerAuthRoutes } from './auth.js';
 import { registerEntityRoutes } from './entity-routes.js';
 import { registerFunctionRoutes } from './function-runner.js';
 import { registerMcpRoutes } from './mcp.js';
+import { registerSetupRoutes } from './setup.js';
 
 assertProductionConfiguration();
 
@@ -68,6 +69,7 @@ app.get('/api/config', async () => ({
 }));
 
 await registerAuthRoutes(app);
+await registerSetupRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
 if (config.mcpEnabled) await registerMcpRoutes(app);

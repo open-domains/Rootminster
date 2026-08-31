@@ -20,6 +20,7 @@ export const config = Object.freeze({
   databasePoolSize: integer('DATABASE_POOL_SIZE', 20),
   sessionDays: integer('SESSION_DAYS', 30),
   cookieName: process.env.SESSION_COOKIE_NAME || 'rootminster_session',
+  initialSetupKey: process.env.INITIAL_SETUP_KEY || '',
   emailVerificationRequired: process.env.EMAIL_VERIFICATION_REQUIRED !== 'false',
   smtp: {
     host: process.env.SMTP_HOST || '',

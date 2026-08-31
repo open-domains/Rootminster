@@ -95,6 +95,7 @@ The complete list is in `.env.example`. Only configure integrations that are act
 - `CLOUDFLARE_API_TOKEN` enables DNS creation, editing, deletion, and synchronization.
 - `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` protect request and abuse forms.
 - SMTP settings enable verification, password-reset, request, and abuse-report email.
+- On a brand-new database, set `INITIAL_SETUP_KEY` to a long random value and open `/setup` to create the first administrator. Remove the key after setup is complete.
 - `DONATIONS_ENABLED=false` removes the donation UI, disables Stripe endpoints and jobs, and makes NS records available without a donation unlock. When enabled, configure the Stripe webhook as `https://your-host/api/webhooks/stripe`.
 - Google credentials enable the existing Google login buttons.
 - GitHub credentials enable GitHub login. Set the OAuth callback URL to `https://your-host/api/auth/oauth/github/callback`.

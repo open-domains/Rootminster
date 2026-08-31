@@ -42,7 +42,7 @@ export async function authenticateRequest(request) {
   return serializeUser(row);
 }
 
-async function createSession(userId, request, reply) {
+export async function createSession(userId, request, reply) {
   const token = randomToken(32);
   const expires = new Date(Date.now() + config.sessionDays * 86_400_000);
   await pool.query(

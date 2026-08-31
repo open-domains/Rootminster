@@ -10,6 +10,7 @@ import { Toaster as SonnerToaster } from 'sonner';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RoleProtectedRoute from '@/components/RoleProtectedRoute';
+import SetupGate from '@/components/SetupGate';
 
 // Auth pages
 import Login from '@/pages/Login';
@@ -17,6 +18,7 @@ import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import VerifyEmail from '@/pages/VerifyEmail';
+import Setup from '@/pages/Setup';
 
 // Public pages (no layout)
 import Landing from '@/pages/Landing';
@@ -99,6 +101,7 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       {/* Auth routes */}
+      <Route path="/setup" element={<Setup />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -204,7 +207,7 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <AuthenticatedApp />
+          <SetupGate><AuthenticatedApp /></SetupGate>
         </Router>
         <Toaster />
         <SonnerToaster theme="dark" position="top-right" richColors />

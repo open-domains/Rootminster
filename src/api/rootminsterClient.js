@@ -84,6 +84,14 @@ const entities = new Proxy({}, {
 
 export const rootminster = {
   entities,
+  setup: {
+    async status() {
+      return request('/api/setup/status');
+    },
+    async initialize(data) {
+      return request('/api/setup/initialize', { method: 'POST', body: data });
+    },
+  },
   config: {
     async getPublic() {
       return request('/api/config');
