@@ -498,7 +498,7 @@ curl -X POST ${DEVICE_AUTH_URL} \\
           },
           400: { description: 'Bad request / validation error', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Error' } } } },
           401: { description: 'Missing or invalid API token', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Error' } } } },
-          403: { description: 'Forbidden (e.g. NS records require donation unlock)', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Error' } } } },
+          403: { description: 'Forbidden (for example, an NS donation unlock when the donation feature is enabled)', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Error' } } } },
           404: { description: 'Domain or record not found', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Error' } } } },
           409: { description: 'Conflict (record already exists)', content: { 'application/json': { schema: { '$ref': '#/components/schemas/Error' } } } },
         },

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Heart, Unlock, CreditCard, CheckCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { usePublicConfig } from '@/lib/public-config';
 
 const AMOUNTS = [
   { pence: 100, label: '£1.00' },
@@ -13,6 +14,8 @@ const AMOUNTS = [
 ];
 
 export default function DonationWidget({ user }) {
+  const { config } = usePublicConfig();
+  const donationsEnabled = config.features.donations;
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [donating, setDonating] = useState(false);
@@ -27,7 +30,10 @@ export default function DonationWidget({ user }) {
     }
   };
 
-  useEffect(() => { if (user?.email) load(); }, [user?.email]);
+  useEffect(() => {
+    if (donationsEnabled && user?.email) load();
+    if (!donationsEnabled) setLoading(false);
+  }, [donationsEnabled, user?.email]);
 
   const totalPence = donations.reduce((s, d) => s + (d.amount_pence || 0), 0);
   const nsUnlocked = user?.ns_unlocked || totalPence >= 200;
@@ -49,6 +55,7 @@ export default function DonationWidget({ user }) {
     }
   };
 
+  if (!donationsEnabled) return null;
   if (loading) return <div className="flex justify-center py-8"><Loader2 size={20} className="animate-spin text-slate-400" /></div>;
 
   return (

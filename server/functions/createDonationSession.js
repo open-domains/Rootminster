@@ -2,6 +2,8 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
 import Stripe from 'stripe';
 export default async function (req) {
+    if (!config.donationsEnabled)
+        return Response.json({ error: 'Donations are disabled' }, { status: 404 });
     if (!config.stripeSecret)
         return Response.json({ error: 'Donations are not configured' }, { status: 503 });
     const stripe = new Stripe(config.stripeSecret, { apiVersion: '2024-06-20' });

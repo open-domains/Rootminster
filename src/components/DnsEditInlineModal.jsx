@@ -7,11 +7,13 @@ import { Switch } from '@/components/ui/switch';
 import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { rootminster } from '@/api/rootminsterClient';
+import { usePublicConfig } from '@/lib/public-config';
 
 const PROXYABLE_TYPES = ['A', 'AAAA', 'CNAME'];
 const BASE_RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT'];
 
 export default function DnsEditInlineModal({ open, onClose, record, siblingRecords = [], applyChange, onSuccess }) {
+  const { config } = usePublicConfig();
   const [loading, setLoading] = useState(false);
   const [nsUnlocked, setNsUnlocked] = useState(false);
   const [tab, setTab] = useState('edit');
@@ -27,9 +29,9 @@ export default function DnsEditInlineModal({ open, onClose, record, siblingRecor
         new_value_for_type: '',
       });
       setTab('edit');
-      rootminster.auth.me().then(u => setNsUnlocked(!!u?.ns_unlocked)).catch(() => {});
+      rootminster.auth.me().then(u => setNsUnlocked(!config.features.nsRequiresDonation || !!u?.ns_unlocked)).catch(() => {});
     }
-  }, [open, record]);
+  }, [open, record, config.features.nsRequiresDonation]);
 
   if (!record) return null;
 

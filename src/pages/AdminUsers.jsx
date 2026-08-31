@@ -17,19 +17,25 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
   const [donations, setDonations] = useState([]);
+  const [donationsEnabled, setDonationsEnabled] = useState(false);
   const [migrateModalOpen, setMigrateModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // { label, description, action }
 
   const load = async () => {
-    const [usRes, recs, dons] = await Promise.all([
+    const [usRes, recs, publicConfig] = await Promise.all([
       rootminster.functions.invoke('adminListUsers', {}),
       rootminster.entities.DnsRecord.list(),
-      rootminster.entities.Donation.filter({ status: 'succeeded' })
+      rootminster.config.getPublic(),
     ]);
+    const enabled = !!publicConfig.features?.donations;
+    const dons = enabled
+      ? await rootminster.entities.Donation.filter({ status: 'succeeded' })
+      : [];
     const us = usRes.data?.users || [];
     setUsers(us);
     setDnsRecords(recs);
     setDonations(dons);
+    setDonationsEnabled(enabled);
     setLoading(false);
   };
 
@@ -177,7 +183,7 @@ export default function AdminUsers() {
       </span>
     )},
     { key: 'email', label: t('adminUsers.colSubdomains'), render: v => <span className="text-primary text-sm font-medium">{getOwnedCount(v)}</span> },
-    { key: 'email', label: t('adminUsers.colDonations'), render: (v, row) => {
+    ...(donationsEnabled ? [{ key: 'email', label: t('adminUsers.colDonations'), render: (v, row) => {
       const total = getTotalDonations(v);
       return (
         <div className="flex items-center gap-1.5">
@@ -186,7 +192,7 @@ export default function AdminUsers() {
           {row.legacy_donor && <Heart size={11} className="text-pink-400" aria-label="Legacy Donor" />}
         </div>
       );
-    }},
+    }}] : []),
     { key: 'created_date', label: t('adminUsers.colJoined'), render: v => <span className="text-muted-foreground text-xs">{v ? format(new Date(v), 'MMM d, yyyy') : '—'}</span> },
     { key: 'id', label: t('adminUsers.colActions'), render: (_, row) => (
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -221,10 +227,12 @@ export default function AdminUsers() {
           </Button>
         )}
         <span className="h-4 w-px bg-border shrink-0" />
-        <Button size="sm" variant="ghost" onClick={() => toggleLegacyDonor(row)}
-          className={`h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap ${row.legacy_donor ? 'text-pink-400 hover:bg-pink-500/10' : 'text-muted-foreground hover:bg-pink-500/10 hover:text-pink-300'}`}>
-          <Heart size={12} /> {row.legacy_donor ? t('adminUsers.legacyCheck') : t('adminUsers.legacy')}
-        </Button>
+        {donationsEnabled && (
+          <Button size="sm" variant="ghost" onClick={() => toggleLegacyDonor(row)}
+            className={`h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap ${row.legacy_donor ? 'text-pink-400 hover:bg-pink-500/10' : 'text-muted-foreground hover:bg-pink-500/10 hover:text-pink-300'}`}>
+            <Heart size={12} /> {row.legacy_donor ? t('adminUsers.legacyCheck') : t('adminUsers.legacy')}
+          </Button>
+        )}
         <Button size="sm" variant="ghost" onClick={() => revokeAllTokens(row)}
           className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap">
           <KeyRound size={12} /> {t('adminUsers.revokeKeysBtn')}
@@ -265,12 +273,12 @@ export default function AdminUsers() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card md:grid-cols-4">
+      <div className={`grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card ${donationsEnabled ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         {[
           { label: t('adminUsers.labelUsers'), value: users.length, icon: Users },
           { label: t('adminUsers.labelStaff'), value: staff, icon: UserCheck },
           { label: t('adminUsers.labelAdmins'), value: admins, icon: Crown },
-          { label: t('adminUsers.labelNsUnlocked'), value: unlocked, icon: Key },
+          ...(donationsEnabled ? [{ label: t('adminUsers.labelNsUnlocked'), value: unlocked, icon: Key }] : []),
         ].map((item, index) => (
           <div key={item.label} className={`${index > 0 ? 'border-l border-border' : ''} px-4 py-3.5`}>
             <div className="flex items-center gap-2 text-muted-foreground"><item.icon size={13} /><span className="text-[10px] font-medium uppercase tracking-wide">{item.label}</span></div>

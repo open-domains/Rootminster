@@ -8,6 +8,7 @@
  * POST / { action: "update", dns_record_id, new_content?, new_proxied?, new_ttl? }
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { config } from '../config.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
 async function sha256hex(str) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
@@ -221,7 +222,7 @@ export default async function (req) {
             if (subdomain.length > 63 || !SUBDOMAIN_REGEX.test(subdomain)) {
                 return respond({ error: 'Invalid subdomain format' }, 400);
             }
-            if (record_type === 'NS' && !user.ns_unlocked) {
+            if (config.donationsEnabled && record_type === 'NS' && !user.ns_unlocked) {
                 return respond({ error: 'NS records require a £2+ donation to unlock.' }, 403);
             }
             const valErr = validateRecordValue(record_type, record_value);

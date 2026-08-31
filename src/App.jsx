@@ -16,6 +16,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import VerifyEmail from '@/pages/VerifyEmail';
 
 // Public pages (no layout)
 import Landing from '@/pages/Landing';
@@ -93,7 +94,6 @@ import AdminEmailLogs from '@/pages/AdminEmailLogs';
 import AdminDonations from '@/pages/AdminDonations';
 import AdminSettings from '@/pages/AdminSettings';
 import AdminAbuseReports from '@/pages/AdminAbuseReports';
-import DockerEngine from '@/pages/DockerEngine';
 
 const AuthenticatedApp = () => {
   return (
@@ -103,6 +103,7 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
 
       {/* Public routes (no auth required, no layout) */}
       <Route path="/" element={<Landing />} />
@@ -179,11 +180,6 @@ const AuthenticatedApp = () => {
         {/* Staff + Admin: Abuse Reports */}
         <Route element={<RoleProtectedRoute allowedRoles={['admin', 'staff']} />}>
           <Route path="/admin-abuse-reports" element={<AdminAbuseReports />} />
-        </Route>
-
-        {/* Staff + Admin: Docker Engine */}
-        <Route element={<RoleProtectedRoute allowedRoles={['admin', 'staff']} />}>
-          <Route path="/docker-engine" element={<DockerEngine />} />
         </Route>
 
         {/* Admin-only Routes */}

@@ -15,11 +15,14 @@ import {
   RECORD_TYPES_BASE, RECORD_TYPES_NS_UNLOCKED, PROXIABLE_TYPES, MULTI_VALUE_TYPES,
   validateSubdomainLabel, validateRecordValue, getRecordValuePlaceholder, getRecordTypeHint
 } from './dnsValidation';
+import { usePublicConfig } from '@/lib/public-config';
 
 const DEFAULT_ROW = () => ({ record_type: 'A', record_value: '', ttl: 3600, proxied: false });
 
 export default function RequestModal({ open, onClose, onSuccess }) {
   const { t } = useTranslation();
+  const { config } = usePublicConfig();
+  const nsRequiresDonation = config.features.nsRequiresDonation;
   const [domains, setDomains] = useState([]);
   const [loading, setLoading] = useState(false);
   const [nsUnlocked, setNsUnlocked] = useState(false);
@@ -39,14 +42,14 @@ export default function RequestModal({ open, onClose, onSuccess }) {
   useEffect(() => {
     if (open) {
       rootminster.entities.Domain.filter({ allow_new_requests: true }).then(setDomains).catch(() => {});
-      rootminster.auth.me().then(u => setNsUnlocked(!!u?.ns_unlocked)).catch(() => {});
+      rootminster.auth.me().then(u => setNsUnlocked(!nsRequiresDonation || !!u?.ns_unlocked)).catch(() => {});
       if (!siteKey) {
         rootminster.functions.invoke('getRecaptchaSiteKey', {}).then(res => setSiteKey(res.data?.site_key || '')).catch(() => {});
       }
     } else {
       reset();
     }
-  }, [open]);
+  }, [open, nsRequiresDonation]);
 
   useEffect(() => {
     if (!open || !siteKey) return;
@@ -256,7 +259,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                   <div className="space-y-3">
                     {rows.map((row, i) => {
                       const rowError = row.record_value ? getRowError(row) : null;
-                      const hint = getRecordTypeHint(row.record_type);
+                      const hint = getRecordTypeHint(row.record_type, nsRequiresDonation);
                       return (
                         <div key={i} className="rounded-lg border border-border bg-card p-4">
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[110px_minmax(0,1fr)_110px]">

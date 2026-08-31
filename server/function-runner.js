@@ -7,7 +7,7 @@ const FUNCTION_NAMES = new Set([
   'adminDirectCfOp', 'adminListUsers', 'adminMigrateDomains', 'analyticsManager',
   'appealRequest', 'approveRequest', 'checkAvailability', 'cleanupPendingDonations',
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
-  'deviceAuth', 'dockerEngine', 'getCloudflareZones', 'getQueueStatus',
+  'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
   'getRecaptchaSiteKey', 'getTurnstileSiteKey', 'githubMigrate',
   'githubMigrateVerify', 'manageDnsRecord', 'postComment', 'publicApi',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',

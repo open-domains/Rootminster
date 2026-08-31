@@ -5,6 +5,12 @@ function integer(name, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function boolean(name, fallback) {
+  const value = process.env[name];
+  if (value === undefined || value === '') return fallback;
+  return !['0', 'false', 'no', 'off'].includes(value.toLowerCase());
+}
+
 export const config = Object.freeze({
   production,
   port: integer('PORT', 3001),
@@ -27,17 +33,20 @@ export const config = Object.freeze({
   cloudflareToken: process.env.CLOUDFLARE_API_TOKEN || '',
   turnstileSecret: process.env.TURNSTILE_SECRET_KEY || process.env.RECAPTCHA_SECRET_KEY || '',
   turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || process.env.RECAPTCHA_SITE_KEY || '',
+  donationsEnabled: boolean('DONATIONS_ENABLED', true),
   stripeSecret: process.env.STRIPE_SECRET_KEY || '',
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+  githubClientId: process.env.GITHUB_CLIENT_ID || '',
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  mcpEnabled: boolean('MCP_ENABLED', true),
   umami: {
     apiUrl: process.env.UMAMI_API_URL || '',
     username: process.env.UMAMI_USERNAME || '',
     password: process.env.UMAMI_PASSWORD || '',
     websiteId: process.env.UMAMI_WEBSITE_ID || '',
   },
-  dockerSocket: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
   githubRegistryUrl: process.env.GITHUB_REGISTRY_URL || 'https://raw.githubusercontent.com/open-domains/register/main/domains.json',
 });
 

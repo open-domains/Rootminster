@@ -84,6 +84,11 @@ const entities = new Proxy({}, {
 
 export const rootminster = {
   entities,
+  config: {
+    async getPublic() {
+      return request('/api/config');
+    },
+  },
   functions: {
     async invoke(name, data = {}) {
       const result = await request(`/api/functions/${encodeURIComponent(name)}`, {
@@ -119,16 +124,16 @@ export const rootminster = {
       return result;
     },
     loginWithProvider(provider, returnTo = '/user-dashboard') {
-      if (provider !== 'google') throw new Error(`Unsupported login provider: ${provider}`);
-      window.location.href = `/api/auth/oauth/google?return_to=${encodeURIComponent(returnTo)}`;
+      if (!['google', 'github'].includes(provider)) throw new Error(`Unsupported login provider: ${provider}`);
+      window.location.href = `/api/auth/oauth/${provider}?return_to=${encodeURIComponent(returnTo)}`;
     },
     async register(data) {
       return request('/api/auth/register', { method: 'POST', body: data });
     },
-    async verifyOtp(data) {
-      return request('/api/auth/verify-email', { method: 'POST', body: data });
+    async verifyEmail(token) {
+      return request('/api/auth/verify-email', { method: 'POST', body: { token } });
     },
-    async resendOtp(email) {
+    async resendVerification(email) {
       return request('/api/auth/resend-verification', { method: 'POST', body: { email } });
     },
     async resetPasswordRequest(email) {

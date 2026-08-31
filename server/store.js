@@ -2,7 +2,7 @@ import { pool, transaction } from './database.js';
 
 export const ENTITY_NAMES = new Set([
   'AuditLog', 'SubdomainOwnership', 'SyncLog', 'Domain', 'SubdomainRequest',
-  'DockerProject', 'AbuseReport', 'PlatformSettings', 'RequestComment',
+  'AbuseReport', 'PlatformSettings', 'RequestComment',
   'TrustedDevice', 'CleanupMigrationState', 'EmailLog', 'Donation', 'DeviceCode',
   'DnsRecord', 'ApiToken', 'BlocklistEntry', 'EditRequest', 'User',
 ]);

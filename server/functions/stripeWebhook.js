@@ -26,6 +26,8 @@ async function sendDiscordNotification(platform, eventType, title, description, 
     catch (_) { }
 }
 export default async function (req) {
+    if (!config.donationsEnabled)
+        return Response.json({ error: 'Donations are disabled' }, { status: 404 });
     if (!config.stripeSecret || !config.stripeWebhookSecret)
         return Response.json({ error: 'Stripe webhook is not configured' }, { status: 503 });
     const stripe = new Stripe(config.stripeSecret, { apiVersion: '2024-06-20' });

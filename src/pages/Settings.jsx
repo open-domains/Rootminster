@@ -12,9 +12,11 @@ import DonationWidget from '@/components/DonationWidget';
 import ApiTokenManager from '@/components/ApiTokenManager';
 import TwoFactorSetup from '@/components/TwoFactorSetup';
 import TrustedBrowsers from '@/components/TrustedBrowsers';
+import { usePublicConfig } from '@/lib/public-config';
 
 export default function Settings() {
   const { t } = useTranslation();
+  const { config: publicConfig } = usePublicConfig();
   const [user, setUser] = useState(null);
   const [fullName, setFullName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -25,7 +27,7 @@ export default function Settings() {
     { id: 'profile', label: t('settings.navProfile'), icon: User },
     { id: 'security', label: t('settings.navSecurity'), icon: Shield },
     { id: 'api', label: t('settings.navApi'), icon: KeyRound },
-    { id: 'support', label: t('settings.navSupport'), icon: HeartHandshake },
+    ...(publicConfig.features.donations ? [{ id: 'support', label: t('settings.navSupport'), icon: HeartHandshake }] : []),
   ];
 
   const refreshUser = () => rootminster.auth.me().then(u => { setUser(u); setFullName(u?.display_name || u?.full_name || ''); });
@@ -167,7 +169,7 @@ export default function Settings() {
             </section>
           )}
 
-          {active === 'support' && user && (
+          {publicConfig.features.donations && active === 'support' && user && (
             <section className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="border-b border-border px-5 py-4">
                 <h2 className="text-sm font-semibold text-foreground">{t('settings.supportTitle')}</h2>

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, ChevronDown, CircleHelp,
-  Container, FileCode2, GitPullRequest, Globe2, LayoutDashboard,
+  FileCode2, GitPullRequest, Globe2, LayoutDashboard,
   LogOut, Menu, Newspaper, Search, Settings, Shield, Users, Wrench,
   X,
 } from 'lucide-react';
@@ -43,7 +43,6 @@ const adminNav = [
   { to: '/admin-users', icon: Users, label: 'Users', adminOnly: true },
   { to: '/admin-abuse-reports', icon: AlertTriangle, label: 'Abuse Reports' },
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
-  { to: '/docker-engine', icon: Container, label: 'Docker Engine' },
   { to: '/admin-settings', icon: Settings, label: 'Platform Settings', adminOnly: true },
 ];
 
@@ -215,7 +214,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TosModal open={showTos} isUpdate={tosIsUpdate} onAccepted={(updatedUser) => { setUser(updatedUser); setShowTos(false); }} />
+      <TosModal open={showTos} isUpdate={tosIsUpdate} onAccepted={() => setShowTos(false)} />
 
       <div className="flex min-h-screen">
         <ProductSidebar user={user} />

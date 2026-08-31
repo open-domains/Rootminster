@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PROXYABLE_TYPES, BASE_RECORD_TYPES, TTL_OPTIONS } from '@/components/dns/dnsConfig';
+import { usePublicConfig } from '@/lib/public-config';
 
 // Derive the top-level subdomain root a record belongs to.
 function subRootOf(r) {
@@ -25,6 +26,7 @@ function subRootOf(r) {
 
 export default function SubdomainDnsManager() {
   const { t } = useTranslation();
+  const { config } = usePublicConfig();
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
   const subdomainName = params.get('subdomain');
@@ -61,7 +63,7 @@ export default function SubdomainDnsManager() {
     try {
       const user = await rootminster.auth.me();
       setMe(user);
-      setNsUnlocked(!!user?.ns_unlocked);
+      setNsUnlocked(!config.features.nsRequiresDonation || !!user?.ns_unlocked);
       const [allRecs, owned] = await Promise.all([
         rootminster.entities.DnsRecord.filter({ owner_id: user.id, managed: true }),
         rootminster.entities.SubdomainOwnership.filter({ owner_id: user.id }),
@@ -80,7 +82,7 @@ export default function SubdomainDnsManager() {
     }
   };
 
-  useEffect(() => { if (subdomainName) load(); }, [subdomainName]);  
+  useEffect(() => { if (subdomainName) load(); }, [subdomainName, config.features.nsRequiresDonation]);  
 
   const availableTypes = nsUnlocked ? [...BASE_RECORD_TYPES, 'NS'] : BASE_RECORD_TYPES;
   const rootDomain = ownership?.root_domain || records[0]?.zone_name || (subdomainName ? subdomainName.split('.').slice(1).join('.') : '');
