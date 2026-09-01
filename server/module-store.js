@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { authenticateRequest } from './auth.js';
-import { getModuleConfig, MODULE_DEFINITIONS } from './module-settings.js';
+import { getModuleConfig, MODULE_DEFINITIONS, saveModule } from './module-settings.js';
 import { store } from './store.js';
 
 const MAX_DOCUMENT_BYTES = 512 * 1024;
@@ -196,6 +196,11 @@ export async function registerModuleStoreRoutes(app) {
     if (!existing) return reply.code(404).send({ error: 'Module is not installed' });
     const enabled = request.body?.enabled === true;
     if (enabled && existing.quarantined) return reply.code(409).send({ error: 'Quarantined modules cannot be enabled' });
+    try {
+      await saveModule(existing.manifest.target, { enabled, settings: {} }, actor);
+    } catch (error) {
+      return reply.code(error.status || 400).send({ error: error.message });
+    }
     const saved = await store.update('InstalledModule', existing.id, { enabled });
     await audit(actor, enabled ? 'module_enabled' : 'module_disabled', `${existing.module_id} ${enabled ? 'enabled' : 'disabled'}`, existing.module_id);
     return { module: clientInstalled(saved) };
@@ -207,6 +212,7 @@ export async function registerModuleStoreRoutes(app) {
     const existing = await installedByModuleId(request.params.id);
     if (!existing) return reply.code(404).send({ error: 'Module is not installed' });
     const quarantined = request.body?.quarantined !== false;
+    if (quarantined) await saveModule(existing.manifest.target, { enabled: false, settings: {} }, actor);
     const saved = await store.update('InstalledModule', existing.id, { quarantined, enabled: quarantined ? false : existing.enabled });
     await audit(actor, quarantined ? 'module_quarantined' : 'module_quarantine_cleared', `${existing.module_id} quarantine ${quarantined ? 'applied' : 'cleared'}`, existing.module_id);
     return { module: clientInstalled(saved) };
@@ -220,6 +226,7 @@ export async function registerModuleStoreRoutes(app) {
     if (!existing || !previous) return reply.code(409).send({ error: 'No rollback version is available' });
     const now = new Date().toISOString();
     const history = [{ version: existing.version, manifest: existing.manifest, manifest_sha256: existing.manifest_sha256, saved_at: now }, ...existing.history.slice(1)].slice(0, 5);
+    await saveModule(existing.manifest.target, { enabled: false, settings: {} }, actor);
     const saved = await store.update('InstalledModule', existing.id, { version: previous.version, manifest: previous.manifest, manifest_sha256: previous.manifest_sha256, history, enabled: false });
     await audit(actor, 'module_rolled_back', `${existing.module_id} rolled back from ${existing.version} to ${previous.version} and disabled pending review`, existing.module_id);
     return { module: clientInstalled(saved) };
@@ -230,6 +237,7 @@ export async function registerModuleStoreRoutes(app) {
     if (!actor) return;
     const existing = await installedByModuleId(request.params.id);
     if (!existing) return reply.code(404).send({ error: 'Module is not installed' });
+    await saveModule(existing.manifest.target, { enabled: false, settings: {} }, actor);
     await store.delete('InstalledModule', existing.id);
     await audit(actor, 'module_removed', `${existing.module_id} ${existing.version} removed`, existing.module_id);
     return { success: true };

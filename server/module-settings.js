@@ -137,7 +137,7 @@ export async function getModuleConfig(id, { fresh = false } = {}) {
   return value;
 }
 
-async function saveModule(id, input, actor, { importEnvironment = false } = {}) {
+export async function saveModule(id, input, actor, { importEnvironment = false } = {}) {
   const definition = MODULE_DEFINITIONS[id];
   if (!definition) throw Object.assign(new Error('Unknown module'), { status: 404 });
   const existing = await storedModule(id);
