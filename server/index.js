@@ -17,6 +17,7 @@ import { registerSetupRoutes } from './setup.js';
 import { registerDiscordRoutes } from './discord.js';
 import { registerPublicApiRoutes } from './public-api.js';
 import { getModuleConfig, registerModuleSettingsRoutes } from './module-settings.js';
+import { registerModuleStoreRoutes } from './module-store.js';
 
 assertProductionConfiguration();
 
@@ -100,6 +101,7 @@ await registerSetupRoutes(app);
 await registerDiscordRoutes(app);
 await registerPublicApiRoutes(app);
 await registerModuleSettingsRoutes(app);
+await registerModuleStoreRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
 await registerMcpRoutes(app);

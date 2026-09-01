@@ -7,6 +7,13 @@ const cache = new Map();
 const CACHE_MS = 15_000;
 
 export const MODULE_DEFINITIONS = Object.freeze({
+  module_store: {
+    name: 'Module Store', description: 'Install integrity-verified modules from the official curated GitHub registry.', defaultEnabled: true,
+    fields: [
+      { key: 'registry_url', label: 'Registry URL', type: 'url', required: true },
+    ],
+    env: () => ({ enabled: true, registry_url: process.env.MODULE_REGISTRY_URL || 'https://raw.githubusercontent.com/open-domains/Rootminster-modules/main/registry.json' }),
+  },
   cloudflare: {
     name: 'Cloudflare DNS', description: 'Cloudflare zones, DNS records and synchronisation.', defaultEnabled: true,
     fields: [
