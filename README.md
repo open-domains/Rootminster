@@ -1,67 +1,313 @@
-# Rootminster V2
+<div align="center">
 
-Rootminster V2 is the standalone Open Domains management platform. It retains the supplied React interface while replacing the hosted application runtime with a self-hosted Fastify API, PostgreSQL, local authentication, and a separate scheduled-job process.
+<img src="docs/assets/rootminster-hero.svg" alt="Rootminster" width="100%" />
 
-The V2 runtime includes an optional remote MCP connection for role-aware use from ChatGPT or Claude. Rootminster remains the authorization source and performs every permission check server-side.
+<br />
 
-## Stack
+[![Node.js](https://img.shields.io/badge/Node.js-24-3C873A?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![React](https://img.shields.io/badge/React-18-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Fastify](https://img.shields.io/badge/Fastify-5-111111?logo=fastify&logoColor=white)](https://fastify.dev/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-- React 18 and Vite frontend
-- Fastify API running on Node.js 24
-- PostgreSQL 17 with JSONB and targeted indexes
-- Argon2id password hashing and database-backed sessions
-- SMTP email, Cloudflare DNS, optional Stripe donations, Umami, Discord, Google OAuth, and GitHub OAuth
-- Separate job runner with PostgreSQL advisory locks
-- Docker Compose, with an optional Traefik overlay
+**Own the platform. Own the data. Own the DNS.**
 
-## Quick start with Docker
+Rootminster is the self-hosted management platform behind Open Domains. It brings DNS, domain requests, user accounts, staff tooling, security controls, integrations, APIs, background jobs and a curated module system together in one deployable stack.
 
-1. Copy `.env.example` to `.env`.
-2. Set `APP_URL`, `POSTGRES_PASSWORD`, and the integration credentials you use.
-3. Start the application:
+</div>
 
-   ```bash
-   docker compose up -d --build
-   ```
+---
 
-4. Create the first administrator:
+## ⚡ Why Rootminster?
 
-   ```bash
-   docker compose exec \
-     -e ADMIN_EMAIL=admin@example.com \
-     -e ADMIN_PASSWORD='replace-with-a-long-password' \
-     app npm run db:seed-admin
-   ```
+Rootminster is built for running a real shared-domain platform without stitching together a pile of disconnected admin tools.
 
-5. Open the local application on `http://127.0.0.1:3000`, or the URL configured in `APP_URL`.
+It gives operators one place to manage the full lifecycle of a domain service:
+
+| | Capability | What it does |
+|---|---|---|
+| 🌐 | **DNS management** | Manage zones and DNS records through Cloudflare with ownership and permission checks enforced server-side. |
+| 📨 | **Domain requests** | Accept, review, approve, reject and audit subdomain requests with staff workflows. |
+| 👥 | **Users & roles** | Local accounts, OAuth login, sessions, email verification, staff roles and administrator controls. |
+| 🛡️ | **Safety screening** | Explainable request risk scoring, protected-brand signals, velocity checks and staff overrides. |
+| 🔑 | **Scoped API tokens** | Restrict tokens by permission, hostname, DNS type and expiry. |
+| 📡 | **Dynamic DNS** | Dedicated DDNS endpoints for controlled A and AAAA record updates. |
+| 🧩 | **Module Store** | Install integrity-verified modules from the official curated registry. |
+| ⚙️ | **Background automation** | DNS checks, synchronisation, cleanup and scheduled platform maintenance. |
+| 📊 | **Analytics** | Optional per-subdomain analytics through Umami. |
+| 💬 | **Discord tooling** | Signed slash commands for user and staff workflows. |
+| 💳 | **Donations** | Optional Stripe-backed donations and donation-gated features. |
+| 🔍 | **Audit trail** | Keep an operational record of sensitive platform actions. |
+
+Rootminster is deliberately modular. Core platform functions stay lean while optional services can be switched on, configured and replaced from the admin interface.
+
+---
+
+## 🧩 A platform that can grow with you
+
+Rootminster includes a built-in **Module Store** backed by a curated GitHub registry.
+
+Modules are not blindly downloaded and executed. The store validates registry metadata, verifies SHA-256 integrity, checks supported permissions, restricts trusted download locations and records installation activity in the audit log.
+
+Installed modules can be:
+
+- enabled or disabled
+- updated
+- quarantined
+- rolled back to a previous version
+- removed cleanly
+
+Module configuration is managed from the admin UI, while sensitive settings are encrypted before being stored in PostgreSQL.
+
+> The default registry is `open-domains/Rootminster-modules`.
+
+---
+
+## 🏗️ Architecture
+
+<img src="docs/assets/rootminster-architecture.svg" alt="Rootminster architecture" width="100%" />
+
+Rootminster is intentionally compact:
+
+- **React 18 + Vite** powers the web interface.
+- **Fastify on Node.js 24** serves the API and production frontend.
+- **PostgreSQL 17** stores identities, sessions, operational entities, settings and audit data.
+- A separate **job runner** handles scheduled maintenance and synchronisation.
+- **Cloudflare** provides authoritative DNS integration.
+- Optional modules add SMTP, Discord, Stripe, Umami, OAuth and other services.
+
+PostgreSQL advisory locks prevent duplicate scheduled jobs when multiple job runners are accidentally started.
+
+For a deeper look, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+---
+
+## 🚀 Quick start
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/open-domains/Rootminster.git
+cd Rootminster
+```
+
+### 2. Create your environment file
+
+```bash
+cp .env.example .env
+```
+
+At minimum, configure:
+
+```env
+APP_URL=https://rootminster.example.com
+POSTGRES_PASSWORD=replace-this-with-a-strong-password
+```
+
+### 3. Start Rootminster
+
+```bash
+docker compose up -d --build
+```
+
+The stack starts:
+
+- `app` — Rootminster web interface + API
+- `jobs` — scheduled jobs and maintenance
+- `postgres` — PostgreSQL 17
+
+By default the application is bound to:
+
+```text
+127.0.0.1:3000
+```
+
+### 4. Create the first administrator
+
+You can seed an administrator directly:
+
+```bash
+docker compose exec \
+  -e ADMIN_EMAIL=admin@example.com \
+  -e ADMIN_PASSWORD='replace-with-a-long-password' \
+  app npm run db:seed-admin
+```
+
+Or, on a brand-new installation, configure `INITIAL_SETUP_KEY`, open `/setup`, create the first administrator and then remove the setup key from the environment.
 
 Database migrations run automatically when the application container starts.
 
-## Traefik
+---
 
-Create or reuse the external Docker network named in `TRAEFIK_NETWORK`, then start with both Compose files:
+## 🌍 Running behind Traefik
 
-```bash
-docker compose -f compose.yml -f compose.traefik.yml up -d --build
-```
+Rootminster includes an optional Traefik overlay.
 
-The overlay creates an HTTPS router for `APP_HOST` and sends traffic to port 3001 in the application container. The base Compose file also binds the service to `127.0.0.1:${APP_PORT}`; remove that port mapping if it is not wanted.
-
-## Local development
-
-Use a PostgreSQL database matching `DATABASE_URL`, then run:
+Create or reuse the external Docker network configured by `TRAEFIK_NETWORK`, then run:
 
 ```bash
-npm install
-npm run db:migrate
-npm run dev
+docker compose \
+  -f compose.yml \
+  -f compose.traefik.yml \
+  up -d --build
 ```
 
-The web interface runs through Vite and proxies API requests to the local Fastify process.
+The overlay creates an HTTPS router for `APP_HOST` and forwards traffic to Rootminster inside Docker.
 
-## Importing existing data
+For internet-facing deployments, HTTPS should be considered mandatory before enabling authentication or API access.
 
-The importer accepts either an object whose keys are entity names or an object containing an `entities` property:
+---
+
+## 🧰 Module configuration
+
+Optional integrations are configured from:
+
+```text
+Admin → Module Settings
+```
+
+Rootminster currently exposes modules for:
+
+- Module Store
+- Cloudflare DNS
+- SMTP email
+- Cloudflare Turnstile
+- Stripe donations
+- Google OAuth
+- GitHub OAuth
+- Discord
+- automated safety screening
+- MCP server
+- Umami analytics
+
+Secrets stored through Module Settings are encrypted with AES-256-GCM and are never returned to the browser.
+
+Existing environment-based integration settings can be imported once into the database. After checking the imported configuration, the matching optional environment variables can be removed.
+
+Only bootstrap and runtime values need to remain in the environment, such as database connectivity, application URL, encryption keys and initial setup settings.
+
+---
+
+## 🔌 API
+
+Rootminster ships with a versioned REST API under:
+
+```text
+/api/v1
+```
+
+Interactive documentation is available at:
+
+```text
+/api-docs
+```
+
+The OpenAPI 3.1 document is exposed at:
+
+```text
+/api/v1/openapi.json
+```
+
+Users can create hashed bearer tokens under:
+
+```text
+Settings → API Tokens
+```
+
+### Scoped tokens
+
+API tokens can be restricted by:
+
+- permission
+- exact hostname
+- DNS record type
+- expiry date
+
+Dynamic DNS uses the dedicated `dns:dynamic` permission and:
+
+```text
+POST /api/v1/dynamic-dns
+```
+
+DDNS tokens must be restricted to owned hostnames and A/AAAA record types. The endpoint can use the caller's public IP or an explicitly supplied public IPv4/IPv6 address.
+
+It will **not** silently create a new DNS record if the target record does not already exist.
+
+### Rate limiting
+
+Default limits include:
+
+| Access type | Default limit |
+|---|---:|
+| Public reads | 60 requests/minute/IP |
+| Authenticated reads | 120 requests/minute/token |
+| Authenticated writes | 30 requests/minute/token |
+
+Responses expose standard limit, remaining, reset and retry headers.
+
+The legacy `/functions/publicApi?action=…` endpoint remains available for compatibility.
+
+---
+
+## 🛡️ Security by default
+
+Rootminster is built around server-side authorization rather than trusting the browser.
+
+Key protections include:
+
+- Argon2id password hashing
+- database-backed sessions
+- role checks on protected actions
+- narrowly scoped API tokens
+- rate limiting
+- encrypted module secrets
+- Cloudflare Turnstile support
+- audited administrative actions
+- request risk screening
+- trusted module registry restrictions
+- SHA-256 module integrity verification
+- module quarantine and rollback support
+
+### Request safety screening
+
+Accepted requests receive a versioned, explainable risk assessment covering signals such as:
+
+- suspicious wording
+- preview URL structure
+- protected brands
+- account age
+- request velocity
+- rejection history
+- sensitive DNS record types
+- shared DNS targets
+
+The score helps staff prioritise reviews. It never approves requests automatically.
+
+Staff can inspect individual signals, re-run screening or override a verdict with a mandatory audited reason.
+
+---
+
+## 🤖 Remote control plane access
+
+Rootminster can optionally expose its role-aware remote control endpoint at:
+
+```text
+https://your-host/mcp
+```
+
+The endpoint uses OAuth 2.1 authorization-code flow with PKCE, dynamic client registration, short-lived access tokens and rotating refresh tokens.
+
+Permissions are evaluated against the user's current Rootminster role on every call. Changing or disabling a staff account therefore takes effect immediately on subsequent requests rather than leaving stale authorization inside long-lived tokens.
+
+All authenticated users can inspect their own account, requests and subdomains. Staff and administrators can additionally review pending requests and perform normal approval or rejection operations, with the same audit and notification behaviour used by the web interface.
+
+---
+
+## 📦 Importing existing data
+
+The importer accepts either an object keyed by entity name or an object containing an `entities` property.
+
+Example:
 
 ```json
 {
@@ -74,79 +320,102 @@ The importer accepts either an object whose keys are entity names or an object c
 }
 ```
 
-Import a file with:
+Import from a local file:
 
 ```bash
 npm run db:import -- ./export.json
 ```
 
-Or stream it into the running container:
+Or stream the export into the running application container:
 
 ```bash
 docker compose exec -T app node scripts/import-data.js - < export.json
 ```
 
-Legacy identifiers are mapped to new UUIDs and retained in `legacy_id`. Existing users are marked as verified but do not receive imported passwords; they must use the password-reset flow before email/password sign-in.
+Legacy IDs are retained in `legacy_id` while new UUIDs are generated for Rootminster.
 
-## Environment settings
+Imported users are marked as verified, but passwords are not imported. Existing users must use the password-reset flow before signing in with email and password.
 
-The complete list is in `.env.example`. Only configure integrations that are actually used.
+---
 
-- Optional components are enabled and configured in **Admin → Module Settings**. Secrets are AES-256-GCM encrypted in PostgreSQL and are never returned to the browser.
-- Existing environment-based integration settings can be imported once from Module Settings. After verifying the import, remove those optional variables from the runtime environment.
-- Only bootstrap/runtime values remain in the environment: `DATABASE_URL`, `APP_URL`, host/port, initial setup key, and encryption keys.
-- `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` protect request and abuse forms.
-- SMTP settings enable verification, password-reset, request status, and abuse-report email. Creating a request does not send email; approval, rejection, and requests for information do.
-- On a brand-new database, set `INITIAL_SETUP_KEY` to a long random value and open `/setup` to create the first administrator. Remove the key after setup is complete.
-- `DONATIONS_ENABLED=false` removes the donation UI, disables Stripe endpoints and jobs, and makes NS records available without a donation unlock. When enabled, configure the Stripe webhook as `https://your-host/api/webhooks/stripe`.
-- Google credentials enable the existing Google login buttons.
-- GitHub credentials enable GitHub login. Set the OAuth callback URL to `https://your-host/api/auth/oauth/github/callback`.
-- The optional Discord bot uses signed interactions rather than a permanently connected gateway. Configure it in Module Settings, then use `https://your-host/api/discord/interactions` as the Discord application's Interactions Endpoint URL. A guild ID is optional and makes command registration immediate in one server; omit it for global commands.
-- Deterministic request safety screening is enabled from Module Settings. An optional reputation service can receive request metadata by POST; Rootminster never fetches submitted preview URLs itself.
-- Enabling the MCP module exposes the OAuth 2.1-protected endpoint at `https://your-host/mcp`. Add that URL as a custom connector in ChatGPT or Claude; the client will register itself and prompt the Rootminster user to sign in and authorize access.
-- Umami settings enable per-subdomain analytics.
+## 💻 Local development
 
-## MCP access
+Install dependencies:
 
-The MCP server uses OAuth 2.1 authorization-code flow with PKCE, dynamic client registration, short-lived access tokens, rotating refresh tokens, and live Rootminster role checks.
+```bash
+npm install
+```
 
-- All authenticated users can inspect their account, subdomains, and requests.
-- Staff and administrators can also list pending reviews, inspect a request, approve it, or reject it.
-- Approval and rejection remain normal Rootminster review operations: they are audited, notifications are sent, and the existing Cloudflare integration is used.
-- Changing or disabling a staff account takes effect on the next MCP call. OAuth tokens do not preserve an old role.
+Point `DATABASE_URL` at a PostgreSQL database, then run:
 
-Write tools are marked as write/destructive where appropriate so compatible clients ask for confirmation. Keep `APP_URL` on HTTPS in production and only connect MCP clients you trust.
+```bash
+npm run db:migrate
+npm run dev
+```
 
-## User API
+Vite serves the web interface and proxies API requests to the local Fastify process.
 
-The versioned REST API is available at `/api/v1`, with interactive documentation at `/api-docs` and an OpenAPI 3.1 document at `/api/v1/openapi.json`. Users create hashed bearer tokens under Settings → API Tokens. The legacy `/functions/publicApi?action=…` endpoint remains available for compatibility.
-
-API tokens can be limited by permission, exact hostname, DNS record type, and expiry date. Dynamic DNS uses a dedicated `dns:dynamic` scope and `POST /api/v1/dynamic-dns`; these tokens must be restricted to owned hostnames and A/AAAA record types. The endpoint can use the caller's public IP or an explicitly supplied public IPv4/IPv6 address, and never creates a new record implicitly.
-
-Rate limits are enforced globally and per route. Public reads are normally limited to 60 requests per minute per IP, authenticated reads to 120 per minute per token, and authenticated writes to 30 per minute per token. Responses expose the standard limit, remaining, reset, and retry headers.
-
-## Safety screening
-
-Accepted requests receive a versioned, explainable risk assessment covering suspicious wording, preview URL structure, protected brands, account age, request velocity, rejection history, sensitive record types, and shared DNS targets. Scores guide the staff queue but never approve requests automatically. Staff can inspect each signal, re-run screening, or override a verdict with a mandatory audited reason. Detailed signals are limited to staff surfaces, including Discord and MCP review tools.
-
-## Commands
+### Useful commands
 
 | Command | Purpose |
-| --- | --- |
+|---|---|
 | `npm run dev` | Start the web and API development processes |
+| `npm run dev:web` | Start only the Vite frontend |
+| `npm run dev:api` | Start only the Fastify API |
 | `npm run build` | Build the production frontend |
-| `npm start` | Start the API and serve the built frontend |
-| `npm run jobs` | Start scheduled maintenance and synchronization jobs |
-| `npm run db:migrate` | Apply the PostgreSQL schema |
-| `npm run db:seed-admin` | Create or update an administrator account |
-| `npm run db:import -- FILE` | Import a legacy JSON export |
-| `npm run lint` | Run the code-quality checks |
-| `npm run typecheck` | Check the JavaScript/JSX project |
+| `npm start` | Start the production API and frontend |
+| `npm run jobs` | Start scheduled jobs |
+| `npm run db:migrate` | Apply database migrations |
+| `npm run db:seed-admin` | Create or update an administrator |
+| `npm run db:import -- FILE` | Import an existing data export |
+| `npm run lint` | Run code-quality checks |
+| `npm run lint:fix` | Fix supported lint problems |
+| `npm run typecheck` | Type-check the JavaScript/JSX project |
 
-## Security notes
+---
 
-- Keep PostgreSQL on the internal Docker network.
-- Use a narrowly scoped Cloudflare token restricted to the required zones.
-- Never commit `.env` or production exports.
-- Put the public application behind HTTPS before enabling authentication.
-- Back up the `postgres_data` volume before upgrades or bulk imports.
+## 🔐 Production checklist
+
+Before exposing Rootminster publicly:
+
+- [ ] Use a strong PostgreSQL password.
+- [ ] Keep PostgreSQL on the internal Docker network.
+- [ ] Put the application behind HTTPS.
+- [ ] Configure a persistent module encryption key.
+- [ ] Use a narrowly scoped Cloudflare API token restricted to the required zones.
+- [ ] Enable Turnstile for public forms where appropriate.
+- [ ] Never commit `.env`, database exports or production secrets.
+- [ ] Back up the `postgres_data` volume before upgrades or bulk imports.
+- [ ] Remove `INITIAL_SETUP_KEY` after the first administrator is created.
+- [ ] Review installed module permissions before enabling them.
+
+---
+
+## 🐳 Docker at a glance
+
+```text
+┌──────────────────────────────────────────────┐
+│                  Rootminster                 │
+├──────────────────────────────────────────────┤
+│  app       Web UI + Fastify API             │
+│  jobs      Scheduled maintenance            │
+│  postgres  Durable platform data            │
+└──────────────────────────────────────────────┘
+```
+
+The default Compose network is internal, keeping PostgreSQL and background services away from the public network surface.
+
+---
+
+## 🌱 Built for Open Domains
+
+Rootminster is designed to handle the less glamorous parts of running a shared domain service too: approvals, DNS drift, authentication, moderation signals, auditability, background cleanup and safe extensibility.
+
+The result is one control plane that can start small, run comfortably in Docker and grow into a much larger domain platform without turning into infrastructure spaghetti. 🍝🚫
+
+<div align="center">
+
+### Rootminster
+**One platform. Every domain workflow.**
+
+</div>
