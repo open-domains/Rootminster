@@ -1,7 +1,7 @@
 FROM node:24-bookworm-slim AS dependencies
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package*.json ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 FROM dependencies AS build
 COPY . .
