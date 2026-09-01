@@ -206,7 +206,6 @@ export const rootminster = {
       } finally {
         if (typeof window !== 'undefined') {
           window.localStorage.removeItem(TOKEN_KEY);
-          window.localStorage.removeItem('od_trusted_device');
           window.sessionStorage.removeItem('2fa_verified');
           if (returnTo !== false) {
             const destination = typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/login';

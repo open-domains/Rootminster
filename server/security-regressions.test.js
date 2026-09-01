@@ -69,3 +69,11 @@ test('TOTP enrollment does not disclose its seed to a QR service', async () => {
   assert.doesNotMatch(setup, /api\.qrserver\.com/);
   assert.doesNotMatch(setup, /encodeURIComponent\(uri\)/);
 });
+
+test('trusted browser tokens survive normal logout and are checked before rendering the challenge', async () => {
+  const client = await readFile(new URL('../src/api/rootminsterClient.js', import.meta.url), 'utf8');
+  const layout = await readFile(new URL('../src/components/Layout.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(client, /removeItem\(['"]od_trusted_device['"]\)/);
+  assert.match(layout, /verify_trusted/);
+  assert.ok(layout.indexOf("action: 'verify_trusted'") < layout.indexOf('setAuthChecked(true)'), 'trusted-device verification must finish before the authenticated UI renders');
+});

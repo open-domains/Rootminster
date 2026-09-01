@@ -72,7 +72,7 @@ export default function TwoFactorChallenge({ onVerified, onLogout }) {
           />
           <span className="text-slate-300 text-sm leading-snug">
             Trust this browser for 30 days
-            <span className="block text-slate-500 text-xs mt-0.5">You won't be asked for a code on this device until it expires or you sign out elsewhere.</span>
+            <span className="block text-slate-500 text-xs mt-0.5">You won't be asked for a code on this device until the trust expires or is revoked.</span>
           </span>
         </label>
 

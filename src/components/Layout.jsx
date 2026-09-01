@@ -139,7 +139,6 @@ export default function Layout() {
     rootminster.auth.me().then(async u => {
       setUser(u);
       setTwoFaVerified(Boolean(u.mfa_verified));
-      setAuthChecked(true);
       if (u.tos_accepted_version !== CURRENT_TERMS_VERSION) {
         setTosIsUpdate(Boolean(u.tos_accepted_at));
         setShowTos(true);
@@ -160,6 +159,7 @@ export default function Layout() {
           setTwoFaPending(false);
         }
       }
+      setAuthChecked(true);
     }).catch(() => rootminster.auth.redirectToLogin(window.location.href));
 
     rootminster.entities.PlatformSettings.filter({ key: 'maintenance_mode' }).then(r => setMaintenanceMode(r?.[0]?.value === 'true'));
