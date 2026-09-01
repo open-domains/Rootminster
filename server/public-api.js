@@ -3,10 +3,14 @@ import { config } from './config.js';
 import { invokeInternal } from './function-runner.js';
 import { randomToken, sha256 } from './security.js';
 import { store } from './store.js';
+import { isIP } from 'node:net';
 
-const API_VERSION = '1.0.0';
+const API_VERSION = '1.1.0';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIVE_REQUEST_STATUSES = ['pending', 'needs_info', 'user_responded'];
+const USER_TOKEN_SCOPES = new Set(['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'dns:dynamic']);
+const DNS_RECORD_TYPES = new Set(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'PTR']);
+const DEFAULT_TOKEN_SCOPES = ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write'];
 
 const readLimit = { max: 120, timeWindow: '1 minute', keyGenerator: apiRateKey };
 const publicLimit = { max: 60, timeWindow: '1 minute' };
@@ -91,7 +95,38 @@ function tokenHasScope(identity, scope) {
   if (scopes.includes(scope)) return true;
   if (scopes.length) return false;
   // Legacy tokens retain normal user API access, but never inherit staff/admin powers.
-  return !scope.startsWith('staff:');
+  return scope !== 'dns:dynamic' && !scope.startsWith('staff:');
+}
+
+function normalHostname(value) {
+  return String(value || '').trim().toLowerCase().replace(/\.+$/, '');
+}
+
+export function tokenAllowsRecord(token, record) {
+  const hostnames = Array.isArray(token.allowed_hostnames) ? token.allowed_hostnames.map(normalHostname).filter(Boolean) : [];
+  const types = Array.isArray(token.allowed_record_types) ? token.allowed_record_types.map((type) => String(type).toUpperCase()) : [];
+  return (!hostnames.length || hostnames.includes(normalHostname(record.name)))
+    && (!types.length || types.includes(String(record.record_type || '').toUpperCase()));
+}
+
+export function publicIp(value) {
+  let address = String(value || '').trim();
+  if (address.startsWith('::ffff:') && isIP(address.slice(7)) === 4) address = address.slice(7);
+  const family = isIP(address);
+  if (!family) return null;
+  if (family === 4) {
+    const parts = address.split('.').map(Number);
+    const [a, b] = parts;
+    if (a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127)
+      || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+      || (a === 192 && b === 0 && parts[2] === 0) || (a === 192 && b === 2) || (a === 198 && (b === 18 || b === 19))
+      || (a === 198 && b === 51 && parts[2] === 100)
+      || (a === 203 && b === 0 && parts[2] === 113)) return null;
+  } else {
+    const lower = address.toLowerCase();
+    if (lower === '::' || lower === '::1' || lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe8') || lower.startsWith('fe9') || lower.startsWith('fea') || lower.startsWith('feb') || lower.startsWith('ff') || lower.startsWith('2001:db8')) return null;
+  }
+  return { address, family };
 }
 
 async function requireApiIdentity(request, reply, roles, scope) {
@@ -128,16 +163,39 @@ async function createBrowserToken(request, reply) {
   const allTokens = await store.filter('ApiToken', { user_id: user.id }, '-created_date', 100);
   const active = allTokens.filter((token) => token.revoked !== true);
   if (active.length >= 10) return error(reply, 409, 'token_limit_reached', 'Revoke an existing token before creating another');
+  const scopes = request.body?.scopes === undefined ? DEFAULT_TOKEN_SCOPES : [...new Set((Array.isArray(request.body.scopes) ? request.body.scopes : []).map(String))];
+  if (!scopes.length || scopes.some((scope) => !USER_TOKEN_SCOPES.has(scope))) return error(reply, 400, 'invalid_scopes', 'Select at least one supported token permission');
+  const allowedHostnames = [...new Set((Array.isArray(request.body?.allowed_hostnames) ? request.body.allowed_hostnames : []).map(normalHostname).filter(Boolean))];
+  if (allowedHostnames.length > 50 || allowedHostnames.some((hostname) => hostname.length > 253 || !/^[a-z0-9_*-]+(?:\.[a-z0-9_-]+)+$/.test(hostname) || hostname.includes('*'))) {
+    return error(reply, 400, 'invalid_hostnames', 'Hostname restrictions must contain up to 50 exact DNS hostnames');
+  }
+  const allowedRecordTypes = [...new Set((Array.isArray(request.body?.allowed_record_types) ? request.body.allowed_record_types : []).map((type) => String(type).toUpperCase()))];
+  if (allowedRecordTypes.some((type) => !DNS_RECORD_TYPES.has(type))) return error(reply, 400, 'invalid_record_types', 'One or more DNS record types are invalid');
+  if (scopes.includes('dns:dynamic') && !allowedHostnames.length) return error(reply, 400, 'dynamic_scope_requires_hostname', 'Dynamic DNS tokens must be restricted to at least one hostname');
+  if (scopes.includes('dns:dynamic') && (!allowedRecordTypes.length || allowedRecordTypes.some((type) => !['A', 'AAAA'].includes(type)))) {
+    return error(reply, 400, 'dynamic_scope_requires_address_records', 'Dynamic DNS tokens must be restricted to A, AAAA, or both');
+  }
+  if (allowedHostnames.length) {
+    const [byId, byEmail] = await Promise.all([
+      store.filter('DnsRecord', { owner_id: user.id }, 'name', 10_000),
+      store.filter('DnsRecord', { owner_email: user.email }, 'name', 10_000),
+    ]);
+    const owned = new Set([...byId, ...byEmail].map((record) => normalHostname(record.name)));
+    const unowned = allowedHostnames.filter((hostname) => !owned.has(hostname));
+    if (unowned.length) return error(reply, 403, 'hostname_not_owned', `You do not own: ${unowned.join(', ')}`);
+  }
+  const expiresInDays = Math.min(Math.max(Number.parseInt(request.body?.expires_in_days, 10) || 90, 1), 365);
   const raw = `od_${randomToken(32)}`;
   const created = await store.create('ApiToken', {
     user_id: user.id, user_email: user.email, name,
     token_hash: sha256(raw), token_prefix: raw.slice(0, 10), revoked: false,
-    scopes: ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write'],
-    expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    scopes, allowed_hostnames: allowedHostnames, allowed_record_types: allowedRecordTypes,
+    expires_at: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString(),
   }, user);
   return data(reply, {
     id: created.id, name: created.name, token: raw, token_prefix: created.token_prefix,
-    created_at: created.created_date,
+    scopes, allowed_hostnames: allowedHostnames, allowed_record_types: allowedRecordTypes,
+    expires_at: created.expires_at, created_at: created.created_date,
   }, 201);
 }
 
@@ -164,6 +222,7 @@ function openApiDocument() {
         patch: { summary: 'Update an owned DNS record', tags: ['DNS'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Record updated' } } },
         delete: { summary: 'Delete an owned DNS record', tags: ['DNS'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Record deleted' } } },
       },
+      '/dynamic-dns': { post: { summary: 'Update authorised A and AAAA records with a public IP address', tags: ['Dynamic DNS'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Dynamic DNS update result' }, 403: { description: 'Token scope or hostname restriction failed' } } } },
       '/device/code': { post: { summary: 'Start device authorization', tags: ['Device authorization'], responses: { 200: { description: 'Device and user codes' } } } },
       '/device/token': { post: { summary: 'Poll device authorization', tags: ['Device authorization'], responses: { 200: { description: 'Authorization state or API token' } } } },
     },
@@ -274,6 +333,9 @@ export async function registerPublicApiRoutes(app) {
     const identity = await requireApiIdentity(request, reply, null, 'dns:write');
     if (!identity) return;
     if (!UUID_PATTERN.test(request.params.id)) return error(reply, 400, 'invalid_id', 'Record ID must be a UUID');
+    const existing = await store.get('DnsRecord', request.params.id);
+    if (!existing || (existing.owner_id !== identity.user.id && existing.owner_email !== identity.user.email)) return error(reply, 404, 'record_not_found', 'DNS record not found');
+    if (!tokenAllowsRecord(identity.token, existing)) return error(reply, 403, 'token_restricted', 'This token is not permitted to modify that hostname or record type');
     if (!['content', 'ttl', 'proxied'].some((field) => request.body?.[field] !== undefined)) {
       return error(reply, 400, 'missing_changes', 'Provide at least one of content, ttl, or proxied');
     }
@@ -292,12 +354,64 @@ export async function registerPublicApiRoutes(app) {
     const identity = await requireApiIdentity(request, reply, null, 'dns:write');
     if (!identity) return;
     if (!UUID_PATTERN.test(request.params.id)) return error(reply, 400, 'invalid_id', 'Record ID must be a UUID');
+    const existing = await store.get('DnsRecord', request.params.id);
+    if (!existing || (existing.owner_id !== identity.user.id && existing.owner_email !== identity.user.email)) return error(reply, 404, 'record_not_found', 'DNS record not found');
+    if (!tokenAllowsRecord(identity.token, existing)) return error(reply, 403, 'token_restricted', 'This token is not permitted to delete that hostname or record type');
     try {
       const result = await invokeInternal('manageDnsRecord', { action: 'delete', record_id: request.params.id }, { ...identity.user, trusted_source: 'api' });
       return data(reply, result);
     } catch (cause) {
       return error(reply, cause.status || 422, 'record_delete_failed', cause.message, cause.data);
     }
+  });
+
+  app.post('/api/v1/dynamic-dns', { config: { rateLimit: { max: 60, timeWindow: '1 minute', keyGenerator: apiRateKey } } }, async (request, reply) => {
+    const identity = await requireApiIdentity(request, reply, null, 'dns:dynamic');
+    if (!identity) return;
+    const hostname = normalHostname(request.body?.hostname);
+    if (!hostname) return error(reply, 400, 'missing_hostname', 'Provide the hostname to update');
+    const allowedHostnames = Array.isArray(identity.token.allowed_hostnames) ? identity.token.allowed_hostnames.map(normalHostname) : [];
+    if (!allowedHostnames.includes(hostname)) return error(reply, 403, 'token_restricted', 'This token is not permitted to update that hostname');
+
+    const supplied = [request.body?.ip, request.body?.ipv4, request.body?.ipv6].filter(Boolean).map(publicIp);
+    if (supplied.some((address) => !address)) return error(reply, 400, 'invalid_ip', 'Dynamic DNS only accepts public IPv4 or IPv6 addresses');
+    let addresses = supplied.filter(Boolean);
+    if (!addresses.length || request.body?.use_request_ip === true) {
+      const detected = publicIp(request.ip);
+      if (!detected) return error(reply, 400, 'public_ip_unavailable', 'Could not determine a public address for this request; provide ip, ipv4, or ipv6');
+      addresses = [detected];
+    }
+    addresses = [...new Map(addresses.map((item) => [`${item.family}:${item.address}`, item])).values()];
+
+    const [byId, byEmail] = await Promise.all([
+      store.filter('DnsRecord', { owner_id: identity.user.id, name: hostname }, 'record_type', 100),
+      store.filter('DnsRecord', { owner_email: identity.user.email, name: hostname }, 'record_type', 100),
+    ]);
+    const records = [...new Map([...byId, ...byEmail].map((record) => [record.id, record])).values()]
+      .filter((record) => ['A', 'AAAA'].includes(record.record_type) && tokenAllowsRecord(identity.token, record));
+    if (!records.length) return error(reply, 404, 'address_record_not_found', 'No authorised A or AAAA record exists for this hostname');
+
+    const updated = [];
+    const unchanged = [];
+    for (const address of addresses) {
+      const type = address.family === 4 ? 'A' : 'AAAA';
+      const matches = records.filter((record) => record.record_type === type);
+      if (!matches.length) return error(reply, 404, 'address_record_not_found', `No authorised ${type} record exists for this hostname`);
+      for (const record of matches) {
+        if (record.content === address.address) {
+          unchanged.push({ id: record.id, hostname, type, address: address.address });
+          continue;
+        }
+        try {
+          const result = await invokeInternal('manageDnsRecord', { action: 'update', record_id: record.id, content: address.address }, { ...identity.user, trusted_source: 'dynamic-dns' });
+          updated.push({ id: record.id, hostname, type, previous_address: record.content, address: result.record?.content || address.address });
+        } catch (cause) {
+          return error(reply, cause.status || 422, 'dynamic_dns_update_failed', cause.message, cause.data);
+        }
+      }
+    }
+    await store.update('ApiToken', identity.token.id, { last_used: new Date().toISOString(), last_used_ip: request.ip }).catch(() => {});
+    return data(reply, { hostname, updated, unchanged, checked_at: new Date().toISOString() });
   });
 
   app.get('/api/v1/staff/whois', { config: { rateLimit: readLimit } }, async (request, reply) => {
@@ -332,7 +446,7 @@ export async function registerPublicApiRoutes(app) {
     const user = await authenticateRequest(request);
     if (!user) return error(reply, 401, 'unauthorized', 'Sign in to manage API tokens');
     const tokens = await store.filter('ApiToken', { user_id: user.id }, '-created_date', 100);
-    return data(reply, tokens.filter((token) => token.revoked !== true).map((token) => ({ id: token.id, name: token.name, token_prefix: token.token_prefix, scopes: token.scopes || [], expires_at: token.expires_at || null, last_used: token.last_used || null, created_at: token.created_date })));
+    return data(reply, tokens.filter((token) => token.revoked !== true).map((token) => ({ id: token.id, name: token.name, token_prefix: token.token_prefix, scopes: token.scopes || [], allowed_hostnames: token.allowed_hostnames || [], allowed_record_types: token.allowed_record_types || [], expires_at: token.expires_at || null, last_used: token.last_used || null, created_at: token.created_date })));
   });
   app.post('/api/auth/tokens', { config: { rateLimit: { max: 10, timeWindow: '1 hour' } } }, createBrowserToken);
   app.delete('/api/auth/tokens/:id', async (request, reply) => {

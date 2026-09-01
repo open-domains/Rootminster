@@ -121,6 +121,8 @@ Write tools are marked as write/destructive where appropriate so compatible clie
 
 The versioned REST API is available at `/api/v1`, with interactive documentation at `/api-docs` and an OpenAPI 3.1 document at `/api/v1/openapi.json`. Users create hashed bearer tokens under Settings → API Tokens. The legacy `/functions/publicApi?action=…` endpoint remains available for compatibility.
 
+API tokens can be limited by permission, exact hostname, DNS record type, and expiry date. Dynamic DNS uses a dedicated `dns:dynamic` scope and `POST /api/v1/dynamic-dns`; these tokens must be restricted to owned hostnames and A/AAAA record types. The endpoint can use the caller's public IP or an explicitly supplied public IPv4/IPv6 address, and never creates a new record implicitly.
+
 Rate limits are enforced globally and per route. Public reads are normally limited to 60 requests per minute per IP, authenticated reads to 120 per minute per token, and authenticated writes to 30 per minute per token. Responses expose the standard limit, remaining, reset, and retry headers.
 
 ## Safety screening

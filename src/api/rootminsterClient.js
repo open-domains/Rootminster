@@ -111,8 +111,9 @@ export const rootminster = {
       const result = await request('/api/auth/tokens');
       return result.data;
     },
-    async create(name) {
-      const result = await request('/api/auth/tokens', { method: 'POST', body: { name } });
+    async create(settings) {
+      const body = typeof settings === 'string' ? { name: settings } : settings;
+      const result = await request('/api/auth/tokens', { method: 'POST', body });
       return result.data;
     },
     async revoke(id) {
