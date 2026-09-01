@@ -75,7 +75,7 @@ async function apiIdentity(request) {
   const raw = bearerToken(request.headers.authorization);
   if (!raw) return null;
   const tokens = await store.filter('ApiToken', { token_hash: sha256(raw) }, '-created_date', 10);
-  const token = tokens.find((item) => item.revoked !== true);
+  const token = tokens.find((item) => item.revoked !== true && (!item.expires_at || new Date(item.expires_at) > new Date()));
   if (!token) return null;
   const user = token.user_id ? await store.get('User', token.user_id) : (await store.filter('User', { email: token.user_email }, '-created_date', 1))[0];
   if (!user || user.status !== 'active') return null;
@@ -85,7 +85,16 @@ async function apiIdentity(request) {
   return { user, token };
 }
 
-async function requireApiIdentity(request, reply, roles) {
+function tokenHasScope(identity, scope) {
+  if (!scope) return true;
+  const scopes = Array.isArray(identity.token.scopes) ? identity.token.scopes : [];
+  if (scopes.includes(scope)) return true;
+  if (scopes.length) return false;
+  // Legacy tokens retain normal user API access, but never inherit staff/admin powers.
+  return !scope.startsWith('staff:');
+}
+
+async function requireApiIdentity(request, reply, roles, scope) {
   const identity = await apiIdentity(request);
   if (!identity) {
     error(reply, 401, 'invalid_token', 'Provide a valid API token using Authorization: Bearer <token>');
@@ -93,6 +102,10 @@ async function requireApiIdentity(request, reply, roles) {
   }
   if (roles && !roles.includes(identity.user.role)) {
     error(reply, 403, 'forbidden', 'This API token does not have permission to perform that action');
+    return null;
+  }
+  if (!tokenHasScope(identity, scope)) {
+    error(reply, 403, 'insufficient_scope', `This API token requires the ${scope} scope`);
     return null;
   }
   return identity;
@@ -119,6 +132,8 @@ async function createBrowserToken(request, reply) {
   const created = await store.create('ApiToken', {
     user_id: user.id, user_email: user.email, name,
     token_hash: sha256(raw), token_prefix: raw.slice(0, 10), revoked: false,
+    scopes: ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write'],
+    expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
   }, user);
   return data(reply, {
     id: created.id, name: created.name, token: raw, token_prefix: created.token_prefix,
@@ -205,7 +220,7 @@ export async function registerPublicApiRoutes(app) {
   });
 
   app.get('/api/v1/me', { config: { rateLimit: readLimit } }, async (request, reply) => {
-    const identity = await requireApiIdentity(request, reply);
+    const identity = await requireApiIdentity(request, reply, null, 'account:read');
     if (!identity) return;
     const [records, requests, tokens] = await Promise.all([
       store.filter('DnsRecord', { owner_id: identity.user.id }, '-created_date', 10_000),
@@ -220,17 +235,20 @@ export async function registerPublicApiRoutes(app) {
   });
 
   app.get('/api/v1/requests', { config: { rateLimit: readLimit } }, async (request, reply) => {
-    const identity = await requireApiIdentity(request, reply);
+    const identity = await requireApiIdentity(request, reply, null, 'requests:read');
     if (!identity) return;
     const filter = { requester_id: identity.user.id };
     if (request.query?.status) filter.status = String(request.query.status);
-    if (request.query?.scope === 'all' && ['staff', 'admin'].includes(identity.user.role)) delete filter.requester_id;
+    if (request.query?.scope === 'all' && ['staff', 'admin'].includes(identity.user.role)) {
+      if (!tokenHasScope(identity, 'staff:requests:read')) return error(reply, 403, 'insufficient_scope', 'This API token cannot list staff review data');
+      delete filter.requester_id;
+    }
     const result = await paginated('SubdomainRequest', filter, request.query);
     return data(reply, result.rows.map(publicRequest), 200, result.meta);
   });
 
   app.get('/api/v1/requests/:id', { config: { rateLimit: readLimit } }, async (request, reply) => {
-    const identity = await requireApiIdentity(request, reply);
+    const identity = await requireApiIdentity(request, reply, null, 'requests:read');
     if (!identity) return;
     if (!UUID_PATTERN.test(request.params.id)) return error(reply, 400, 'invalid_id', 'Request ID must be a UUID');
     const record = await store.get('SubdomainRequest', request.params.id);
@@ -242,7 +260,7 @@ export async function registerPublicApiRoutes(app) {
   });
 
   app.post('/api/v1/requests', { config: { rateLimit: writeLimit } }, async (request, reply) => {
-    const identity = await requireApiIdentity(request, reply);
+    const identity = await requireApiIdentity(request, reply, null, 'requests:write');
     if (!identity) return;
     try {
       const result = await invokeInternal('submitRequest', request.body || {}, { ...identity.user, trusted_source: 'api' });
@@ -253,7 +271,7 @@ export async function registerPublicApiRoutes(app) {
   });
 
   app.patch('/api/v1/dns/records/:id', { config: { rateLimit: writeLimit } }, async (request, reply) => {
-    const identity = await requireApiIdentity(request, reply);
+    const identity = await requireApiIdentity(request, reply, null, 'dns:write');
     if (!identity) return;
     if (!UUID_PATTERN.test(request.params.id)) return error(reply, 400, 'invalid_id', 'Record ID must be a UUID');
     if (!['content', 'ttl', 'proxied'].some((field) => request.body?.[field] !== undefined)) {
@@ -261,9 +279,9 @@ export async function registerPublicApiRoutes(app) {
     }
     try {
       const result = await invokeInternal('manageDnsRecord', {
-        action: 'update', record_id: request.params.id, api_token_id: identity.token.id,
+        action: 'update', record_id: request.params.id,
         content: request.body?.content, ttl: request.body?.ttl, proxied: request.body?.proxied,
-      }, null);
+      }, { ...identity.user, trusted_source: 'api' });
       return data(reply, result.record || result);
     } catch (cause) {
       return error(reply, cause.status || 422, 'record_update_failed', cause.message, cause.data);
@@ -271,11 +289,11 @@ export async function registerPublicApiRoutes(app) {
   });
 
   app.delete('/api/v1/dns/records/:id', { config: { rateLimit: writeLimit } }, async (request, reply) => {
-    const identity = await requireApiIdentity(request, reply);
+    const identity = await requireApiIdentity(request, reply, null, 'dns:write');
     if (!identity) return;
     if (!UUID_PATTERN.test(request.params.id)) return error(reply, 400, 'invalid_id', 'Record ID must be a UUID');
     try {
-      const result = await invokeInternal('manageDnsRecord', { action: 'delete', record_id: request.params.id, api_token_id: identity.token.id }, null);
+      const result = await invokeInternal('manageDnsRecord', { action: 'delete', record_id: request.params.id }, { ...identity.user, trusted_source: 'api' });
       return data(reply, result);
     } catch (cause) {
       return error(reply, cause.status || 422, 'record_delete_failed', cause.message, cause.data);
@@ -283,7 +301,7 @@ export async function registerPublicApiRoutes(app) {
   });
 
   app.get('/api/v1/staff/whois', { config: { rateLimit: readLimit } }, async (request, reply) => {
-    const identity = await requireApiIdentity(request, reply, ['staff', 'admin']);
+    const identity = await requireApiIdentity(request, reply, ['staff', 'admin'], 'staff:read');
     if (!identity) return;
     const name = String(request.query?.name || '').trim().toLowerCase();
     const domain = String(request.query?.domain || '').trim().toLowerCase();
@@ -314,7 +332,7 @@ export async function registerPublicApiRoutes(app) {
     const user = await authenticateRequest(request);
     if (!user) return error(reply, 401, 'unauthorized', 'Sign in to manage API tokens');
     const tokens = await store.filter('ApiToken', { user_id: user.id }, '-created_date', 100);
-    return data(reply, tokens.filter((token) => token.revoked !== true).map((token) => ({ id: token.id, name: token.name, token_prefix: token.token_prefix, last_used: token.last_used || null, created_at: token.created_date })));
+    return data(reply, tokens.filter((token) => token.revoked !== true).map((token) => ({ id: token.id, name: token.name, token_prefix: token.token_prefix, scopes: token.scopes || [], expires_at: token.expires_at || null, last_used: token.last_used || null, created_at: token.created_date })));
   });
   app.post('/api/auth/tokens', { config: { rateLimit: { max: 10, timeWindow: '1 hour' } } }, createBrowserToken);
   app.delete('/api/auth/tokens/:id', async (request, reply) => {

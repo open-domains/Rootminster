@@ -82,7 +82,6 @@ export default function TwoFactorSetup({ user, onUpdated }) {const { t } = useTr
   };
 
   const showBack = !completed && current > 1;
-  const qrImageUrl = uri ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(uri)}` : '';
 
   // panel content for each step (enable flow)
   const enablePanels = [
@@ -90,13 +89,9 @@ export default function TwoFactorSetup({ user, onUpdated }) {const { t } = useTr
   <div key="scan">
       <h3 className="st2-h">{t("operational.two_factor_setup.scan_with_your_authenticator_57b3ce")}</h3>
       <p className="st2-p mb-3">{t("operational.two_factor_setup.open_google_authenticator_authy_or_1passwo_c77340")}</p>
-      {uri &&
-    <div className="inline-block p-2 bg-white rounded-xl mb-3">
-          <img src={qrImageUrl} alt={t("operational.two_factor_setup.scan_with_authenticator_c2f76e")} className="w-40 h-40 block" />
-        </div>
-    }
-      <details className="text-xs" style={{ color: 'var(--st2-muted)' }}>
-        <summary className="cursor-pointer hover:opacity-80 select-none">{t("operational.two_factor_setup.can_t_scan_enter_the_key_manually_da5d97")}</summary>
+      {uri && <p className="text-xs mb-3" style={{ color: 'var(--st2-muted)' }}>For security, Rootminster generates no QR code through an external service. Add an account manually in your authenticator app using this key.</p>}
+      <details open className="text-xs" style={{ color: 'var(--st2-muted)' }}>
+        <summary className="cursor-pointer hover:opacity-80 select-none">Authenticator setup key</summary>
         <code className="mt-2 block font-mono text-sm tracking-wider break-all select-all"
       style={{ background: '#0f172a', color: '#a5b4fc', padding: '10px 12px', borderRadius: 8, display: 'block', marginTop: 8 }}>
           {secret}

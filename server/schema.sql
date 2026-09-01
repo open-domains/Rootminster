@@ -32,8 +32,11 @@ CREATE TABLE IF NOT EXISTS sessions (
   ip inet,
   expires_at timestamptz NOT NULL,
   last_used_at timestamptz NOT NULL DEFAULT now(),
+  mfa_verified_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mfa_verified_at timestamptz;
 
 CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);
@@ -110,9 +113,12 @@ CREATE TABLE IF NOT EXISTS mcp_oauth_codes (
   code_challenge text NOT NULL,
   resource text,
   scope text NOT NULL DEFAULT 'rootminster',
+  mfa_verified_at timestamptz,
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE mcp_oauth_codes ADD COLUMN IF NOT EXISTS mfa_verified_at timestamptz;
 
 CREATE TABLE IF NOT EXISTS mcp_oauth_consents (
   token_hash text PRIMARY KEY,
@@ -133,11 +139,14 @@ CREATE TABLE IF NOT EXISTS mcp_oauth_tokens (
   refresh_token_hash text NOT NULL UNIQUE,
   resource text,
   scope text NOT NULL DEFAULT 'rootminster',
+  mfa_verified_at timestamptz,
   access_expires_at timestamptz NOT NULL,
   refresh_expires_at timestamptz NOT NULL,
   revoked_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE mcp_oauth_tokens ADD COLUMN IF NOT EXISTS mfa_verified_at timestamptz;
 
 CREATE INDEX IF NOT EXISTS mcp_oauth_tokens_user_idx ON mcp_oauth_tokens(user_id);
 CREATE INDEX IF NOT EXISTS mcp_oauth_tokens_access_expiry_idx ON mcp_oauth_tokens(access_expires_at);

@@ -24,6 +24,8 @@ function rejectionEmailHtml(subdomain, domain, reason, reviewerName) {
   </div></body></html>`;
 }
 export default async function (req) {
+    if (req.method !== 'POST')
+        return Response.json({ error: 'Method not allowed' }, { status: 405 });
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
     if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
@@ -37,6 +39,8 @@ export default async function (req) {
     if (!requests.length)
         return Response.json({ error: 'Request not found' }, { status: 404 });
     const r = requests[0];
+    if (!['pending', 'needs_info', 'user_responded'].includes(r.status))
+        return Response.json({ error: `Request cannot be rejected from status ${r.status || 'unknown'}` }, { status: 409 });
     const reviewerName = user.full_name || user.email;
     await platform.asServiceRole.entities.SubdomainRequest.update(r.id, {
         status: 'rejected', reviewed_by: reviewerName,

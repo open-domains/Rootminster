@@ -1,4 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { markSessionMfaVerified } from '../auth.js';
+import { decryptTotpSecret, encryptTotpSecret } from '../security.js';
+import { pool } from '../database.js';
 import * as OTPAuth from 'otpauth';
 const TRUST_DAYS = 30;
 async function sha256Hex(text) {
@@ -20,6 +23,10 @@ export default async function (req) {
         const body = await req.json();
         const { action } = body;
         if (action === 'setup') {
+            if (user.totp_enabled)
+                return Response.json({ error: 'Two-factor authentication is already enabled' }, { status: 409 });
+            if (process.env.NODE_ENV === 'production' && !process.env.TOTP_ENCRYPTION_KEY)
+                return Response.json({ error: 'Two-factor setup is temporarily unavailable' }, { status: 503 });
             // Generate a new TOTP secret
             const secret = new OTPAuth.Secret({ size: 20 });
             const totp = new OTPAuth.TOTP({
@@ -35,6 +42,8 @@ export default async function (req) {
             return Response.json({ uri, secret: secretBase32 });
         }
         if (action === 'enable') {
+            if (user.totp_enabled)
+                return Response.json({ error: 'Two-factor authentication is already enabled' }, { status: 409 });
             const { secret, code } = body;
             if (!secret || !code)
                 return Response.json({ error: 'Missing secret or code' }, { status: 400 });
@@ -50,11 +59,26 @@ export default async function (req) {
             if (delta === null)
                 return Response.json({ error: 'Invalid code' }, { status: 400 });
             // Store the secret on the user profile
-            await platform.auth.updateMe({ totp_secret: secret, totp_enabled: true });
+            await platform.auth.updateMe({ totp_secret: encryptTotpSecret(secret), totp_enabled: true });
+            await markSessionMfaVerified(user);
             return Response.json({ ok: true });
         }
         if (action === 'disable') {
+            if (user.role === 'staff' || user.role === 'admin')
+                return Response.json({ error: 'Staff and admin accounts must keep two-factor authentication enabled' }, { status: 403 });
+            const code = String(body.code || '');
+            if (!user.totp_enabled || !user.totp_secret || !code)
+                return Response.json({ error: 'A current authenticator code is required' }, { status: 400 });
+            const totp = new OTPAuth.TOTP({
+                issuer: 'OpenDomains', label: user.email, algorithm: 'SHA1', digits: 6, period: 30,
+                secret: OTPAuth.Secret.fromBase32(decryptTotpSecret(user.totp_secret)),
+            });
+            if (totp.validate({ token: code, window: 1 }) === null)
+                return Response.json({ error: 'Invalid code' }, { status: 400 });
             await platform.auth.updateMe({ totp_secret: null, totp_enabled: false });
+            await pool.query('UPDATE sessions SET mfa_verified_at = NULL WHERE user_id = $1', [user.id]);
+            const devices = await platform.entities.TrustedDevice.filter({ user_id: user.id }, null, 1000);
+            await Promise.all(devices.map((device) => platform.entities.TrustedDevice.delete(device.id)));
             return Response.json({ ok: true });
         }
         if (action === 'verify') {
@@ -71,11 +95,15 @@ export default async function (req) {
                 algorithm: 'SHA1',
                 digits: 6,
                 period: 30,
-                secret: OTPAuth.Secret.fromBase32(userData.totp_secret),
+                secret: OTPAuth.Secret.fromBase32(decryptTotpSecret(userData.totp_secret)),
             });
             const delta = totp.validate({ token: code, window: 1 });
             if (delta === null)
                 return Response.json({ error: 'Invalid code' }, { status: 400 });
+            if (!String(userData.totp_secret).startsWith('enc:v1:') && process.env.TOTP_ENCRYPTION_KEY) {
+                await platform.auth.updateMe({ totp_secret: encryptTotpSecret(userData.totp_secret) });
+            }
+            await markSessionMfaVerified(userData);
             let device_token = null;
             if (trust_browser) {
                 device_token = randomToken();
@@ -110,6 +138,7 @@ export default async function (req) {
                 return Response.json({ valid: false });
             }
             await platform.entities.TrustedDevice.update(device.id, { last_used: new Date().toISOString() });
+            await markSessionMfaVerified(userData);
             return Response.json({ valid: true });
         }
         if (action === 'list_trusted') {

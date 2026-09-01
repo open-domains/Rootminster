@@ -41,8 +41,20 @@ export default async function (req) {
     const { request_id, request_type, message, is_internal, message_type, notify_user, notify_staff } = await req.json();
     if (!request_id || !message)
         return Response.json({ error: 'Missing fields' }, { status: 400 });
+    const elevated = user.role === 'admin' || user.role === 'staff';
+    const targetEntity = request_type === 'edit' ? 'EditRequest' : 'SubdomainRequest';
+    const target = await platform.asServiceRole.entities[targetEntity].get(request_id);
+    if (!target)
+        return Response.json({ error: 'Request not found' }, { status: 404 });
+    const ownsRequest = target.requester_id === user.id || String(target.requester_email || '').toLowerCase() === String(user.email || '').toLowerCase();
+    if (!elevated && !ownsRequest)
+        return Response.json({ error: 'Request not found' }, { status: 404 });
+    if (!elevated && !['comment', 'reply'].includes(message_type || 'comment'))
+        return Response.json({ error: 'This message type requires staff access' }, { status: 403 });
+    if (String(message).length > 5000)
+        return Response.json({ error: 'Message must be 5000 characters or fewer' }, { status: 400 });
     // Internal notes only for staff/admin
-    const canInternal = user.role === 'admin' || user.role === 'staff';
+    const canInternal = elevated;
     const isInternal = is_internal && canInternal;
     const comment = await platform.asServiceRole.entities.RequestComment.create({
         request_id,
@@ -57,9 +69,9 @@ export default async function (req) {
     // Cover all sibling records in the same group so the whole request waits for a reply.
     if ((user.role === 'admin' || user.role === 'staff') && message_type === 'question' && notify_user) {
         const entity = platform.asServiceRole.entities.SubdomainRequest;
-        const requests = await entity.filter({ id: request_id });
+        const requests = targetEntity === 'SubdomainRequest' ? [target] : [];
         if (requests.length) {
-            const r = requests[0];
+            const r = target;
             const siblings = await entity.filter({
                 requester_email: r.requester_email,
                 subdomain: r.subdomain,
@@ -90,9 +102,9 @@ export default async function (req) {
     // If user is replying → update status to user_responded. Staff/admin email notifications are disabled.
     if (user.role === 'user' && message_type === 'reply' && notify_staff) {
         const entity = platform.asServiceRole.entities.SubdomainRequest;
-        const requests = await entity.filter({ id: request_id });
+        const requests = targetEntity === 'SubdomainRequest' ? [target] : [];
         if (requests.length) {
-            const r = requests[0];
+            const r = target;
             if (r.status === 'needs_info') {
                 await entity.update(r.id, { status: 'user_responded' });
             }

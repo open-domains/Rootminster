@@ -10,14 +10,16 @@
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'node:crypto';
+import { randomToken } from '../security.js';
+import { withAdvisoryLock } from '../database.js';
 function generateUserCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1
     let code = '';
     for (let i = 0; i < 8; i++) {
         if (i === 4)
             code += '-';
-        code += chars[Math.floor(Math.random() * chars.length)];
+        code += chars[crypto.randomInt(0, chars.length)];
     }
     return code;
 }
@@ -26,7 +28,7 @@ async function sha256hex(str) {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 async function handleRequestCode(platform, body, respond) {
-    const deviceCode = `dvc_${uuidv4()}`;
+    const deviceCode = `dvc_${randomToken(32)}`;
     const userCode = generateUserCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     await platform.entities.DeviceCode.create({
@@ -70,6 +72,9 @@ async function handleDeny(platform, body, respond) {
     const { user_code } = body;
     if (!user_code)
         return respond({ error: 'user_code required' }, 400);
+    const user = await platform.auth.me().catch(() => null);
+    if (!user)
+        return respond({ error: 'Unauthorized — you must be logged in to deny a code' }, 401);
     const codes = await platform.asServiceRole.entities.DeviceCode.filter({ user_code: user_code.toUpperCase(), status: 'pending' });
     if (!codes.length)
         return respond({ error: 'Invalid code' }, 404);
@@ -80,6 +85,7 @@ async function handlePoll(platform, body, respond) {
     const { device_code } = body;
     if (!device_code)
         return respond({ error: 'device_code required' }, 400);
+    return withAdvisoryLock(`device-code:${device_code}`, async () => {
     const codes = await platform.asServiceRole.entities.DeviceCode.filter({ device_code });
     if (!codes.length)
         return respond({ error: 'Invalid device_code' }, 404);
@@ -99,7 +105,7 @@ async function handlePoll(platform, body, respond) {
     }
     if (code.status === 'approved') {
         // Generate API token
-        const rawToken = `od_${uuidv4()}`;
+        const rawToken = `od_${randomToken(32)}`;
         const tokenHash = await sha256hex(rawToken);
         const tokenPrefix = rawToken.slice(0, 8);
         await platform.asServiceRole.entities.ApiToken.create({
@@ -109,6 +115,8 @@ async function handlePoll(platform, body, respond) {
             token_hash: tokenHash,
             token_prefix: tokenPrefix,
             revoked: false,
+            scopes: ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write'],
+            expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
         });
         // Mark code as used
         await platform.asServiceRole.entities.DeviceCode.update(code.id, {
@@ -124,6 +132,7 @@ async function handlePoll(platform, body, respond) {
         return respond({ status: 'used' });
     }
     return respond({ error: 'Unknown status' }, 500);
+    }).then((result) => result?.skipped ? respond({ error: 'Authorization is already being redeemed' }, 409) : result);
 }
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
