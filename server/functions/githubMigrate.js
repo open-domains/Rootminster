@@ -1,7 +1,8 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-const INDEX_URL = 'https://raw.githubusercontent.com/open-domains/raw/refs/heads/main/scripts/raw/index.json';
+import { getModuleConfig } from '../module-settings.js';
 async function getAllDomainRecords() {
-    const res = await fetch(INDEX_URL, { headers: { 'User-Agent': 'OpenDomains-Platform' } });
+    const github = await getModuleConfig('github_oauth');
+    const res = await fetch(github.registry_url, { headers: { 'User-Agent': 'OpenDomains-Platform' } });
     if (!res.ok)
         throw new Error('Failed to fetch domain index');
     return res.json();

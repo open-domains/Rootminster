@@ -1,6 +1,6 @@
 import { authenticateRequest, publicUser } from './auth.js';
 import { store } from './store.js';
-import { config } from './config.js';
+import { getModuleConfig } from './module-settings.js';
 
 const PUBLIC_SETTINGS = new Set([
   'maintenance_mode', 'maintenance_message', 'notification_banner_enabled',
@@ -9,16 +9,15 @@ const PUBLIC_SETTINGS = new Set([
 ]);
 
 const STAFF_WRITABLE = new Set([
-  'AuditLog', 'SubdomainOwnership', 'SyncLog', 'SubdomainRequest',
-  'AbuseReport', 'RequestComment', 'EmailLog', 'DnsRecord', 'EditRequest',
+  'AbuseReport',
 ]);
 
 function isElevated(user) {
   return user?.role === 'admin' || user?.role === 'staff';
 }
 
-function entityEnabled(entity) {
-  return entity !== 'Donation' || config.donationsEnabled;
+async function entityEnabled(entity) {
+  return entity !== 'Donation' || (await getModuleConfig('donations')).enabled;
 }
 
 async function userCanRead(user, entity, record) {
@@ -44,6 +43,9 @@ function redact(user, entity, record) {
   if (!record) return record;
   if (entity === 'User') return publicUser(record);
   const copy = { ...record };
+  if (entity === 'Domain' && !isElevated(user)) {
+    for (const key of ['zone_id', 'nameservers', 'reserved_names', 'notes', 'last_synced', 'record_count', 'created_by']) delete copy[key];
+  }
   if (entity === 'ApiToken') delete copy.token_hash;
   if (entity === 'TrustedDevice') delete copy.token_hash;
   if (entity === 'PlatformSettings' && user?.role !== 'admin' && !PUBLIC_SETTINGS.has(copy.key)) return null;
@@ -70,7 +72,7 @@ function safeFilter(raw) {
 
 export async function registerEntityRoutes(app) {
   app.get('/api/entities/:entity', async (request, reply) => {
-    if (!entityEnabled(request.params.entity)) return reply.code(404).send({ error: 'Not found' });
+    if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     const filter = safeFilter(request.query?.filter);
     const requestedLimit = Math.min(Number(request.query?.limit) || 1000, 10_000);
@@ -88,7 +90,7 @@ export async function registerEntityRoutes(app) {
   });
 
   app.get('/api/entities/:entity/:id', async (request, reply) => {
-    if (!entityEnabled(request.params.entity)) return reply.code(404).send({ error: 'Not found' });
+    if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     const record = await store.get(request.params.entity, request.params.id);
     if (!record) return reply.code(404).send({ error: 'Not found' });
@@ -97,7 +99,7 @@ export async function registerEntityRoutes(app) {
   });
 
   app.post('/api/entities/:entity', async (request, reply) => {
-    if (!entityEnabled(request.params.entity)) return reply.code(404).send({ error: 'Not found' });
+    if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     if (!canWrite(user, request.params.entity, 'create')) return reply.code(user ? 403 : 401).send({ error: user ? 'Forbidden' : 'Unauthorized' });
     const created = await store.create(request.params.entity, request.body, user);
@@ -105,7 +107,7 @@ export async function registerEntityRoutes(app) {
   });
 
   app.post('/api/entities/:entity/bulk', async (request, reply) => {
-    if (!entityEnabled(request.params.entity)) return reply.code(404).send({ error: 'Not found' });
+    if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     if (!canWrite(user, request.params.entity, 'create')) return reply.code(user ? 403 : 401).send({ error: user ? 'Forbidden' : 'Unauthorized' });
     const rows = await store.bulkCreate(request.params.entity, request.body?.rows, user);
@@ -113,7 +115,7 @@ export async function registerEntityRoutes(app) {
   });
 
   app.patch('/api/entities/:entity/:id', async (request, reply) => {
-    if (!entityEnabled(request.params.entity)) return reply.code(404).send({ error: 'Not found' });
+    if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     const existing = await store.get(request.params.entity, request.params.id);
     if (!existing) return reply.code(404).send({ error: 'Not found' });
@@ -127,7 +129,7 @@ export async function registerEntityRoutes(app) {
   });
 
   app.delete('/api/entities/:entity/:id', async (request, reply) => {
-    if (!entityEnabled(request.params.entity)) return reply.code(404).send({ error: 'Not found' });
+    if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     const existing = await store.get(request.params.entity, request.params.id);
     if (!existing) return reply.code(404).send({ error: 'Not found' });

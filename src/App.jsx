@@ -97,6 +97,7 @@ import AdminEmailLogs from '@/pages/AdminEmailLogs';
 import AdminDonations from '@/pages/AdminDonations';
 import AdminSettings from '@/pages/AdminSettings';
 import AdminAbuseReports from '@/pages/AdminAbuseReports';
+import AdminModules from '@/pages/AdminModules';
 
 const AuthenticatedApp = () => {
   return (
@@ -195,6 +196,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin-email-logs" element={<AdminEmailLogs />} />
           <Route path="/admin-donations" element={<AdminDonations />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
+          <Route path="/admin-modules" element={<AdminModules />} />
         </Route>
       </Route>
       </Route>

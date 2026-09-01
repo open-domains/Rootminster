@@ -1,6 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-const CF_BASE = 'https://api.cloudflare.com/client/v4';
-const CF_TOKEN = process.env['CLOUDFLARE_API_TOKEN'];
+import { cloudflareGet } from '../lib/cloudflare.js';
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
@@ -10,10 +9,7 @@ export default async function (req) {
     // Paginate through all zones
     let page = 1, allZones = [], hasMore = true;
     while (hasMore) {
-        const res = await fetch(`${CF_BASE}/zones?per_page=50&page=${page}`, {
-            headers: { 'Authorization': `Bearer ${CF_TOKEN}`, 'Content-Type': 'application/json' }
-        });
-        const data = await res.json();
+        const data = await cloudflareGet(`/zones?per_page=50&page=${page}`);
         if (!data.success) {
             return Response.json({ error: data.errors?.[0]?.message || 'Cloudflare API error' }, { status: 500 });
         }

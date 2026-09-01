@@ -4,6 +4,7 @@ import { pool } from './database.js';
 import { sendEmail } from './mail.js';
 import { hashPassword, randomToken, sha256, verifyPassword } from './security.js';
 import { serializeUser } from './store.js';
+import { getModuleConfig } from './module-settings.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -19,6 +20,7 @@ export function publicUser(user) {
   delete result.password_hash;
   delete result.totp_secret;
   delete result.metadata;
+  delete result._session_id;
   return result;
 }
 
@@ -28,18 +30,27 @@ function tokenFromRequest(request) {
   return request.cookies?.[config.cookieName] || null;
 }
 
-export async function authenticateRequest(request) {
+export async function authenticateRequest(request, { allowMfaPending = false } = {}) {
   const raw = tokenFromRequest(request);
   if (!raw) return null;
   const result = await pool.query(
-    `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.*, s.id AS _session_id, s.mfa_verified_at AS _session_mfa_verified_at
+     FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = $1 AND s.expires_at > now() AND u.status = 'active'`,
     [sha256(raw)],
   );
   const row = result.rows[0];
   if (!row) return null;
+  const mfaRequired = Boolean(row.totp_enabled || ['staff', 'admin'].includes(row.role));
+  const mfaVerified = !mfaRequired || Boolean(row._session_mfa_verified_at);
+  if (!mfaVerified && !allowMfaPending) return null;
   pool.query('UPDATE sessions SET last_used_at = now() WHERE token_hash = $1', [sha256(raw)]).catch(() => {});
-  return serializeUser(row);
+  return { ...serializeUser(row), _session_id: row._session_id, mfa_required: mfaRequired, mfa_verified: mfaVerified };
+}
+
+export async function markSessionMfaVerified(user) {
+  if (!user?._session_id) throw Object.assign(new Error('No browser session is available'), { status: 401 });
+  await pool.query('UPDATE sessions SET mfa_verified_at = now(), last_used_at = now() WHERE id = $1 AND user_id = $2', [user._session_id, user.id]);
 }
 
 export async function createSession(userId, request, reply) {
@@ -109,6 +120,9 @@ async function upsertOauthUser(email, name) {
 
 export async function registerAuthRoutes(app) {
   app.post('/api/auth/register', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const emailModule = await getModuleConfig('email');
+    const verificationRequired = emailModule.require_verification !== false;
+    if (verificationRequired && !emailModule.enabled) return reply.code(503).send({ error: 'Registration is unavailable until the email module is enabled' });
     const firstName = String(request.body?.firstName || request.body?.first_name || '').trim();
     const email = String(request.body?.email || '').trim().toLowerCase();
     const password = String(request.body?.password || '');
@@ -121,10 +135,10 @@ export async function registerAuthRoutes(app) {
     const result = await pool.query(
       `INSERT INTO users(email, password_hash, full_name, display_name, status, email_verified_at)
        VALUES ($1, $2, $3, $3, $4, $5) RETURNING *`,
-      [email, passwordHash, firstName, config.emailVerificationRequired ? 'pending' : 'active', config.emailVerificationRequired ? null : new Date()],
+      [email, passwordHash, firstName, verificationRequired ? 'pending' : 'active', verificationRequired ? null : new Date()],
     );
     const user = serializeUser(result.rows[0]);
-    if (!config.emailVerificationRequired) {
+    if (!verificationRequired) {
       await createSession(user.id, request, reply);
       return reply.code(201).send({ success: true, verified: true });
     }
@@ -173,7 +187,7 @@ export async function registerAuthRoutes(app) {
   });
 
   app.get('/api/auth/me', async (request, reply) => {
-    const user = await authenticateRequest(request);
+    const user = await authenticateRequest(request, { allowMfaPending: true });
     if (!user) return reply.code(401).send({ error: 'Unauthorized' });
     return { user: publicUser(user) };
   });
@@ -232,18 +246,21 @@ export async function registerAuthRoutes(app) {
   });
 
   app.get('/api/auth/oauth/google', async (request, reply) => {
-    if (!config.googleClientId || !config.googleClientSecret) return reply.code(501).send({ error: 'Google sign-in is not configured' });
+    const google = await getModuleConfig('google_oauth');
+    if (!google.enabled || !google.client_id || !google.client_secret) return reply.code(501).send({ error: 'Google sign-in is not configured' });
     const state = randomToken(24);
     const verifier = randomToken(48);
     const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
     await pool.query('INSERT INTO oauth_states(state_hash, verifier, provider, return_to, expires_at) VALUES ($1, $2, $3, $4, now() + interval \'10 minutes\')', [sha256(state), verifier, 'google', safeReturnTo(request.query?.return_to)]);
     const redirectUri = `${config.appUrl}/api/auth/oauth/google/callback`;
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-    url.search = new URLSearchParams({ client_id: config.googleClientId, redirect_uri: redirectUri, response_type: 'code', scope: 'openid email profile', state, code_challenge: challenge, code_challenge_method: 'S256', prompt: 'select_account' });
+    url.search = new URLSearchParams({ client_id: google.client_id, redirect_uri: redirectUri, response_type: 'code', scope: 'openid email profile', state, code_challenge: challenge, code_challenge_method: 'S256', prompt: 'select_account' });
     return reply.redirect(url.toString());
   });
 
   app.get('/api/auth/oauth/google/callback', async (request, reply) => {
+    const google = await getModuleConfig('google_oauth');
+    if (!google.enabled || !google.client_id || !google.client_secret) return reply.code(501).send({ error: 'Google sign-in is not configured' });
     const state = String(request.query?.state || '');
     const code = String(request.query?.code || '');
     const stateResult = await pool.query("DELETE FROM oauth_states WHERE state_hash = $1 AND provider = 'google' AND expires_at > now() RETURNING *", [sha256(state)]);
@@ -253,7 +270,7 @@ export async function registerAuthRoutes(app) {
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ code, client_id: config.googleClientId, client_secret: config.googleClientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: saved.verifier }),
+      body: new URLSearchParams({ code, client_id: google.client_id, client_secret: google.client_secret, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: saved.verifier }),
     });
     const tokens = await tokenResponse.json();
     if (!tokenResponse.ok) return reply.code(502).send({ error: 'Google authentication failed' });
@@ -266,7 +283,8 @@ export async function registerAuthRoutes(app) {
   });
 
   app.get('/api/auth/oauth/github', async (request, reply) => {
-    if (!config.githubClientId || !config.githubClientSecret) return reply.code(501).send({ error: 'GitHub sign-in is not configured' });
+    const github = await getModuleConfig('github_oauth');
+    if (!github.enabled || !github.client_id || !github.client_secret) return reply.code(501).send({ error: 'GitHub sign-in is not configured' });
     const state = randomToken(24);
     await pool.query(
       'INSERT INTO oauth_states(state_hash, verifier, provider, return_to, expires_at) VALUES ($1, $2, $3, $4, now() + interval \'10 minutes\')',
@@ -275,7 +293,7 @@ export async function registerAuthRoutes(app) {
     const redirectUri = `${config.appUrl}/api/auth/oauth/github/callback`;
     const url = new URL('https://github.com/login/oauth/authorize');
     url.search = new URLSearchParams({
-      client_id: config.githubClientId,
+      client_id: github.client_id,
       redirect_uri: redirectUri,
       scope: 'read:user user:email',
       state,
@@ -285,6 +303,8 @@ export async function registerAuthRoutes(app) {
   });
 
   app.get('/api/auth/oauth/github/callback', async (request, reply) => {
+    const github = await getModuleConfig('github_oauth');
+    if (!github.enabled || !github.client_id || !github.client_secret) return reply.code(501).send({ error: 'GitHub sign-in is not configured' });
     const state = String(request.query?.state || '');
     const code = String(request.query?.code || '');
     const stateResult = await pool.query(
@@ -298,8 +318,8 @@ export async function registerAuthRoutes(app) {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: config.githubClientId,
-        client_secret: config.githubClientSecret,
+        client_id: github.client_id,
+        client_secret: github.client_secret,
         code,
         redirect_uri: redirectUri,
       }),

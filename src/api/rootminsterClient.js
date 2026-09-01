@@ -125,6 +125,11 @@ export const rootminster = {
       return request('/api/config');
     },
   },
+  modules: {
+    async list() { return request('/api/admin/modules'); },
+    async update(id, data) { return request(`/api/admin/modules/${encodeURIComponent(id)}`, { method: 'PUT', body: data }); },
+    async importEnvironment() { return request('/api/admin/modules/import-environment', { method: 'POST', body: {} }); },
+  },
   functions: {
     async invoke(name, data = {}) {
       const result = await request(`/api/functions/${encodeURIComponent(name)}`, {

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
+import { getModuleConfig } from './module-settings.js';
 import { pool, transaction } from './database.js';
 import { invokeInternal } from './function-runner.js';
 import { randomToken, sha256 } from './security.js';
@@ -40,12 +41,12 @@ const commands = [
   },
 ];
 
-function botConfigured() {
-  const bot = config.discordBot;
-  return bot.enabled && Boolean(bot.applicationId && bot.publicKey && bot.token);
+async function botConfigured() {
+  const bot = await getModuleConfig('discord');
+  return bot.enabled && bot.application_id && bot.public_key && bot.bot_token ? bot : null;
 }
 
-export function verifyDiscordSignature(rawBody, timestamp, signature, publicKey = config.discordBot.publicKey) {
+export function verifyDiscordSignature(rawBody, timestamp, signature, publicKey = '') {
   if (!rawBody || !timestamp || !signature || !publicKey) return false;
   try {
     const signedAt = Number(timestamp);
@@ -178,22 +179,23 @@ async function commandResponse(interaction) {
   throw Object.assign(new Error('Unknown command.'), { userMessage: true });
 }
 
-async function editInteraction(interaction, content) {
+async function editInteraction(interaction, content, bot) {
   const safeContent = String(content || 'Done.').slice(0, 1950);
-  const response = await fetch(`${DISCORD_API}/webhooks/${config.discordBot.applicationId}/${interaction.token}/messages/@original`, {
+  const response = await fetch(`${DISCORD_API}/webhooks/${bot.application_id}/${interaction.token}/messages/@original`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: safeContent }),
   });
   if (!response.ok) throw new Error(`Discord interaction update failed (${response.status})`);
 }
 
 async function registerCommands(logger) {
-  if (!botConfigured()) return;
-  const target = config.discordBot.guildId
-    ? `${DISCORD_API}/applications/${config.discordBot.applicationId}/guilds/${config.discordBot.guildId}/commands`
-    : `${DISCORD_API}/applications/${config.discordBot.applicationId}/commands`;
+  const bot = await botConfigured();
+  if (!bot) return;
+  const target = bot.guild_id
+    ? `${DISCORD_API}/applications/${bot.application_id}/guilds/${bot.guild_id}/commands`
+    : `${DISCORD_API}/applications/${bot.application_id}/commands`;
   try {
     const response = await fetch(target, {
-      method: 'PUT', headers: { Authorization: `Bot ${config.discordBot.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(commands),
+      method: 'PUT', headers: { Authorization: `Bot ${bot.bot_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(commands),
     });
     if (!response.ok) throw new Error(`Discord command registration failed (${response.status}): ${await response.text()}`);
     logger.info('Discord bot commands registered');
@@ -207,10 +209,11 @@ export async function registerDiscordRoutes(app) {
     const user = await authenticateRequest(request);
     if (!user) return reply.code(401).send({ error: 'Unauthorized' });
     const link = await pool.query('SELECT discord_user_id, discord_username, linked_at FROM discord_accounts WHERE user_id = $1', [user.id]);
-    return { enabled: botConfigured(), linked: Boolean(link.rowCount), account: link.rows[0] || null };
+    return { enabled: Boolean(await botConfigured()), linked: Boolean(link.rowCount), account: link.rows[0] || null };
   });
 
   app.post('/api/discord/link', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    if (!(await botConfigured())) return reply.code(404).send({ error: 'Discord bot is disabled' });
     const user = await authenticateRequest(request);
     if (!user) return reply.code(401).send({ error: 'Unauthorized' });
     const tokenHash = sha256(String(request.body?.token || ''));
@@ -234,10 +237,11 @@ export async function registerDiscordRoutes(app) {
   });
 
   app.post('/api/discord/interactions', { config: { rawBody: true, rateLimit: false } }, async (request, reply) => {
-    if (!botConfigured()) return reply.code(404).send({ error: 'Discord bot is disabled' });
+    const bot = await botConfigured();
+    if (!bot) return reply.code(404).send({ error: 'Discord bot is disabled' });
     const timestamp = request.headers['x-signature-timestamp'];
     const signature = request.headers['x-signature-ed25519'];
-    if (!verifyDiscordSignature(request.rawBody, timestamp, signature)) return reply.code(401).send({ error: 'Invalid Discord signature' });
+    if (!verifyDiscordSignature(request.rawBody, timestamp, signature, bot.public_key)) return reply.code(401).send({ error: 'Invalid Discord signature' });
     const interaction = request.body;
     if (interaction?.type === 1) return { type: 1 };
     if (interaction?.type !== 2) return { type: 4, data: { content: 'Unsupported interaction.', flags: EPHEMERAL } };
@@ -246,10 +250,10 @@ export async function registerDiscordRoutes(app) {
     if (!claimed.rowCount) return { type: 4, data: { content: 'This command has already been processed.', flags: EPHEMERAL } };
     reply.send({ type: 5, data: { flags: EPHEMERAL } });
     void commandResponse(interaction)
-      .then((content) => editInteraction(interaction, content))
+      .then((content) => editInteraction(interaction, content, bot))
       .catch((error) => {
         request.log.error(error, 'Discord command failed');
-        return editInteraction(interaction, error.userMessage ? error.message : 'The command failed. Please try again or use the web dashboard.');
+        return editInteraction(interaction, error.userMessage ? error.message : 'The command failed. Please try again or use the web dashboard.', bot);
       })
       .catch((error) => request.log.error(error, 'Discord response update failed'));
     return reply;

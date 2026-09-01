@@ -1,5 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
+import { getModuleConfig } from '../module-settings.js';
 function escapeHtml(value) {
     return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 }
@@ -12,14 +13,15 @@ export default async function (req) {
         }
         const platform = createPlatformClientFromRequest(req);
         // Require and validate Turnstile whenever it is configured.
-        if (config.turnstileSecret) {
+        const turnstile = await getModuleConfig('turnstile');
+        if (turnstile.enabled && turnstile.secret_key) {
             if (!turnstile_token)
                 return Response.json({ error: "Security check required" }, { status: 400 });
             const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: new URLSearchParams({
-                    secret: config.turnstileSecret,
+                    secret: turnstile.secret_key,
                     response: turnstile_token,
                 }),
             });

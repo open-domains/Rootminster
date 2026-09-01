@@ -1,14 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-const CF_BASE = 'https://api.cloudflare.com/client/v4';
-const CF_TOKEN = process.env['CLOUDFLARE_API_TOKEN'];
-async function cfFetch(method, path, body) {
-    const res = await fetch(`${CF_BASE}${path}`, {
-        method,
-        headers: { 'Authorization': `Bearer ${CF_TOKEN}`, 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined
-    });
-    return res.json();
-}
+import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();

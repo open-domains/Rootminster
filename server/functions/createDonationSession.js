@@ -1,21 +1,34 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
+import { getModuleConfig } from '../module-settings.js';
 import Stripe from 'stripe';
 export default async function (req) {
-    if (!config.donationsEnabled)
+    const donations = await getModuleConfig('donations');
+    if (!donations.enabled)
         return Response.json({ error: 'Donations are disabled' }, { status: 404 });
-    if (!config.stripeSecret)
+    if (!donations.secret_key)
         return Response.json({ error: 'Donations are not configured' }, { status: 503 });
-    const stripe = new Stripe(config.stripeSecret, { apiVersion: '2024-06-20' });
+    const stripe = new Stripe(donations.secret_key, { apiVersion: '2024-06-20' });
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
     if (!user)
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     const { amount_pence = 200, success_url, cancel_url } = body;
-    if (amount_pence < 50) {
-        return Response.json({ error: 'Minimum donation is 50p' }, { status: 400 });
+    if (!Number.isSafeInteger(amount_pence) || amount_pence < 50 || amount_pence > 100000) {
+        return Response.json({ error: 'Donation amount must be a whole number between 50p and £1,000' }, { status: 400 });
     }
+    const safeReturnUrl = (value, fallback) => {
+        if (!value)
+            return `${config.appUrl}${fallback}`;
+        try {
+            const url = new URL(String(value));
+            if (url.origin === new URL(config.appUrl).origin)
+                return url.toString();
+        }
+        catch { }
+        return `${config.appUrl}${fallback}`;
+    };
     // Create pending donation record
     const donation = await platform.asServiceRole.entities.Donation.create({
         user_email: user.email,
@@ -43,8 +56,8 @@ export default async function (req) {
             user_id: user.id,
             user_email: user.email,
         },
-        success_url: success_url || `${config.appUrl}/settings?donation=success`,
-        cancel_url: cancel_url || `${config.appUrl}/settings?donation=cancelled`,
+        success_url: safeReturnUrl(success_url, '/settings?donation=success'),
+        cancel_url: safeReturnUrl(cancel_url, '/settings?donation=cancelled'),
     });
     // Save session ID
     await platform.asServiceRole.entities.Donation.update(donation.id, {

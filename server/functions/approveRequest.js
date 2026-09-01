@@ -1,14 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-const CF_BASE = 'https://api.cloudflare.com/client/v4';
-const CF_TOKEN = process.env['CLOUDFLARE_API_TOKEN'];
-async function cfFetch(method, path, body) {
-    const res = await fetch(`${CF_BASE}${path}`, {
-        method,
-        headers: { 'Authorization': `Bearer ${CF_TOKEN}`, 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined
-    });
-    return res.json();
-}
+import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
 function approvalEmailHtml(subdomain, domain, recordType, recordValue) {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;margin:0;padding:0}
@@ -41,6 +32,8 @@ function approvalEmailHtml(subdomain, domain, recordType, recordValue) {
   </div></body></html>`;
 }
 export default async function (req) {
+    if (req.method !== 'POST')
+        return Response.json({ error: 'Method not allowed' }, { status: 405 });
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
     if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
@@ -52,6 +45,8 @@ export default async function (req) {
     if (!request.length)
         return Response.json({ error: 'Request not found' }, { status: 404 });
     const r = request[0];
+    if (!['pending', 'needs_info', 'user_responded'].includes(r.status) || r.cloudflare_record_id || r.dns_record_id)
+        return Response.json({ error: `Request cannot be approved from status ${r.status || 'unknown'}` }, { status: 409 });
     const domains = await platform.asServiceRole.entities.Domain.filter({ name: r.root_domain });
     if (!domains.length)
         return Response.json({ error: 'Domain not found' }, { status: 404 });

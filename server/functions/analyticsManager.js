@@ -1,23 +1,19 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getClient } from '@umami/api-client';
+import { getModuleConfig } from '../module-settings.js';
 function cleanHost(value) {
     return String(value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '').replace(/\.+$/, '');
 }
-function env(name) {
-    return process.env[name] || '';
+function analyticsBaseUrl(settings) {
+    const explicit = settings.base_url;
+    if (explicit) return explicit.replace(/\/+$/, '');
+    return settings.api_endpoint ? settings.api_endpoint.replace(/\/api\/?$/, '').replace(/\/+$/, '') : '';
 }
-function analyticsBaseUrl() {
-    const explicit = env('UMAMI_URL') || env('UMAMI_BASE_URL');
-    if (explicit)
-        return explicit.replace(/\/+$/, '');
-    const endpoint = env('UMAMI_API_CLIENT_ENDPOINT');
-    return endpoint ? endpoint.replace(/\/api\/?$/, '').replace(/\/+$/, '') : '';
-}
-function makeUmamiClient() {
-    const userId = env('UMAMI_API_CLIENT_USER_ID') || env('UMAMI_USER_ID');
-    const secret = env('UMAMI_API_CLIENT_SECRET') || env('UMAMI_APP_SECRET');
-    const base = analyticsBaseUrl();
-    const apiEndpoint = env('UMAMI_API_CLIENT_ENDPOINT') || (base ? `${base}/api/` : '');
+function makeUmamiClient(settings) {
+    const userId = settings.user_id;
+    const secret = settings.api_secret;
+    const base = analyticsBaseUrl(settings);
+    const apiEndpoint = settings.api_endpoint || (base ? `${base}/api/` : '');
     if (!userId || !secret || !apiEndpoint) {
         throw new Error('Analytics is not configured. UMAMI user ID, app secret and endpoint are required.');
     }
@@ -50,8 +46,8 @@ function metricRows(value) {
         return value.data;
     return [];
 }
-function trackingSnippet(websiteId) {
-    const base = analyticsBaseUrl();
+function trackingSnippet(websiteId, settings) {
+    const base = analyticsBaseUrl(settings);
     return `<script defer src="${base}/script.js" data-website-id="${websiteId}"></script>`;
 }
 export default async function (req) {
@@ -64,17 +60,19 @@ export default async function (req) {
         if (!user)
             return Response.json({ error: 'Authentication required' }, { status: 401 });
         const body = await req.json().catch(() => ({}));
+        const analytics = await getModuleConfig('analytics');
+        if (!analytics.enabled) return Response.json({ error: 'Analytics is disabled' }, { status: 404 });
         const action = String(body.action || 'status');
         const ownership = await getOwnership(platform, user, body.subdomain);
-        const umami = makeUmamiClient();
+        const umami = makeUmamiClient(analytics);
         if (action === 'status') {
             return Response.json({
                 enabled: !!ownership.analytics_enabled && !!ownership.umami_website_id,
                 website_id: ownership.umami_website_id || null,
                 enabled_at: ownership.analytics_enabled_at || null,
                 subdomain: ownership.full_name,
-                tracker_url: `${analyticsBaseUrl()}/script.js`,
-                tracking_snippet: ownership.umami_website_id ? trackingSnippet(ownership.umami_website_id) : null,
+                tracker_url: `${analyticsBaseUrl(analytics)}/script.js`,
+                tracking_snippet: ownership.umami_website_id ? trackingSnippet(ownership.umami_website_id, analytics) : null,
             });
         }
         if (action === 'enable') {
@@ -86,7 +84,7 @@ export default async function (req) {
                 return Response.json({
                     enabled: true,
                     website_id: ownership.umami_website_id,
-                    tracking_snippet: trackingSnippet(ownership.umami_website_id),
+                    tracking_snippet: trackingSnippet(ownership.umami_website_id, analytics),
                 });
             }
             const created = unwrap(await umami.createWebsite({ name: ownership.full_name, domain: ownership.full_name }), 'Could not create the analytics site');
@@ -103,7 +101,7 @@ export default async function (req) {
                 enabled: true,
                 website_id: websiteId,
                 enabled_at: now,
-                tracking_snippet: trackingSnippet(websiteId),
+                tracking_snippet: trackingSnippet(websiteId, analytics),
             });
         }
         if (action === 'disable') {

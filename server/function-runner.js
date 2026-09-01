@@ -2,6 +2,7 @@ import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
 import { sendEmail } from './mail.js';
 import { bindRequestActor } from './lib/platform-client.js';
+import { getModuleConfig } from './module-settings.js';
 
 const FUNCTION_NAMES = new Set([
   'adminDirectCfOp', 'adminListUsers', 'adminMigrateDomains', 'analyticsManager',
@@ -16,6 +17,13 @@ const FUNCTION_NAMES = new Set([
   'syncCloudflare', 'twoFactorAuth', 'updateDnsRecord', 'verifyDnsRecords',
   'weeklyStatsDiscord',
 ]);
+
+const HTTP_FUNCTION_NAMES = new Set([
+  ...FUNCTION_NAMES,
+]);
+for (const internalOnly of ['cleanupPendingDonations', 'scheduledSync', 'weeklyStatsDiscord']) {
+  HTTP_FUNCTION_NAMES.delete(internalOnly);
+}
 
 async function handlerFor(name) {
   if (!FUNCTION_NAMES.has(name)) throw Object.assign(new Error(`Unknown function: ${name}`), { status: 404 });
@@ -60,7 +68,8 @@ export async function invokeInternal(name, body = {}, actor = null, options = {}
 }
 
 async function executeHttp(name, request, reply, rawBody) {
-  const actor = await authenticateRequest(request);
+  if (!HTTP_FUNCTION_NAMES.has(name)) return reply.code(404).send({ error: 'Not found' });
+  const actor = await authenticateRequest(request, { allowMfaPending: name === 'twoFactorAuth' });
   const handler = await handlerFor(name);
   const headers = new Headers();
   for (const [key, value] of Object.entries(request.headers || {})) {
@@ -74,6 +83,10 @@ async function executeHttp(name, request, reply, rawBody) {
   });
   const response = await handler(web);
   if (!(response instanceof Response)) return response;
+  if (response.status >= 500 && config.production) {
+    request.log?.error?.({ function: name, status: response.status }, 'Function returned a server error');
+    return reply.code(response.status).send({ error: 'Internal server error' });
+  }
   reply.code(response.status);
   for (const [key, value] of response.headers.entries()) {
     if (!['content-length', 'content-encoding'].includes(key.toLowerCase())) reply.header(key, value);
@@ -94,7 +107,8 @@ export async function registerFunctionRoutes(app) {
     const actor = await authenticateRequest(request);
     const message = request.body || {};
     if (!actor) {
-      message.to = config.contactEmail;
+      const email = await getModuleConfig('email');
+      message.to = email.contact_email || config.contactEmail;
       message.subject = cleanContactBody(message.subject).slice(0, 200);
       message.body = cleanContactBody(message.body);
     } else if (actor.role !== 'admin') {
@@ -104,15 +118,12 @@ export async function registerFunctionRoutes(app) {
     return { success: true };
   });
 
-  app.route({
-    method: ['GET', 'POST', 'OPTIONS'],
-    url: '/api/functions/:name',
-    handler: (request, reply) => executeHttp(request.params.name, request, reply),
-  });
-  app.route({
-    method: ['GET', 'POST', 'OPTIONS'],
-    url: '/functions/:name',
-    handler: (request, reply) => executeHttp(request.params.name, request, reply),
-  });
+  for (const prefix of ['/api/functions', '/functions']) {
+    app.get(`${prefix}/publicApi`, { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, (request, reply) => executeHttp('publicApi', request, reply));
+    app.post(`${prefix}/twoFactorAuth`, { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, (request, reply) => executeHttp('twoFactorAuth', request, reply));
+    app.post(`${prefix}/deviceAuth`, { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, (request, reply) => executeHttp('deviceAuth', request, reply));
+    app.options(`${prefix}/*`, { config: { rateLimit: false } }, async (_request, reply) => reply.code(204).send());
+    app.post(`${prefix}/:name`, (request, reply) => executeHttp(request.params.name, request, reply));
+  }
   app.post('/api/webhooks/stripe', { config: { rawBody: true } }, (request, reply) => executeHttp('stripeWebhook', request, reply, request.rawBody));
 }

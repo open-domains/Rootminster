@@ -1,18 +1,8 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { config } from '../config.js';
-const CF_BASE = 'https://api.cloudflare.com/client/v4';
-const CF_TOKEN = process.env['CLOUDFLARE_API_TOKEN'];
+import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
+import { getModuleConfig } from '../module-settings.js';
 const PROXYABLE = new Set(['A', 'AAAA', 'CNAME']);
 const TYPES = new Set(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'PTR']);
-async function cfFetch(method, path, body) {
-    const res = await fetch(`${CF_BASE}${path}`, {
-        method,
-        headers: { Authorization: `Bearer ${CF_TOKEN}`, 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json().catch(() => ({}));
-    return { ...data, _httpStatus: res.status };
-}
 function normalizeName(value) {
     return String(value || '').trim().toLowerCase().replace(/\.+$/, '');
 }
@@ -262,24 +252,13 @@ function cnameFlattenMode(record, zone) {
     return 'per_record';
 }
 export default async function (req) {
+    const donations = await getModuleConfig('donations');
     try {
         if (req.method !== 'POST')
             return Response.json({ error: 'Method not allowed' }, { status: 405 });
         const platform = createPlatformClientFromRequest(req);
         const body = await req.json().catch(() => ({}));
-        let user = await platform.auth.me().catch(() => null);
-        // Public API calls authenticate with OpenDomains ApiToken records rather than
-        // Browser sessions. The API passes the already-resolved token ID; we re-check
-        // it here so direct callers cannot impersonate an owner by supplying email/ID.
-        if (!user && body.api_token_id) {
-            const tokens = await platform.asServiceRole.entities.ApiToken.filter({ id: body.api_token_id });
-            const token = tokens.find(item => item.revoked !== true);
-            const tokenEmail = token?.user_email || token?.owner_email || token?.created_by;
-            if (tokenEmail) {
-                const users = await platform.asServiceRole.entities.User.filter({ email: tokenEmail });
-                user = users[0] || null;
-            }
-        }
+        const user = await platform.auth.me().catch(() => null);
         if (!user)
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         const action = String(body.action || '').toLowerCase();
@@ -370,7 +349,7 @@ export default async function (req) {
             if (normalizeName(zone.name) !== normalizeName(old.zone_name) || zone.zone_id !== old.zone_id) {
                 return Response.json({ error: 'Moving a DNS record between Cloudflare zones is not supported' }, { status: 400 });
             }
-            if (config.donationsEnabled && candidate.record_type === 'NS' && !user.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
+            if (donations.enabled && candidate.record_type === 'NS' && !user.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
                 return Response.json({ error: 'NS records are not unlocked for this account' }, { status: 403 });
             }
             if (!old.cloudflare_record_id || !old.zone_id)
@@ -425,7 +404,7 @@ export default async function (req) {
                 return Response.json({ error: `No user found for ${body.owner_email}` }, { status: 404 });
             owner = ownerRows[0];
         }
-        if (config.donationsEnabled && recordType === 'NS' && !owner.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
+        if (donations.enabled && recordType === 'NS' && !owner.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
             return Response.json({ error: 'NS records are not unlocked for this account' }, { status: 403 });
         }
         const zone = await findZone(platform, name);

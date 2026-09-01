@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-const INDEX_URL = 'https://raw.githubusercontent.com/open-domains/raw/refs/heads/main/scripts/raw/index.json';
+import { getModuleConfig } from '../module-settings.js';
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
@@ -10,7 +10,8 @@ export default async function (req) {
         return Response.json({ error: 'github_email is required' }, { status: 400 });
     const normalizedEmail = github_email.toLowerCase().trim();
     // Fetch the index and check this email has domains
-    const res = await fetch(INDEX_URL, { headers: { 'User-Agent': 'OpenDomains-Platform' } });
+    const github = await getModuleConfig('github_oauth');
+    const res = await fetch(github.registry_url, { headers: { 'User-Agent': 'OpenDomains-Platform' } });
     if (!res.ok)
         return Response.json({ error: 'Failed to fetch domain index' }, { status: 502 });
     const allRecords = await res.json();

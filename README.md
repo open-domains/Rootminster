@@ -92,16 +92,18 @@ Legacy identifiers are mapped to new UUIDs and retained in `legacy_id`. Existing
 
 The complete list is in `.env.example`. Only configure integrations that are actually used.
 
-- `CLOUDFLARE_API_TOKEN` enables DNS creation, editing, deletion, and synchronization.
+- Optional components are enabled and configured in **Admin → Module Settings**. Secrets are AES-256-GCM encrypted in PostgreSQL and are never returned to the browser.
+- Existing environment-based integration settings can be imported once from Module Settings. After verifying the import, remove those optional variables from the runtime environment.
+- Only bootstrap/runtime values remain in the environment: `DATABASE_URL`, `APP_URL`, host/port, initial setup key, and encryption keys.
 - `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` protect request and abuse forms.
 - SMTP settings enable verification, password-reset, request status, and abuse-report email. Creating a request does not send email; approval, rejection, and requests for information do.
 - On a brand-new database, set `INITIAL_SETUP_KEY` to a long random value and open `/setup` to create the first administrator. Remove the key after setup is complete.
 - `DONATIONS_ENABLED=false` removes the donation UI, disables Stripe endpoints and jobs, and makes NS records available without a donation unlock. When enabled, configure the Stripe webhook as `https://your-host/api/webhooks/stripe`.
 - Google credentials enable the existing Google login buttons.
 - GitHub credentials enable GitHub login. Set the OAuth callback URL to `https://your-host/api/auth/oauth/github/callback`.
-- The optional Discord bot uses signed interactions rather than a permanently connected gateway. Set `DISCORD_BOT_ENABLED=true`, `DISCORD_APPLICATION_ID`, `DISCORD_PUBLIC_KEY`, and `DISCORD_BOT_TOKEN`, then use `https://your-host/api/discord/interactions` as the Discord application's Interactions Endpoint URL. `DISCORD_GUILD_ID` is optional and makes command registration immediate in one server; omit it for global commands.
-- Deterministic request safety screening is enabled by default. Set `SAFETY_SCREENING_ENABLED=false` to disable scoring without bypassing hard blocklist rules. An optional reputation service can be added with `SAFETY_REPUTATION_API_URL`, `SAFETY_REPUTATION_API_TOKEN`, and `SAFETY_REPUTATION_TIMEOUT_MS`; it receives request metadata by POST and Rootminster never fetches preview URLs itself.
-- `MCP_ENABLED=true` exposes the OAuth 2.1-protected MCP endpoint at `https://your-host/mcp`. Add that URL as a custom connector in ChatGPT or Claude; the client will register itself and prompt the Rootminster user to sign in and authorize access.
+- The optional Discord bot uses signed interactions rather than a permanently connected gateway. Configure it in Module Settings, then use `https://your-host/api/discord/interactions` as the Discord application's Interactions Endpoint URL. A guild ID is optional and makes command registration immediate in one server; omit it for global commands.
+- Deterministic request safety screening is enabled from Module Settings. An optional reputation service can receive request metadata by POST; Rootminster never fetches submitted preview URLs itself.
+- Enabling the MCP module exposes the OAuth 2.1-protected endpoint at `https://your-host/mcp`. Add that URL as a custom connector in ChatGPT or Claude; the client will register itself and prompt the Rootminster user to sign in and authorize access.
 - Umami settings enable per-subdomain analytics.
 
 ## MCP access

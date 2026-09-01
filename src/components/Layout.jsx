@@ -14,7 +14,7 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, ChevronDown, CircleHelp,
+  Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp,
   FileCode2, GitPullRequest, Globe2, LayoutDashboard,
   LogOut, Menu, Newspaper, Search, Settings, Shield, Users, Wrench,
   X,
@@ -44,6 +44,7 @@ const adminNav = [
   { to: '/admin-abuse-reports', icon: AlertTriangle, label: 'Abuse Reports' },
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
   { to: '/admin-settings', icon: Settings, label: 'Platform Settings', adminOnly: true },
+  { to: '/admin-modules', icon: Boxes, label: 'Module Settings', adminOnly: true },
 ];
 
 function NavItem({ item, active, onNavigate }) {
@@ -126,7 +127,7 @@ export default function Layout() {
   const [mobileNav, setMobileNav] = useState(false);
   const [showTos, setShowTos] = useState(false);
   const [tosIsUpdate, setTosIsUpdate] = useState(false);
-  const [twoFaVerified, setTwoFaVerified] = useState(() => sessionStorage.getItem('2fa_verified') === '1');
+  const [twoFaVerified, setTwoFaVerified] = useState(false);
   const [twoFaPending, setTwoFaPending] = useState(false);
 
   const isAdmin = user?.role === 'admin';
@@ -136,12 +137,13 @@ export default function Layout() {
   useEffect(() => {
     rootminster.auth.me().then(async u => {
       setUser(u);
+      setTwoFaVerified(Boolean(u.mfa_verified));
       setAuthChecked(true);
       if (u.tos_accepted_version !== CURRENT_TERMS_VERSION) {
         setTosIsUpdate(Boolean(u.tos_accepted_at));
         setShowTos(true);
       }
-      if (u?.totp_enabled && sessionStorage.getItem('2fa_verified') !== '1') {
+      if (u?.mfa_required && !u?.mfa_verified) {
         const trustedToken = localStorage.getItem('od_trusted_device');
         if (trustedToken) {
           setTwoFaPending(true);
@@ -186,7 +188,7 @@ export default function Layout() {
           <h1 className="text-xl font-semibold text-foreground">2FA Required</h1>
           <p className="mt-2 text-sm text-muted-foreground">Staff and admin accounts must enable two-factor authentication.</p>
         </div>
-        <TwoFactorSetup user={user} onUpdated={() => setUser(u => ({ ...u, totp_enabled: true }))} />
+        <TwoFactorSetup user={user} onUpdated={() => { setUser(u => ({ ...u, totp_enabled: true, mfa_verified: true })); setTwoFaVerified(true); }} />
         <button onClick={() => rootminster.auth.logout()} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">Sign out</button>
       </div>
     </div>

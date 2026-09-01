@@ -1,4 +1,4 @@
-import { config } from '../config.js';
+import { getModuleConfig } from '../module-settings.js';
 
 export const SAFETY_RULESET_VERSION = '2026-08-31.1';
 
@@ -134,16 +134,16 @@ function normaliseProviderResult(data) {
   return { score, signals };
 }
 
-async function checkProvider(request) {
-  if (!config.safety.providerUrl) return { status: 'not_configured', score: 0, signals: [] };
+async function checkProvider(request, safety) {
+  if (!safety.provider_url) return { status: 'not_configured', score: 0, signals: [] };
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), config.safety.providerTimeoutMs);
+  const timer = setTimeout(() => controller.abort(), safety.provider_timeout_ms || 5000);
   try {
-    const response = await fetch(config.safety.providerUrl, {
+    const response = await fetch(safety.provider_url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(config.safety.providerToken ? { Authorization: `Bearer ${config.safety.providerToken}` } : {}),
+        ...(safety.provider_token ? { Authorization: `Bearer ${safety.provider_token}` } : {}),
       },
       body: JSON.stringify({
         request_id: request.id,
@@ -168,15 +168,17 @@ async function checkProvider(request) {
 }
 
 async function screeningContext(platform, request, user) {
-  const [settings, byUser, targetMatches] = await Promise.all([
+  const [settings, byUser, targetMatches, safety] = await Promise.all([
     platform.asServiceRole.entities.PlatformSettings.filter({ key: { $in: ['safety_screening_enabled', 'safety_protected_brands'] } }),
     platform.asServiceRole.entities.SubdomainRequest.filter({ requester_id: request.requester_id }, '-created_date', 500),
     platform.asServiceRole.entities.SubdomainRequest.filter({ record_value: request.record_value }, '-created_date', 500),
+    getModuleConfig('safety'),
   ]);
   const settingMap = Object.fromEntries(settings.map((item) => [item.key, item.value]));
   const distinctTargetAccounts = new Set(targetMatches.map((item) => item.requester_id || item.requester_email).filter(Boolean)).size;
   return {
-    enabled: settingMap.safety_screening_enabled !== 'false' && config.safety.enabled,
+    enabled: settingMap.safety_screening_enabled !== 'false' && safety.enabled,
+    safety,
     protectedBrands: settingMap.safety_protected_brands || '',
     recentRequests: byUser.filter((item) => item.id !== request.id),
     distinctTargetAccounts,
@@ -193,7 +195,7 @@ export async function screenRequest(platform, request, user, trigger = 'submissi
     result = { score: 0, verdict: 'disabled', signals: [], ruleset_version: SAFETY_RULESET_VERSION };
   } else {
     result = assessDeterministic(request, context);
-    provider = await checkProvider(request);
+    provider = await checkProvider(request, context.safety);
     const signals = [...result.signals, ...provider.signals];
     const score = Math.min(result.score + provider.score, 100);
     result = { ...result, score, verdict: score >= 70 ? 'high_risk' : score >= 30 ? 'review' : 'clear', signals };

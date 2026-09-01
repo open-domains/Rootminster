@@ -3,12 +3,17 @@ import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
 import { pool } from './database.js';
 import { invokeInternal } from './function-runner.js';
+import { getModuleConfig } from './module-settings.js';
 import { randomToken, sha256 } from './security.js';
 import { serializeUser, store } from './store.js';
 
 const MCP_RESOURCE = `${config.appUrl}/mcp`;
 const STAFF_ROLES = new Set(['staff', 'admin']);
 const PROTOCOL_VERSIONS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
+
+async function requireMcpModule(_request, reply) {
+  if (!(await getModuleConfig('mcp')).enabled) return reply.code(404).send({ error: 'Not found' });
+}
 
 function oauthError(reply, status, error, description) {
   return reply.code(status).send({ error, error_description: description });
@@ -51,15 +56,15 @@ function validateAuthorizeRequest(query, client) {
   return null;
 }
 
-async function issueTokens({ clientId, userId, resource, scope }) {
+async function issueTokens({ clientId, userId, resource, scope, mfaVerifiedAt = null }) {
   const accessToken = `rmcp_at_${randomToken(32)}`;
   const refreshToken = `rmcp_rt_${randomToken(32)}`;
   await pool.query(
     `INSERT INTO mcp_oauth_tokens(
        client_id, user_id, access_token_hash, refresh_token_hash, resource, scope,
-       access_expires_at, refresh_expires_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, now() + interval '1 hour', now() + interval '30 days')`,
-    [clientId, userId, sha256(accessToken), sha256(refreshToken), resource || MCP_RESOURCE, scope || 'rootminster'],
+       access_expires_at, refresh_expires_at, mfa_verified_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, now() + interval '1 hour', now() + interval '30 days', $7)`,
+    [clientId, userId, sha256(accessToken), sha256(refreshToken), resource || MCP_RESOURCE, scope || 'rootminster', mfaVerifiedAt],
   );
   return {
     access_token: accessToken,
@@ -79,7 +84,8 @@ async function authenticateMcp(request) {
     `SELECT u.* FROM mcp_oauth_tokens t
      JOIN users u ON u.id = t.user_id
      WHERE t.access_token_hash = $1 AND t.access_expires_at > now()
-       AND t.revoked_at IS NULL AND u.status = 'active'`,
+       AND t.revoked_at IS NULL AND u.status = 'active'
+       AND (u.role = 'user' OR t.mfa_verified_at IS NOT NULL)`,
     [sha256(raw)],
   );
   return serializeUser(result.rows[0]);
@@ -219,19 +225,19 @@ async function handleMcp(request, reply) {
 }
 
 export async function registerMcpRoutes(app) {
-  app.get('/.well-known/oauth-protected-resource', async () => ({
+  app.get('/.well-known/oauth-protected-resource', { preHandler: requireMcpModule }, async () => ({
     resource: MCP_RESOURCE,
     authorization_servers: [config.appUrl],
     bearer_methods_supported: ['header'],
     scopes_supported: ['rootminster'],
   }));
-  app.get('/.well-known/oauth-protected-resource/mcp', async () => ({
+  app.get('/.well-known/oauth-protected-resource/mcp', { preHandler: requireMcpModule }, async () => ({
     resource: MCP_RESOURCE,
     authorization_servers: [config.appUrl],
     bearer_methods_supported: ['header'],
     scopes_supported: ['rootminster'],
   }));
-  app.get('/.well-known/oauth-authorization-server', async () => ({
+  app.get('/.well-known/oauth-authorization-server', { preHandler: requireMcpModule }, async () => ({
     issuer: config.appUrl,
     authorization_endpoint: `${config.appUrl}/oauth/authorize`,
     token_endpoint: `${config.appUrl}/oauth/token`,
@@ -243,7 +249,7 @@ export async function registerMcpRoutes(app) {
     scopes_supported: ['rootminster'],
   }));
 
-  app.post('/oauth/register', { config: { rateLimit: { max: 20, timeWindow: '1 hour' } } }, async (request, reply) => {
+  app.post('/oauth/register', { preHandler: requireMcpModule, config: { rateLimit: { max: 20, timeWindow: '1 hour' } } }, async (request, reply) => {
     const redirectUris = request.body?.redirect_uris;
     if (!Array.isArray(redirectUris) || !redirectUris.length || redirectUris.length > 10 || !redirectUris.every(validRedirectUri)) {
       return oauthError(reply, 400, 'invalid_redirect_uri', 'Provide one to ten HTTPS redirect URIs');
@@ -257,7 +263,7 @@ export async function registerMcpRoutes(app) {
     return reply.code(201).send({ client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000), client_name: clientName, redirect_uris: redirectUris, token_endpoint_auth_method: 'none', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] });
   });
 
-  app.get('/oauth/authorize', async (request, reply) => {
+  app.get('/oauth/authorize', { preHandler: requireMcpModule }, async (request, reply) => {
     const query = Object.fromEntries(Object.entries(request.query || {}).map(([key, value]) => [key, String(value)]));
     const client = await getOauthClient(query.client_id);
     const problem = validateAuthorizeRequest(query, client);
@@ -279,7 +285,7 @@ export async function registerMcpRoutes(app) {
     return reply.type('text/html; charset=utf-8').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Authorize Rootminster</title><style>body{font-family:system-ui;background:#111827;color:#f9fafb;display:grid;min-height:100vh;place-items:center;margin:0}.card{max-width:520px;padding:32px;border:1px solid #374151;border-radius:16px;background:#1f2937}button{padding:12px 18px;border:0;border-radius:8px;font-weight:700;cursor:pointer}.allow{background:#7c3aed;color:white}.deny{background:#374151;color:white}form{display:flex;gap:12px}</style></head><body><main class="card"><h1>Connect ${escapeHtml(client.client_name)}</h1><p>This connection uses your Rootminster account as <strong>${escapeHtml(user.email)}</strong>. It can read your account data. Staff and admins can also review, approve, and reject subdomain requests according to their current Rootminster role.</p><form method="post" action="/oauth/authorize">${fields}<button class="allow" name="decision" value="allow">Authorize</button><button class="deny" name="decision" value="deny">Cancel</button></form></main></body></html>`);
   });
 
-  app.post('/oauth/authorize', async (request, reply) => {
+  app.post('/oauth/authorize', { preHandler: requireMcpModule }, async (request, reply) => {
     const user = await authenticateRequest(request);
     if (!user) return reply.code(401).type('text/plain').send('Sign in before authorizing this connection');
     const consentToken = String(request.body?.consent_token || '');
@@ -297,14 +303,14 @@ export async function registerMcpRoutes(app) {
     if (String(request.body?.decision || '') !== 'allow') return reply.redirect(redirectWithParams(body.redirect_uri, { error: 'access_denied', state: body.state }));
     const code = `rmcp_code_${randomToken(32)}`;
     await pool.query(
-      `INSERT INTO mcp_oauth_codes(code_hash, client_id, user_id, redirect_uri, code_challenge, resource, scope, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '10 minutes')`,
+      `INSERT INTO mcp_oauth_codes(code_hash, client_id, user_id, redirect_uri, code_challenge, resource, scope, expires_at, mfa_verified_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '10 minutes', now())`,
       [sha256(code), body.client_id, user.id, body.redirect_uri, body.code_challenge, body.resource || MCP_RESOURCE, body.scope || 'rootminster'],
     );
     return reply.redirect(redirectWithParams(body.redirect_uri, { code, state: body.state }));
   });
 
-  app.post('/oauth/token', { config: { rateLimit: { max: 60, timeWindow: '15 minutes' } } }, async (request, reply) => {
+  app.post('/oauth/token', { preHandler: requireMcpModule, config: { rateLimit: { max: 60, timeWindow: '15 minutes' } } }, async (request, reply) => {
     reply.header('Cache-Control', 'no-store');
     reply.header('Pragma', 'no-cache');
     const body = request.body || {};
@@ -318,7 +324,7 @@ export async function registerMcpRoutes(app) {
       if (!saved) return oauthError(reply, 400, 'invalid_grant', 'Invalid or expired authorization code');
       const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
       if (!verifier || challenge !== saved.code_challenge) return oauthError(reply, 400, 'invalid_grant', 'PKCE verification failed');
-      return issueTokens({ clientId: saved.client_id, userId: saved.user_id, resource: saved.resource, scope: saved.scope });
+      return issueTokens({ clientId: saved.client_id, userId: saved.user_id, resource: saved.resource, scope: saved.scope, mfaVerifiedAt: saved.mfa_verified_at });
     }
     if (body.grant_type === 'refresh_token') {
       const result = await pool.query(
@@ -327,11 +333,11 @@ export async function registerMcpRoutes(app) {
       );
       const saved = result.rows[0];
       if (!saved) return oauthError(reply, 400, 'invalid_grant', 'Invalid or expired refresh token');
-      return issueTokens({ clientId: saved.client_id, userId: saved.user_id, resource: saved.resource, scope: saved.scope });
+      return issueTokens({ clientId: saved.client_id, userId: saved.user_id, resource: saved.resource, scope: saved.scope, mfaVerifiedAt: saved.mfa_verified_at });
     }
     return oauthError(reply, 400, 'unsupported_grant_type', 'Use authorization_code or refresh_token');
   });
 
-  app.post('/mcp', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, handleMcp);
-  app.get('/mcp', async (_request, reply) => reply.code(405).send({ error: 'Use POST for MCP requests' }));
+  app.post('/mcp', { preHandler: requireMcpModule, config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, handleMcp);
+  app.get('/mcp', { preHandler: requireMcpModule }, async (_request, reply) => reply.code(405).send({ error: 'Use POST for MCP requests' }));
 }

@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { config } from '../config.js';
+import { getModuleConfig } from '../module-settings.js';
 import Stripe from 'stripe';
 const NS_UNLOCK_THRESHOLD_PENCE = 200; // £2.00
 async function sendDiscordNotification(platform, eventType, title, description, fields) {
@@ -26,17 +26,18 @@ async function sendDiscordNotification(platform, eventType, title, description, 
     catch (_) { }
 }
 export default async function (req) {
-    if (!config.donationsEnabled)
+    const donations = await getModuleConfig('donations');
+    if (!donations.enabled)
         return Response.json({ error: 'Donations are disabled' }, { status: 404 });
-    if (!config.stripeSecret || !config.stripeWebhookSecret)
+    if (!donations.secret_key || !donations.webhook_secret)
         return Response.json({ error: 'Stripe webhook is not configured' }, { status: 503 });
-    const stripe = new Stripe(config.stripeSecret, { apiVersion: '2024-06-20' });
+    const stripe = new Stripe(donations.secret_key, { apiVersion: '2024-06-20' });
     const platform = createPlatformClientFromRequest(req);
     const signature = req.headers.get('stripe-signature');
     const body = await req.text();
     let event;
     try {
-        event = await stripe.webhooks.constructEventAsync(body, signature, config.stripeWebhookSecret);
+        event = await stripe.webhooks.constructEventAsync(body, signature, donations.webhook_secret);
     }
     catch (err) {
         return Response.json({ error: `Webhook error: ${err.message}` }, { status: 400 });

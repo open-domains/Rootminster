@@ -16,17 +16,33 @@ import { registerMcpRoutes } from './mcp.js';
 import { registerSetupRoutes } from './setup.js';
 import { registerDiscordRoutes } from './discord.js';
 import { registerPublicApiRoutes } from './public-api.js';
+import { getModuleConfig, registerModuleSettingsRoutes } from './module-settings.js';
 
 assertProductionConfiguration();
 
 const app = Fastify({
   logger: { level: process.env.LOG_LEVEL || 'info' },
-  trustProxy: true,
+  trustProxy: config.trustProxy,
   bodyLimit: 1_048_576,
 });
 
 await app.register(cookie);
-await app.register(helmet, { contentSecurityPolicy: false });
+await app.register(helmet, {
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://media.rootminster.com', 'https://flagcdn.com'],
+      connectSrc: ["'self'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      objectSrc: ["'none'"],
+    },
+  },
+});
 await app.register(rateLimit, {
   max: 300,
   timeWindow: '1 minute',
@@ -68,25 +84,25 @@ app.get('/api/health', async (_request, reply) => {
   }
 });
 
-app.get('/api/config', async () => ({
-  features: {
-    donations: config.donationsEnabled,
-    nsRequiresDonation: config.donationsEnabled,
-  },
-  oauth: {
-    google: Boolean(config.googleClientId && config.googleClientSecret),
-    github: Boolean(config.githubClientId && config.githubClientSecret),
-  },
-  discordBot: Boolean(config.discordBot.enabled && config.discordBot.applicationId && config.discordBot.publicKey && config.discordBot.token),
-}));
+app.get('/api/config', async () => {
+  const [donations, google, github, discord] = await Promise.all([
+    getModuleConfig('donations'), getModuleConfig('google_oauth'), getModuleConfig('github_oauth'), getModuleConfig('discord'),
+  ]);
+  return {
+    features: { donations: donations.enabled, nsRequiresDonation: donations.enabled },
+    oauth: { google: Boolean(google.enabled && google.client_id && google.client_secret), github: Boolean(github.enabled && github.client_id && github.client_secret) },
+    discordBot: Boolean(discord.enabled && discord.application_id && discord.public_key && discord.bot_token),
+  };
+});
 
 await registerAuthRoutes(app);
 await registerSetupRoutes(app);
 await registerDiscordRoutes(app);
 await registerPublicApiRoutes(app);
+await registerModuleSettingsRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
-if (config.mcpEnabled) await registerMcpRoutes(app);
+await registerMcpRoutes(app);
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, '..', 'dist');

@@ -4,9 +4,9 @@
  * Runs on a schedule; no user auth required.
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { config } from '../config.js';
+import { getModuleConfig } from '../module-settings.js';
 export default async function (req) {
-    if (!config.donationsEnabled)
+    if (!(await getModuleConfig('donations')).enabled)
         return Response.json({ skipped: true, message: 'Donations are disabled.' });
     const platform = createPlatformClientFromRequest(req);
     const cutoff = Date.now() - 48 * 60 * 60 * 1000; // 48 hours ago

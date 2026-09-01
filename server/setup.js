@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { createSession, publicUser } from './auth.js';
 import { config } from './config.js';
 import { pool, transaction } from './database.js';
+import { getModuleConfig } from './module-settings.js';
 import { hashPassword } from './security.js';
 import { serializeUser } from './store.js';
 
@@ -26,19 +27,20 @@ export function validateSetupInput(body = {}) {
 
 async function setupStatus() {
   const result = await pool.query('SELECT EXISTS(SELECT 1 FROM users) AS installed');
+  const modules = Object.fromEntries(await Promise.all(['email', 'cloudflare', 'turnstile', 'google_oauth', 'github_oauth', 'discord', 'mcp', 'donations'].map(async (id) => [id, await getModuleConfig(id)])));
   return {
     required: !result.rows[0].installed,
     setup_key_configured: Boolean(config.initialSetupKey),
     app_url: config.appUrl,
     integrations: {
-      smtp: Boolean(config.smtp.host),
-      cloudflare: Boolean(config.cloudflareToken),
-      turnstile: Boolean(config.turnstileSiteKey && config.turnstileSecret),
-      google_oauth: Boolean(config.googleClientId && config.googleClientSecret),
-      github_oauth: Boolean(config.githubClientId && config.githubClientSecret),
-      discord_bot: Boolean(config.discordBot.enabled && config.discordBot.applicationId && config.discordBot.publicKey && config.discordBot.token),
-      mcp: config.mcpEnabled,
-      donations: config.donationsEnabled,
+      smtp: modules.email.enabled,
+      cloudflare: modules.cloudflare.enabled,
+      turnstile: modules.turnstile.enabled,
+      google_oauth: modules.google_oauth.enabled,
+      github_oauth: modules.github_oauth.enabled,
+      discord_bot: modules.discord.enabled,
+      mcp: modules.mcp.enabled,
+      donations: modules.donations.enabled,
     },
   };
 }

@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { config } from '../config.js';
+import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { screenRequest } from '../lib/safety-screening.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
@@ -98,6 +98,7 @@ async function sendDiscord(platform, fields, title, color) {
     catch (_) { }
 }
 export default async function (req) {
+    const [turnstile, donations] = await Promise.all([getModuleConfig('turnstile'), getModuleConfig('donations')]);
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
     if (!user)
@@ -138,14 +139,14 @@ export default async function (req) {
         return Response.json({ error: 'A preview link is required' }, { status: 400 });
     }
     // Turnstile — verified ONCE for the whole batch (tokens are single-use)
-    if (config.turnstileSecret && !trustedClient && !recaptcha_token) {
+    if (turnstile.enabled && turnstile.secret_key && !trustedClient && !recaptcha_token) {
         return Response.json({ error: 'Please complete the CAPTCHA' }, { status: 400 });
     }
-    if (config.turnstileSecret && !trustedClient) {
+    if (turnstile.enabled && turnstile.secret_key && !trustedClient) {
         const turnstileRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ secret: config.turnstileSecret, response: recaptcha_token })
+            body: new URLSearchParams({ secret: turnstile.secret_key, response: recaptcha_token })
         });
         const turnstileData = await turnstileRes.json();
         if (!turnstileData.success) {
@@ -157,7 +158,7 @@ export default async function (req) {
         return Response.json({ error: 'Invalid subdomain format' }, { status: 400 });
     }
     // NS records require donation unlock (if any record in the batch is NS)
-    if (config.donationsEnabled && recordList.some(r => r.record_type === 'NS')) {
+    if (donations.enabled && recordList.some(r => r.record_type === 'NS')) {
         const userRecord = await platform.asServiceRole.entities.User.filter({ email: user.email });
         if (!userRecord?.[0]?.ns_unlocked) {
             return Response.json({ error: 'NS records require a £2+ donation to unlock. See Settings.' }, { status: 403 });
