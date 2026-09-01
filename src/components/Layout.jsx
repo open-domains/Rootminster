@@ -9,6 +9,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { CURRENT_TERMS_VERSION } from '@/lib/terms';
 import { cn } from '@/lib/utils';
+import { usePublicConfig } from '@/lib/public-config';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
@@ -19,8 +20,6 @@ import {
   LogOut, Menu, Newspaper, Search, Settings, Shield, Users, Wrench,
   X,
 } from 'lucide-react';
-
-const BRAND_ICON = 'https://media.rootminster.com/images/public/69b6e91dbe1cdaa155ba939d/4f138f748_icon.png';
 
 const userNav = [
   { to: '/user-dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -68,6 +67,8 @@ function NavItem({ item, active, onNavigate }) {
 }
 
 function ProductSidebar({ user, mobile, onClose }) {
+  const { config } = usePublicConfig();
+  const branding = config.branding;
   const location = useLocation();
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -82,8 +83,8 @@ function ProductSidebar({ user, mobile, onClose }) {
     )}>
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
         <Link to="/user-dashboard" onClick={onClose} className="flex min-w-0 items-center gap-2.5">
-          <img src={BRAND_ICON} alt="OpenDomains" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
-          <span className="truncate text-sm font-semibold tracking-tight text-foreground">OpenDomains</span>
+          <img src={branding.logo_url} alt={branding.platform_name} className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
+          <span className="truncate text-sm font-semibold tracking-tight text-foreground">{branding.short_name}</span>
         </Link>
         {mobile && (
           <button onClick={onClose} className="ml-auto flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted" aria-label="Close navigation"><X size={17} /></button>

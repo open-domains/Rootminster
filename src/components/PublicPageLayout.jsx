@@ -4,16 +4,19 @@ import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
+import { usePublicConfig } from '@/lib/public-config';
 
 export function PublicNav() {
+  const { config } = usePublicConfig();
+  const branding = config.branding;
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
         <Link to="/" className="flex items-center gap-2">
-          <img src="https://media.rootminster.com/images/public/69b6e91dbe1cdaa155ba939d/4f138f748_icon.png" alt="Open Domains" className="w-8 h-8 rounded-md object-contain bg-white p-0.5" />
-          <span className="hidden min-[360px]:inline font-semibold text-foreground tracking-tight">Open Domains</span>
+          <img src={branding.logo_url} alt={branding.platform_name} className="w-8 h-8 rounded-md object-contain bg-white p-0.5" />
+          <span className="hidden min-[360px]:inline font-semibold text-foreground tracking-tight">{branding.platform_name}</span>
         </Link>
         <div className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
           <Link to="/how-it-works" className="hover:text-foreground transition-colors">{t('nav.howItWorks')}</Link>
@@ -59,6 +62,8 @@ export function PublicNav() {
 }
 
 export function PublicFooter() {
+  const { config } = usePublicConfig();
+  const branding = config.branding;
   const { t } = useTranslation();
   return (
     <footer className="mt-20 border-t border-border bg-card py-12">
@@ -66,8 +71,8 @@ export function PublicFooter() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-x-5 gap-y-8 sm:gap-8 mb-10">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <img src="https://media.rootminster.com/images/public/69b6e91dbe1cdaa155ba939d/4f138f748_icon.png" alt="Open Domains" className="w-7 h-7 rounded-md object-contain bg-white p-0.5" />
-              <span className="font-semibold text-foreground text-sm">Open Domains</span>
+              <img src={branding.logo_url} alt={branding.platform_name} className="w-7 h-7 rounded-md object-contain bg-white p-0.5" />
+              <span className="font-semibold text-foreground text-sm">{branding.platform_name}</span>
             </div>
             <p className="text-muted-foreground text-xs leading-relaxed">{t('footer.tagline')}</p>
           </div>

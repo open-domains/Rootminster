@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { assessDeterministic, parseProtectedBrands, SAFETY_RULESET_VERSION } from './lib/safety-screening.js';
+import { addPhishingSignals, assessDeterministic, parseProtectedBrands, SAFETY_RULESET_VERSION } from './lib/safety-screening.js';
 
 const establishedUser = { id: 'user-1', created_date: '2025-01-01T00:00:00.000Z' };
 const now = '2026-08-31T12:00:00.000Z';
@@ -54,4 +54,11 @@ test('request history contributes velocity and rejection signals', () => {
 
 test('protected brand configuration is normalised and deduplicated', () => {
   assert.deepEqual(parseProtectedBrands('Cloudflare\nopen-domains,cloudflare\nnot valid!'), ['cloudflare', 'open-domains']);
+});
+
+test('phishing module detects credential bait and protected-brand lookalikes', () => {
+  const signals = addPhishingSignals({ subdomain: 'paypa1', reason: 'Urgent account login verification', preview_link: 'https://example.com/login?redirect=/account' }, { enabled: true, protected_brands: 'paypal', score_weight: 40 });
+  assert.ok(signals.some((item) => item.code === 'phishing_credential_bait'));
+  assert.ok(signals.some((item) => item.code === 'phishing_brand_lookalike'));
+  assert.ok(signals.some((item) => item.code === 'phishing_redirect_parameters'));
 });

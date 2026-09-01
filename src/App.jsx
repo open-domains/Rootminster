@@ -11,6 +11,7 @@ import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import RoleProtectedRoute from '@/components/RoleProtectedRoute';
 import SetupGate from '@/components/SetupGate';
+import BrandRuntime from '@/components/BrandRuntime';
 
 // Auth pages
 import Login from '@/pages/Login';
@@ -213,7 +214,7 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <SetupGate><AuthenticatedApp /></SetupGate>
+          <BrandRuntime><SetupGate><AuthenticatedApp /></SetupGate></BrandRuntime>
         </Router>
         <Toaster />
         <SonnerToaster theme="dark" position="top-right" richColors />

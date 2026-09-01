@@ -5,6 +5,7 @@ import { sendEmail } from './mail.js';
 import { hashPassword, randomToken, sha256, verifyPassword } from './security.js';
 import { serializeUser } from './store.js';
 import { getModuleConfig } from './module-settings.js';
+import { disposableEmailResult } from './lib/disposable-email.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -100,6 +101,8 @@ function safeReturnTo(value) {
 
 async function upsertOauthUser(email, name) {
   const normalizedEmail = String(email).trim().toLowerCase();
+  const disposable = disposableEmailResult(normalizedEmail, await getModuleConfig('disposable_email'));
+  if (disposable.disposable) throw Object.assign(new Error('Temporary email addresses are not accepted'), { status: 400 });
   const existing = await pool.query('SELECT status FROM users WHERE email = $1', [normalizedEmail]);
   if (existing.rows[0]?.status === 'disabled') {
     throw Object.assign(new Error('This account is disabled'), { status: 403 });
@@ -128,6 +131,8 @@ export async function registerAuthRoutes(app) {
     const password = String(request.body?.password || '');
     if (!firstName || firstName.length > 80) return reply.code(400).send({ error: 'Enter your first name (80 characters or fewer)' });
     if (!emailPattern.test(email)) return reply.code(400).send({ error: 'Enter a valid email address' });
+    const disposable = disposableEmailResult(email, await getModuleConfig('disposable_email'));
+    if (disposable.disposable) return reply.code(400).send({ error: 'Temporary email addresses are not accepted' });
     if (password.length < 10) return reply.code(400).send({ error: 'Password must be at least 10 characters' });
     const existing = await pool.query('SELECT id, status FROM users WHERE email = $1', [email]);
     if (existing.rowCount) return reply.code(409).send({ error: 'An account with this email already exists' });

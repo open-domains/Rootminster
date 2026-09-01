@@ -14,6 +14,30 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: true, registry_url: process.env.MODULE_REGISTRY_URL || 'https://raw.githubusercontent.com/open-domains/Rootminster-modules/main/registry.json' }),
   },
+  disposable_email: {
+    name: 'Disposable Email Detection', description: 'Block registrations from known temporary email services and administrator-supplied domains.', defaultEnabled: false,
+    fields: [{ key: 'additional_domains', label: 'Additional blocked domains (comma separated)', type: 'text' }],
+    env: () => ({ enabled: false, additional_domains: '' }),
+  },
+  phishing: {
+    name: 'Phishing Detector', description: 'Add credential-bait, impersonation and suspicious-link signals to request safety screening.', defaultEnabled: false,
+    fields: [
+      { key: 'protected_brands', label: 'Protected brands (comma separated)', type: 'text' },
+      { key: 'score_weight', label: 'Maximum phishing score', type: 'number' },
+    ],
+    env: () => ({ enabled: false, protected_brands: '', score_weight: 40 }),
+  },
+  branding: {
+    name: 'Branding Manager', description: 'Customize the platform name, logo, accent color and support link.', defaultEnabled: false,
+    fields: [
+      { key: 'platform_name', label: 'Platform name', type: 'text', required: true },
+      { key: 'short_name', label: 'Short name', type: 'text', required: true },
+      { key: 'logo_url', label: 'Logo URL', type: 'url', required: true },
+      { key: 'primary_color', label: 'Primary color (hex)', type: 'text', required: true },
+      { key: 'support_url', label: 'Support URL', type: 'url' },
+    ],
+    env: () => ({ enabled: false, platform_name: 'Open Domains', short_name: 'OpenDomains', logo_url: '/open-domains-icon.png', primary_color: '#2563eb', support_url: '/contact' }),
+  },
   cloudflare: {
     name: 'Cloudflare DNS', description: 'Cloudflare zones, DNS records and synchronisation.', defaultEnabled: true,
     fields: [

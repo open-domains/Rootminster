@@ -7,10 +7,11 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ThemeToggle';
-
-const BRAND_ICON = '/open-domains-icon.png';
+import { usePublicConfig } from '@/lib/public-config';
 
 function MarketingNav() {
+  const { config } = usePublicConfig();
+  const branding = config.branding;
   const [open, setOpen] = useState(false);
   const links = [
     ['Features', '/how-it-works'],
@@ -24,8 +25,8 @@ function MarketingNav() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-5 px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex shrink-0 items-center gap-2.5">
-          <img src={BRAND_ICON} alt="" className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
-          <span className="text-sm font-semibold tracking-tight text-foreground sm:text-base">OpenDomains</span>
+          <img src={branding.logo_url} alt={branding.platform_name} className="h-8 w-8 rounded-md bg-white p-0.5 object-contain" />
+          <span className="text-sm font-semibold tracking-tight text-foreground sm:text-base">{branding.short_name}</span>
         </Link>
 
         <nav className="hidden flex-1 items-center justify-center gap-7 md:flex">
@@ -107,6 +108,8 @@ function ProductPreview() {
 }
 
 export default function Landing() {
+  const { config } = usePublicConfig();
+  const branding = config.branding;
   const [domains, setDomains] = useState([]);
   const [queue, setQueue] = useState(null);
 
@@ -215,7 +218,7 @@ export default function Landing() {
 
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 text-xs text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <div className="flex items-center gap-2"><img src={BRAND_ICON} alt="" className="h-6 w-6 rounded bg-white p-0.5" /><span className="font-medium text-foreground">OpenDomains</span></div>
+          <div className="flex items-center gap-2"><img src={branding.logo_url} alt={branding.platform_name} className="h-6 w-6 rounded bg-white p-0.5" /><span className="font-medium text-foreground">{branding.short_name}</span></div>
           <div className="flex flex-wrap gap-x-5 gap-y-2"><Link to="/about" className="hover:text-foreground">About</Link><Link to="/guides" className="hover:text-foreground">Guides</Link><Link to="/privacy-policy" className="hover:text-foreground">Privacy</Link><Link to="/terms-of-service" className="hover:text-foreground">Terms</Link><Link to="/report-abuse" className="hover:text-foreground">Report abuse</Link></div>
         </div>
       </footer>

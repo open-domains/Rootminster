@@ -84,11 +84,51 @@ function addBrandSignals(request, protectedBrands, signals) {
   }
 }
 
+function editDistance(left, right) {
+  const a = String(left || '');
+  const b = String(right || '');
+  const row = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    let previous = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const current = row[j];
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, previous + (a[i - 1] === b[j - 1] ? 0 : 1));
+      previous = current;
+    }
+  }
+  return row[b.length];
+}
+
+export function addPhishingSignals(request, settings, signals = []) {
+  if (!settings?.enabled) return signals;
+  const maxScore = Math.min(Math.max(Number(settings.score_weight) || 40, 10), 60);
+  const name = String(request.subdomain || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const text = `${request.subdomain || ''} ${request.reason || ''}`.toLowerCase();
+  const credentialMatches = ['login', 'signin', 'password', 'verify', 'account', 'wallet', 'recovery'].filter((term) => text.includes(term));
+  const actionMatches = ['urgent', 'suspended', 'locked', 'confirm', 'security', 'update', 'claim'].filter((term) => text.includes(term));
+  if (credentialMatches.length && actionMatches.length) signals.push(signal('phishing_credential_bait', 'Request combines credential and urgency language', maxScore, 'high', [...credentialMatches, ...actionMatches].join(', ')));
+  for (const brand of parseProtectedBrands(settings.protected_brands)) {
+    const compact = brand.replace(/-/g, '');
+    if (name !== compact && name.length >= 4 && editDistance(name, compact) <= 1) {
+      signals.push(signal('phishing_brand_lookalike', 'Subdomain closely resembles a protected brand', Math.min(maxScore + 10, 60), 'critical', brand));
+      break;
+    }
+  }
+  try {
+    const preview = new URL(String(request.preview_link || ''));
+    const suspiciousParameters = [...preview.searchParams.keys()].filter((key) => /^(redirect|return|continue|login|token|account)$/i.test(key));
+    if (suspiciousParameters.length) signals.push(signal('phishing_redirect_parameters', 'Preview URL contains authentication or redirect parameters', Math.min(maxScore, 30), 'medium', suspiciousParameters.join(', ')));
+  } catch {}
+  return signals;
+}
+
 export function assessDeterministic(request, context = {}) {
   const signals = [];
   addTextSignals(request, signals);
   addPreviewSignals(request, signals);
   addBrandSignals(request, context.protectedBrands, signals);
+  addPhishingSignals(request, context.phishing, signals);
 
   const now = context.now ? new Date(context.now).getTime() : Date.now();
   const accountCreated = parseDate(context.user?.created_date);
@@ -168,17 +208,19 @@ async function checkProvider(request, safety) {
 }
 
 async function screeningContext(platform, request, user) {
-  const [settings, byUser, targetMatches, safety] = await Promise.all([
+  const [settings, byUser, targetMatches, safety, phishing] = await Promise.all([
     platform.asServiceRole.entities.PlatformSettings.filter({ key: { $in: ['safety_screening_enabled', 'safety_protected_brands'] } }),
     platform.asServiceRole.entities.SubdomainRequest.filter({ requester_id: request.requester_id }, '-created_date', 500),
     platform.asServiceRole.entities.SubdomainRequest.filter({ record_value: request.record_value }, '-created_date', 500),
     getModuleConfig('safety'),
+    getModuleConfig('phishing'),
   ]);
   const settingMap = Object.fromEntries(settings.map((item) => [item.key, item.value]));
   const distinctTargetAccounts = new Set(targetMatches.map((item) => item.requester_id || item.requester_email).filter(Boolean)).size;
   return {
     enabled: settingMap.safety_screening_enabled !== 'false' && safety.enabled,
     safety,
+    phishing,
     protectedBrands: settingMap.safety_protected_brands || '',
     recentRequests: byUser.filter((item) => item.id !== request.id),
     distinctTargetAccounts,

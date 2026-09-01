@@ -4,6 +4,7 @@ import { rootminster } from '@/api/rootminsterClient';
 const EMPTY_CONFIG = Object.freeze({
   features: { donations: false, nsRequiresDonation: true },
   oauth: { google: false, github: false },
+  branding: { platform_name: 'Open Domains', short_name: 'OpenDomains', logo_url: '/open-domains-icon.png', primary_color: '#2563eb', support_url: '/contact' },
 });
 
 let cachedConfig = null;
