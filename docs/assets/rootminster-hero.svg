@@ -1,0 +1,93 @@
+<svg width="1400" height="520" viewBox="0 0 1400 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="20" x2="1320" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07111F"/>
+      <stop offset="0.5" stop-color="#0B1D32"/>
+      <stop offset="1" stop-color="#071521"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="315" y1="120" x2="980" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#39D98A"/>
+      <stop offset="1" stop-color="#40B7FF"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1070 160) rotate(130) scale(370 430)">
+      <stop stop-color="#1D8FFF" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#1D8FFF" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M 36 0 L 0 0 0 36" fill="none" stroke="#8BC8FF" stroke-opacity="0.06"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="28" flood-color="#000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+
+  <rect width="1400" height="520" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="520" rx="28" fill="url(#grid)"/>
+  <rect width="1400" height="520" rx="28" fill="url(#glow)"/>
+
+  <g opacity="0.55">
+    <circle cx="125" cy="92" r="3" fill="#40B7FF"/>
+    <circle cx="1210" cy="92" r="3" fill="#39D98A"/>
+    <circle cx="1310" cy="404" r="3" fill="#40B7FF"/>
+    <path d="M104 397 C258 352 294 424 428 374" stroke="#39D98A" stroke-opacity="0.22" stroke-width="2"/>
+  </g>
+
+  <g transform="translate(90 76)">
+    <rect x="0" y="0" width="76" height="76" rx="20" fill="#0E263B" stroke="#2E5774"/>
+    <path d="M22 41C22 30.507 30.507 22 41 22H54V35H41C37.686 35 35 37.686 35 41V54H22V41Z" fill="url(#accent)"/>
+    <path d="M54 35V54H35" stroke="#E9F7FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="90" y="215" fill="#F6FBFF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="74" font-weight="800" letter-spacing="-2.5">Rootminster</text>
+  <text x="92" y="264" fill="#AFC6D9" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="26" font-weight="500">The self-hosted control plane for Open Domains.</text>
+  <text x="92" y="309" fill="#7695AE" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18">DNS · Requests · Users · Security · Automation · Modules · APIs</text>
+
+  <g transform="translate(90 355)">
+    <rect width="154" height="44" rx="12" fill="#10283D" stroke="#244B67"/>
+    <circle cx="22" cy="22" r="6" fill="#39D98A"/>
+    <text x="38" y="28" fill="#D8E8F3" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="600">Self-hosted</text>
+
+    <rect x="170" width="176" height="44" rx="12" fill="#10283D" stroke="#244B67"/>
+    <circle cx="192" cy="22" r="6" fill="#40B7FF"/>
+    <text x="208" y="28" fill="#D8E8F3" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="600">Docker-ready</text>
+
+    <rect x="362" width="196" height="44" rx="12" fill="#10283D" stroke="#244B67"/>
+    <circle cx="384" cy="22" r="6" fill="#B785FF"/>
+    <text x="400" y="28" fill="#D8E8F3" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" font-weight="600">Module-powered</text>
+  </g>
+
+  <g transform="translate(875 78)" filter="url(#shadow)">
+    <rect width="430" height="350" rx="22" fill="#0A1725" stroke="#29465E"/>
+    <rect x="22" y="22" width="386" height="42" rx="12" fill="#0E2234"/>
+    <circle cx="44" cy="43" r="5" fill="#39D98A"/>
+    <text x="60" y="48" fill="#CDE2EF" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="14">rootminster / dns</text>
+
+    <g transform="translate(22 87)">
+      <rect width="386" height="62" rx="13" fill="#0E2234" stroke="#1B3A51"/>
+      <rect x="14" y="14" width="46" height="34" rx="9" fill="#123B36"/>
+      <text x="27" y="36" fill="#62E6AB" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="13" font-weight="700">A</text>
+      <text x="76" y="28" fill="#E7F2F8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700">app.example.tld</text>
+      <text x="76" y="46" fill="#708CA2" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12">203.0.113.42</text>
+      <circle cx="355" cy="31" r="6" fill="#39D98A"/>
+    </g>
+
+    <g transform="translate(22 161)">
+      <rect width="386" height="62" rx="13" fill="#0E2234" stroke="#1B3A51"/>
+      <rect x="14" y="14" width="46" height="34" rx="9" fill="#17324C"/>
+      <text x="21" y="36" fill="#68C4FF" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="13" font-weight="700">AAAA</text>
+      <text x="76" y="28" fill="#E7F2F8" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700">edge.example.tld</text>
+      <text x="76" y="46" fill="#708CA2" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12">2001:db8::42</text>
+      <circle cx="355" cy="31" r="6" fill="#39D98A"/>
+    </g>
+
+    <g transform="translate(22 235)">
+      <rect width="386" height="88" rx="13" fill="#0E2234" stroke="#1B3A51"/>
+      <text x="16" y="28" fill="#8DA8BB" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700">SYSTEM</text>
+      <text x="16" y="51" fill="#D9E9F2" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="600">DNS synchronised successfully</text>
+      <text x="16" y="72" fill="#5F7D94" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11">audit: dns_sync_complete</text>
+      <path d="M332 51L345 64L370 37" stroke="#39D98A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <text x="90" y="474" fill="#46667E" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" letter-spacing="1.5">OPEN-DOMAINS / ROOTMINSTER</text>
+</svg>
