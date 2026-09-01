@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";import { useState, useEffect, useRef } from 'react';
+import QRCode from 'qrcode';
 import { rootminster } from '@/api/rootminsterClient';
 import { toast } from 'sonner';
 
@@ -23,6 +24,8 @@ export default function TwoFactorSetup({ user, onUpdated }) {const { t } = useTr
   // 2FA data
   const [uri, setUri] = useState('');
   const [secret, setSecret] = useState('');
+  const [qrCode, setQrCode] = useState('');
+  const [qrError, setQrError] = useState('');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,6 +35,19 @@ export default function TwoFactorSetup({ user, onUpdated }) {const { t } = useTr
 
   const total = STEPS_ENABLE.length;
   const words = ROTATE_WORDS_ENABLE;
+
+  useEffect(() => {
+    let active = true;
+    if (!uri) {
+      setQrCode('');
+      setQrError('');
+      return () => { active = false; };
+    }
+    QRCode.toDataURL(uri, { errorCorrectionLevel: 'M', margin: 2, width: 256, color: { dark: '#0f172a', light: '#ffffff' } })
+      .then((value) => { if (active) { setQrCode(value); setQrError(''); } })
+      .catch(() => { if (active) { setQrCode(''); setQrError('Could not generate the QR code. Use the setup key below instead.'); } });
+    return () => { active = false; };
+  }, [uri]);
 
   // measure pill width & content height whenever state changes
   useEffect(() => {
@@ -89,8 +105,11 @@ export default function TwoFactorSetup({ user, onUpdated }) {const { t } = useTr
   <div key="scan">
       <h3 className="st2-h">{t("operational.two_factor_setup.scan_with_your_authenticator_57b3ce")}</h3>
       <p className="st2-p mb-3">{t("operational.two_factor_setup.open_google_authenticator_authy_or_1passwo_c77340")}</p>
-      {uri && <p className="text-xs mb-3" style={{ color: 'var(--st2-muted)' }}>For security, Rootminster generates no QR code through an external service. Add an account manually in your authenticator app using this key.</p>}
-      <details open className="text-xs" style={{ color: 'var(--st2-muted)' }}>
+      {qrCode && <div className="mb-4 flex justify-center"><div className="rounded-xl bg-white p-3 shadow-lg"><img src={qrCode} width="224" height="224" alt="Scan this QR code with your authenticator app" className="block h-56 w-56" /></div></div>}
+      {!qrCode && uri && !qrError && <div className="mb-4 flex h-56 items-center justify-center text-sm" style={{ color: 'var(--st2-muted)' }}>Generating QR code…</div>}
+      {qrError && <p className="mb-3 text-xs text-amber-300">{qrError}</p>}
+      <p className="mb-3 text-center text-xs" style={{ color: 'var(--st2-muted)' }}>The QR code is generated locally in your browser. Your setup secret is never sent to another service.</p>
+      <details className="text-xs" style={{ color: 'var(--st2-muted)' }}>
         <summary className="cursor-pointer hover:opacity-80 select-none">Authenticator setup key</summary>
         <code className="mt-2 block font-mono text-sm tracking-wider break-all select-all"
       style={{ background: '#0f172a', color: '#a5b4fc', padding: '10px 12px', borderRadius: 8, display: 'block', marginTop: 8 }}>
