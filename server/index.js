@@ -18,6 +18,7 @@ import { registerDiscordRoutes } from './discord.js';
 import { registerPublicApiRoutes } from './public-api.js';
 import { getModuleConfig, registerModuleSettingsRoutes } from './module-settings.js';
 import { registerModuleStoreRoutes } from './module-store.js';
+import { contentSecurityPolicy } from './csp.js';
 
 assertProductionConfiguration();
 
@@ -30,18 +31,7 @@ const app = Fastify({
 await app.register(cookie);
 await app.register(helmet, {
   contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://media.rootminster.com', 'https://flagcdn.com'],
-      connectSrc: ["'self'"],
-      frameAncestors: ["'none'"],
-      baseUri: ["'self'"],
-      formAction: ["'self'"],
-      objectSrc: ["'none'"],
-    },
+    directives: contentSecurityPolicy,
   },
 });
 await app.register(rateLimit, {
