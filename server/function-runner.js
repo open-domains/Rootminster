@@ -3,6 +3,7 @@ import { config } from './config.js';
 import { sendEmail } from './mail.js';
 import { bindRequestActor } from './lib/platform-client.js';
 import { getModuleConfig } from './module-settings.js';
+import { captureServerMessage } from './glitchtip.js';
 
 const FUNCTION_NAMES = new Set([
   'adminDirectCfOp', 'adminListUsers', 'adminMigrateDomains', 'analyticsManager',
@@ -83,16 +84,17 @@ async function executeHttp(name, request, reply, rawBody) {
   });
   const response = await handler(web);
   if (!(response instanceof Response)) return response;
+  const data = await decodeResponse(response);
   if (response.status >= 500 && config.production) {
     request.log?.error?.({ function: name, status: response.status }, 'Function returned a server error');
+    captureServerMessage(`Function ${name} returned HTTP ${response.status}`, { function: name, requestId: request.id });
     return reply.code(response.status).send({ error: 'Internal server error' });
   }
   reply.code(response.status);
   for (const [key, value] of response.headers.entries()) {
     if (!['content-length', 'content-encoding'].includes(key.toLowerCase())) reply.header(key, value);
   }
-  const type = response.headers.get('content-type') || '';
-  return type.includes('application/json') ? response.json() : response.text();
+  return data;
 }
 
 function cleanContactBody(value) {

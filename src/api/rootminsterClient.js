@@ -130,6 +130,7 @@ export const rootminster = {
     async list() { return request('/api/admin/modules'); },
     async update(id, data) { return request(`/api/admin/modules/${encodeURIComponent(id)}`, { method: 'PUT', body: data }); },
     async importEnvironment() { return request('/api/admin/modules/import-environment', { method: 'POST', body: {} }); },
+    async testGlitchTip() { return request('/api/admin/modules/glitchtip/test', { method: 'POST', body: {} }); },
   },
   functions: {
     async invoke(name, data = {}) {

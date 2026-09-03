@@ -18,6 +18,7 @@ import { registerDiscordRoutes } from './discord.js';
 import { registerPublicApiRoutes } from './public-api.js';
 import { getModuleConfig, registerModuleSettingsRoutes } from './module-settings.js';
 import { contentSecurityPolicy } from './csp.js';
+import { captureServerException, closeServerGlitchTip, configureServerGlitchTip, registerGlitchTipRoutes } from './glitchtip.js';
 
 assertProductionConfiguration();
 
@@ -26,6 +27,12 @@ const app = Fastify({
   trustProxy: config.trustProxy,
   bodyLimit: 1_048_576,
 });
+
+try {
+  await configureServerGlitchTip(await getModuleConfig('glitchtip'));
+} catch (error) {
+  app.log.error({ err: error }, 'GlitchTip monitoring could not start');
+}
 
 await app.register(cookie);
 await app.register(helmet, {
@@ -75,9 +82,9 @@ app.get('/api/health', async (_request, reply) => {
 });
 
 app.get('/api/config', async () => {
-  const [donations, google, github, discord, branding] = await Promise.all([
+  const [donations, google, github, discord, branding, glitchtip] = await Promise.all([
     getModuleConfig('donations'), getModuleConfig('google_oauth'), getModuleConfig('github_oauth'), getModuleConfig('discord'),
-    getModuleConfig('branding'),
+    getModuleConfig('branding'), getModuleConfig('glitchtip'),
   ]);
   const defaultBranding = { platform_name: 'Open Domains', short_name: 'OpenDomains', logo_url: '/open-domains-icon.png', primary_color: '#2563eb', support_url: '/contact' };
   const publicBranding = branding.enabled ? {
@@ -91,6 +98,14 @@ app.get('/api/config', async () => {
     features: { donations: donations.enabled, nsRequiresDonation: donations.enabled },
     oauth: { google: Boolean(google.enabled && google.client_id && google.client_secret), github: Boolean(github.enabled && github.client_id && github.client_secret) },
     discordBot: Boolean(discord.enabled && discord.application_id && discord.public_key && discord.bot_token),
+    glitchtip: glitchtip.enabled && glitchtip.dsn ? {
+      enabled: true,
+      dsn: glitchtip.dsn,
+      environment: glitchtip.environment || (config.production ? 'production' : 'development'),
+      errorSampleRate: Math.max(0, Math.min(Number(glitchtip.error_sample_rate) || 0, 1)),
+      traceSampleRate: Math.max(0, Math.min(Number(glitchtip.trace_sample_rate) || 0, 1)),
+      tunnel: '/api/observability/envelope',
+    } : { enabled: false },
     branding: publicBranding,
   };
 });
@@ -100,6 +115,7 @@ await registerSetupRoutes(app);
 await registerDiscordRoutes(app);
 await registerPublicApiRoutes(app);
 await registerModuleSettingsRoutes(app);
+await registerGlitchTipRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
 await registerMcpRoutes(app);
@@ -136,13 +152,22 @@ if (hasDist) {
 app.setErrorHandler((error, request, reply) => {
   request.log.error(error);
   const status = Number(error.statusCode || error.status || 500);
-  reply.header('Cache-Control', 'no-store').code(status >= 400 && status < 600 ? status : 500).send({
+  const responseStatus = status >= 400 && status < 600 ? status : 500;
+  if (responseStatus >= 500) {
+    captureServerException(error, {
+      method: request.method,
+      route: request.routeOptions?.url || request.url.split('?')[0],
+      requestId: request.id,
+    });
+  }
+  reply.header('Cache-Control', 'no-store').code(responseStatus).send({
     error: status >= 500 && config.production ? 'Internal server error' : error.message,
   });
 });
 
 const shutdown = async () => {
   await app.close();
+  await closeServerGlitchTip();
   await pool.end();
   process.exit(0);
 };

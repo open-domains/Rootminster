@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Boxes, CheckCircle2, Database, Eye, EyeOff, KeyRound, Loader2, Save, ServerCog, TriangleAlert } from 'lucide-react';
+import { Boxes, Bug, CheckCircle2, Database, Eye, EyeOff, KeyRound, Loader2, Save, ServerCog, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ function ModuleCard({ module, onSaved }) {
   const [settings, setSettings] = useState(Object.fromEntries(module.fields.map((field) => [field.key, field.value ?? ''])));
   const [showSecrets, setShowSecrets] = useState({});
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     setEnabled(module.enabled);
@@ -27,6 +28,16 @@ function ModuleCard({ module, onSaved }) {
     } catch (error) {
       toast.error(error?.response?.data?.error || error.message || 'Could not save module');
     } finally { setSaving(false); }
+  };
+
+  const testGlitchTip = async () => {
+    setTesting(true);
+    try {
+      const result = await rootminster.modules.testGlitchTip();
+      toast.success(`Test event sent${result.event_id ? ` (${result.event_id})` : ''}`);
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message || 'Could not send test event');
+    } finally { setTesting(false); }
   };
 
   return (
@@ -58,14 +69,17 @@ function ModuleCard({ module, onSaved }) {
                 <div className="flex h-10 items-center justify-between rounded-md border border-border px-3"><span className="text-xs text-muted-foreground">Enabled</span><Switch checked={settings[field.key] === true || settings[field.key] === 'true'} onCheckedChange={(value) => setSettings((current) => ({ ...current, [field.key]: value }))} /></div>
               ) : (
                 <div className="relative">
-                  <Input type={secret && !showSecrets[field.key] ? 'password' : field.type === 'number' ? 'number' : field.type === 'url' ? 'url' : 'text'} value={settings[field.key]} onChange={(event) => setSettings((current) => ({ ...current, [field.key]: event.target.value }))} placeholder={secret && field.configured ? 'Leave blank to keep the stored secret' : ''} className={secret ? 'pr-10 font-mono text-xs' : ''} />
+                  <Input type={secret && !showSecrets[field.key] ? 'password' : field.type === 'number' ? 'number' : field.type === 'url' ? 'url' : 'text'} min={field.min} max={field.max} step={field.step} value={settings[field.key]} onChange={(event) => setSettings((current) => ({ ...current, [field.key]: event.target.value }))} placeholder={secret && field.configured ? 'Leave blank to keep the stored secret' : ''} className={secret ? 'pr-10 font-mono text-xs' : ''} />
                   {secret && <button type="button" onClick={() => setShowSecrets((current) => ({ ...current, [field.key]: !current[field.key] }))} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label="Show or hide secret">{showSecrets[field.key] ? <EyeOff size={15} /> : <Eye size={15} />}</button>}
                 </div>
               )}
             </div>
           );
         })}
-        <Button onClick={save} disabled={saving} className="w-full gap-2">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save module</Button>
+        <div className={module.id === 'glitchtip' ? 'grid gap-2 sm:grid-cols-2' : ''}>
+          <Button onClick={save} disabled={saving || testing} className="w-full gap-2">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save module</Button>
+          {module.id === 'glitchtip' && <Button type="button" variant="outline" onClick={testGlitchTip} disabled={!enabled || saving || testing} className="w-full gap-2">{testing ? <Loader2 size={14} className="animate-spin" /> : <Bug size={14} />} Send test event</Button>}
+        </div>
       </div>
     </section>
   );

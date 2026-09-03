@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import { captureClientException } from '@/lib/glitchtip';
 
 export default class AppErrorBoundary extends Component {
   state = { failed: false };
@@ -9,6 +10,7 @@ export default class AppErrorBoundary extends Component {
   }
 
   componentDidCatch(error, details) {
+    captureClientException(error, { componentStack: details?.componentStack });
     console.error('Rootminster interface error', error, details);
   }
 

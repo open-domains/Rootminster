@@ -147,6 +147,7 @@ Admin → Module Settings
 
 Rootminster currently exposes modules for:
 
+- GlitchTip error monitoring
 - Cloudflare DNS
 - SMTP email
 - Cloudflare Turnstile

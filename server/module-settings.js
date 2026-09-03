@@ -7,6 +7,16 @@ const cache = new Map();
 const CACHE_MS = 15_000;
 
 export const MODULE_DEFINITIONS = Object.freeze({
+  glitchtip: {
+    name: 'GlitchTip monitoring', description: 'Optional privacy-conscious browser and server error reporting with browser performance traces.', defaultEnabled: false,
+    fields: [
+      { key: 'dsn', label: 'Project DSN (public ingestion key)', type: 'url', required: true },
+      { key: 'environment', label: 'Environment name', type: 'text', required: true },
+      { key: 'error_sample_rate', label: 'Error sample rate', type: 'number', min: 0, max: 1, step: 0.05 },
+      { key: 'trace_sample_rate', label: 'Performance trace sample rate', type: 'number', min: 0, max: 1, step: 0.05 },
+    ],
+    env: () => ({ enabled: false, dsn: '', environment: config.production ? 'production' : 'development', error_sample_rate: 1, trace_sample_rate: 0 }),
+  },
   disposable_email: {
     name: 'Disposable Email Detection', description: 'Block registrations from known temporary email services and administrator-supplied domains.', defaultEnabled: false,
     fields: [{ key: 'additional_domains', label: 'Additional blocked domains (comma separated)', type: 'text' }],
@@ -127,7 +137,11 @@ function secretKeys(definition) {
 
 function normaliseField(field, value) {
   if (field.type === 'boolean') return value === true || value === 'true';
-  if (field.type === 'number') return Math.max(0, Math.min(Number(value) || 0, 10_000_000));
+  if (field.type === 'number') {
+    const minimum = Number.isFinite(field.min) ? field.min : 0;
+    const maximum = Number.isFinite(field.max) ? field.max : 10_000_000;
+    return Math.max(minimum, Math.min(Number(value) || 0, maximum));
+  }
   return String(value ?? '').trim().slice(0, field.type === 'secret' ? 10_000 : 2_000);
 }
 
@@ -177,6 +191,10 @@ export async function saveModule(id, input, actor, { importEnvironment = false }
     const missing = definition.fields.filter((field) => field.required && !output[field.key]).map((field) => field.label);
     if (missing.length) throw Object.assign(new Error(`Configure ${missing.join(', ')} before enabling ${definition.name}`), { status: 400 });
   }
+  if (id === 'glitchtip' && output.enabled) {
+    const { buildEnvelopeEndpoint } = await import('./glitchtip.js');
+    buildEnvelopeEndpoint(output.dsn);
+  }
   const data = { key: `${MODULE_PREFIX}${id}`, value: JSON.stringify(output), description: `${definition.name} module configuration` };
   if (existing?.record) await store.update('PlatformSettings', existing.record.id, data);
   else await store.create('PlatformSettings', data, actor);
@@ -215,6 +233,10 @@ export async function registerModuleSettingsRoutes(app) {
     if (!actor || actor.role !== 'admin') return reply.code(403).send({ error: 'Forbidden' });
     try {
       const runtime = await saveModule(request.params.id, request.body || {}, actor);
+      if (request.params.id === 'glitchtip') {
+        const { configureServerGlitchTip } = await import('./glitchtip.js');
+        await configureServerGlitchTip(runtime);
+      }
       await store.create('AuditLog', { actor_email: actor.email, actor_role: actor.role, action: 'module_configuration_updated', entity_type: 'PlatformSettings', description: `${MODULE_DEFINITIONS[request.params.id].name} module updated; enabled=${runtime.enabled}` }, actor);
       return { module: adminView(request.params.id, MODULE_DEFINITIONS[request.params.id], runtime, true) };
     } catch (error) {
