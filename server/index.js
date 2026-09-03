@@ -132,14 +132,7 @@ if (hasDist) {
   await app.register(fastifyStatic, {
     root: dist,
     wildcard: false,
-    etag: true,
-    setHeaders(response, filePath) {
-      if (filePath.startsWith(join(dist, 'assets'))) {
-        response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      } else if (filePath.endsWith('index.html')) {
-        response.setHeader('Cache-Control', 'no-cache');
-      }
-    },
+    etag: true
   });
   app.setNotFoundHandler((request, reply) => {
     if (/^\/(?:api|functions)(?:[/?]|$)/.test(request.url)) {
