@@ -35,6 +35,8 @@ export default async function (req) {
         return Response.json({ user: safeUser });
     }
     // Default: list users
-    const users = await platform.asServiceRole.entities.User.list();
+    // The store defaults to 1,000 rows. The admin page performs its own search
+    // and pagination, so load the complete supported account set here.
+    const users = await platform.asServiceRole.entities.User.list('-created_date', 10_000, 0);
     return Response.json({ users: users.map(({ totp_secret: _secret, ...user }) => user) });
 }
