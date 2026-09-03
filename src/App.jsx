@@ -1,8 +1,8 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
+import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import PageNotFound from './lib/PageNotFound';
 import { AuthProvider } from '@/lib/AuthContext';
 import { Toaster as SonnerToaster } from 'sonner';
 
@@ -12,94 +12,95 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import RoleProtectedRoute from '@/components/RoleProtectedRoute';
 import SetupGate from '@/components/SetupGate';
 import BrandRuntime from '@/components/BrandRuntime';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
+
+const PageNotFound = lazy(() => import('./lib/PageNotFound'));
 
 // Auth pages
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import VerifyEmail from '@/pages/VerifyEmail';
-import Setup from '@/pages/Setup';
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('@/pages/VerifyEmail'));
+const Setup = lazy(() => import('@/pages/Setup'));
 
 // Public pages (no layout)
-import Landing from '@/pages/Landing';
-import HowItWorks from '@/pages/HowItWorks';
-import FAQ from '@/pages/FAQ';
-import About from '@/pages/About';
-import Contact from '@/pages/Contact';
-import PrivacyPolicy from '@/pages/PrivacyPolicy';
-import TermsOfService from '@/pages/TermsOfService';
-import ReportAbuse from '@/pages/ReportAbuse';
-import RdapLookup from '@/pages/RdapLookup';
-import Activate from '@/pages/Activate';
-import ApiDocs from '@/pages/ApiDocs';
+const Landing = lazy(() => import('@/pages/Landing'));
+const HowItWorks = lazy(() => import('@/pages/HowItWorks'));
+const FAQ = lazy(() => import('@/pages/FAQ'));
+const About = lazy(() => import('@/pages/About'));
+const Contact = lazy(() => import('@/pages/Contact'));
+const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('@/pages/TermsOfService'));
+const ReportAbuse = lazy(() => import('@/pages/ReportAbuse'));
+const RdapLookup = lazy(() => import('@/pages/RdapLookup'));
+const Activate = lazy(() => import('@/pages/Activate'));
+const ApiDocs = lazy(() => import('@/pages/ApiDocs'));
 
 // Guides & Blog
-import GuidesIndex from '@/pages/GuidesIndex';
-import BlogIndex from '@/pages/BlogIndex';
+const GuidesIndex = lazy(() => import('@/pages/GuidesIndex'));
+const BlogIndex = lazy(() => import('@/pages/BlogIndex'));
 // DNS Basics guides
-import WhatIsDns from '@/pages/guides/WhatIsDns';
-import WhatIsNameserver from '@/pages/guides/WhatIsNameserver';
-import DnsPropagation from '@/pages/guides/DnsPropagation';
+const WhatIsDns = lazy(() => import('@/pages/guides/WhatIsDns'));
+const WhatIsNameserver = lazy(() => import('@/pages/guides/WhatIsNameserver'));
+const DnsPropagation = lazy(() => import('@/pages/guides/DnsPropagation'));
 // DNS Record Types guides
-import ARecord from '@/pages/guides/ARecord';
-import AaaaRecord from '@/pages/guides/AaaaRecord';
-import CnameRecord from '@/pages/guides/CnameRecord';
-import MxRecord from '@/pages/guides/MxRecord';
-import TxtRecord from '@/pages/guides/TxtRecord';
-import NsRecord from '@/pages/guides/NsRecord';
-import SrvRecord from '@/pages/guides/SrvRecord';
+const ARecord = lazy(() => import('@/pages/guides/ARecord'));
+const AaaaRecord = lazy(() => import('@/pages/guides/AaaaRecord'));
+const CnameRecord = lazy(() => import('@/pages/guides/CnameRecord'));
+const MxRecord = lazy(() => import('@/pages/guides/MxRecord'));
+const TxtRecord = lazy(() => import('@/pages/guides/TxtRecord'));
+const NsRecord = lazy(() => import('@/pages/guides/NsRecord'));
+const SrvRecord = lazy(() => import('@/pages/guides/SrvRecord'));
 // Domain Management guides
-import PointDomainToServer from '@/pages/guides/PointDomainToServer';
-import ConnectToCloudflare from '@/pages/guides/ConnectToCloudflare';
-import SubdomainsExplained from '@/pages/guides/SubdomainsExplained';
-import WildcardDns from '@/pages/guides/WildcardDns';
+const PointDomainToServer = lazy(() => import('@/pages/guides/PointDomainToServer'));
+const ConnectToCloudflare = lazy(() => import('@/pages/guides/ConnectToCloudflare'));
+const SubdomainsExplained = lazy(() => import('@/pages/guides/SubdomainsExplained'));
+const WildcardDns = lazy(() => import('@/pages/guides/WildcardDns'));
 // Hosting Providers guides
-import CloudflarePages from '@/pages/guides/CloudflarePages';
-import Vercel from '@/pages/guides/Vercel';
-import Netlify from '@/pages/guides/Netlify';
-import GithubPages from '@/pages/guides/GithubPages';
-import VpsNginx from '@/pages/guides/VpsNginx';
+const CloudflarePages = lazy(() => import('@/pages/guides/CloudflarePages'));
+const Vercel = lazy(() => import('@/pages/guides/Vercel'));
+const Netlify = lazy(() => import('@/pages/guides/Netlify'));
+const GithubPages = lazy(() => import('@/pages/guides/GithubPages'));
+const VpsNginx = lazy(() => import('@/pages/guides/VpsNginx'));
 // Troubleshooting guides
-import DnsNotResolving from '@/pages/guides/DnsNotResolving';
-import SslIssues from '@/pages/guides/SslIssues';
-import CloudflareProxyProblems from '@/pages/guides/CloudflareProxyProblems';
-import IncorrectRecords from '@/pages/guides/IncorrectRecords';
+const DnsNotResolving = lazy(() => import('@/pages/guides/DnsNotResolving'));
+const SslIssues = lazy(() => import('@/pages/guides/SslIssues'));
+const CloudflareProxyProblems = lazy(() => import('@/pages/guides/CloudflareProxyProblems'));
+const IncorrectRecords = lazy(() => import('@/pages/guides/IncorrectRecords'));
 // Blog posts
-import SetupWebsiteForFree from '@/pages/blog/SetupWebsiteForFree';
-import BestFreeHosting from '@/pages/blog/BestFreeHosting';
-import CommonDnsMistakes from '@/pages/blog/CommonDnsMistakes';
-import CloudflareProTips from '@/pages/blog/CloudflareProTips';
-import WhatIsSubdomain from '@/pages/blog/WhatIsSubdomain';
-import FreeVsPaidHosting from '@/pages/blog/FreeVsPaidHosting';
-import HowToSecureDomain from '@/pages/blog/HowToSecureDomain';
-import UnderstandingSsl from '@/pages/blog/UnderstandingSsl';
-import BeginnersGuideHosting from '@/pages/blog/BeginnersGuideHosting';
-import TopDomainTools from '@/pages/blog/TopDomainTools';
+const SetupWebsiteForFree = lazy(() => import('@/pages/blog/SetupWebsiteForFree'));
+const BestFreeHosting = lazy(() => import('@/pages/blog/BestFreeHosting'));
+const CommonDnsMistakes = lazy(() => import('@/pages/blog/CommonDnsMistakes'));
+const CloudflareProTips = lazy(() => import('@/pages/blog/CloudflareProTips'));
+const WhatIsSubdomain = lazy(() => import('@/pages/blog/WhatIsSubdomain'));
+const FreeVsPaidHosting = lazy(() => import('@/pages/blog/FreeVsPaidHosting'));
+const HowToSecureDomain = lazy(() => import('@/pages/blog/HowToSecureDomain'));
+const UnderstandingSsl = lazy(() => import('@/pages/blog/UnderstandingSsl'));
+const BeginnersGuideHosting = lazy(() => import('@/pages/blog/BeginnersGuideHosting'));
+const TopDomainTools = lazy(() => import('@/pages/blog/TopDomainTools'));
 
 // User pages
-import UserDashboard from '@/pages/UserDashboard';
-import Dashboard from '@/pages/Dashboard';
-import MySubdomains from '@/pages/MySubdomains.jsx';
-import SubdomainDnsManager from '@/pages/SubdomainDnsManager.jsx';
-import MyRequests from '@/pages/MyRequests';
-import Settings from '@/pages/Settings';
-import Analytics from '@/pages/Analytics';
-import DiscordLink from '@/pages/DiscordLink';
+const UserDashboard = lazy(() => import('@/pages/UserDashboard'));
+const MySubdomains = lazy(() => import('@/pages/MySubdomains.jsx'));
+const SubdomainDnsManager = lazy(() => import('@/pages/SubdomainDnsManager.jsx'));
+const MyRequests = lazy(() => import('@/pages/MyRequests'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const Analytics = lazy(() => import('@/pages/Analytics'));
+const DiscordLink = lazy(() => import('@/pages/DiscordLink'));
 
 // Admin pages
-import AdminDashboard from '@/pages/AdminDashboard';
-import AdminRequests from '@/pages/AdminRequests';
-import AdminSubdomains from '@/pages/AdminSubdomains';
-import AdminDomains from '@/pages/AdminDomains';
-import AdminUsers from '@/pages/AdminUsers';
-import AdminAuditLogs from '@/pages/AdminAuditLogs';
-import AdminEmailLogs from '@/pages/AdminEmailLogs';
-import AdminDonations from '@/pages/AdminDonations';
-import AdminSettings from '@/pages/AdminSettings';
-import AdminAbuseReports from '@/pages/AdminAbuseReports';
-import AdminModules from '@/pages/AdminModules';
-import AdminModuleStore from '@/pages/AdminModuleStore';
+const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
+const AdminRequests = lazy(() => import('@/pages/AdminRequests'));
+const AdminSubdomains = lazy(() => import('@/pages/AdminSubdomains'));
+const AdminDomains = lazy(() => import('@/pages/AdminDomains'));
+const AdminUsers = lazy(() => import('@/pages/AdminUsers'));
+const AdminAuditLogs = lazy(() => import('@/pages/AdminAuditLogs'));
+const AdminEmailLogs = lazy(() => import('@/pages/AdminEmailLogs'));
+const AdminDonations = lazy(() => import('@/pages/AdminDonations'));
+const AdminSettings = lazy(() => import('@/pages/AdminSettings'));
+const AdminAbuseReports = lazy(() => import('@/pages/AdminAbuseReports'));
+const AdminModules = lazy(() => import('@/pages/AdminModules'));
 
 const AuthenticatedApp = () => {
   return (
@@ -199,7 +200,6 @@ const AuthenticatedApp = () => {
           <Route path="/admin-donations" element={<AdminDonations />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
           <Route path="/admin-modules" element={<AdminModules />} />
-          <Route path="/admin-module-store" element={<AdminModuleStore />} />
         </Route>
       </Route>
       </Route>
@@ -214,7 +214,15 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <BrandRuntime><SetupGate><AuthenticatedApp /></SetupGate></BrandRuntime>
+          <AppErrorBoundary>
+            <BrandRuntime>
+              <SetupGate>
+                <Suspense fallback={<div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">Loading Rootminster…</div>}>
+                  <AuthenticatedApp />
+                </Suspense>
+              </SetupGate>
+            </BrandRuntime>
+          </AppErrorBoundary>
         </Router>
         <Toaster />
         <SonnerToaster theme="dark" position="top-right" richColors />

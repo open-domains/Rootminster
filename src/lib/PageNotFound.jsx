@@ -50,11 +50,11 @@ export default function PageNotFound() {
           <p className="text-slate-500 text-xs uppercase tracking-wider mb-4">Popular pages</p>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {[
-              { to: '/HowItWorks', label: 'How It Works' },
-              { to: '/FAQ', label: 'FAQ' },
+              { to: '/how-it-works', label: 'How It Works' },
+              { to: '/faq', label: 'FAQ' },
               { to: '/blog', label: 'Blog' },
               { to: '/api-docs', label: 'API Docs' },
-              { to: '/Contact', label: 'Contact' },
+              { to: '/contact', label: 'Contact' },
             ].map(link => (
               <Link key={link.to} to={link.to} className="text-slate-400 hover:text-indigo-400 text-sm transition-colors flex items-center gap-1">
                 {link.label} <ArrowRight size={11} />

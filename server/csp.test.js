@@ -10,5 +10,5 @@ test('CSP permits required analytics and Turnstile resources without unsafe inli
   assert.ok(contentSecurityPolicy.connectSrc.includes('https://www.google-analytics.com'));
   assert.equal(contentSecurityPolicy.scriptSrc.includes("'unsafe-inline'"), false);
   assert.equal(contentSecurityPolicy.scriptSrcAttr.includes("'unsafe-inline'"), false);
-  assert.equal(CSP_SCRIPT_HASHES.length, 2);
+  assert.equal(CSP_SCRIPT_HASHES.length, 0);
 });

@@ -17,7 +17,6 @@ import { registerSetupRoutes } from './setup.js';
 import { registerDiscordRoutes } from './discord.js';
 import { registerPublicApiRoutes } from './public-api.js';
 import { getModuleConfig, registerModuleSettingsRoutes } from './module-settings.js';
-import { registerModuleStoreRoutes } from './module-store.js';
 import { contentSecurityPolicy } from './csp.js';
 
 assertProductionConfiguration();
@@ -101,7 +100,6 @@ await registerSetupRoutes(app);
 await registerDiscordRoutes(app);
 await registerPublicApiRoutes(app);
 await registerModuleSettingsRoutes(app);
-await registerModuleStoreRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);
 await registerMcpRoutes(app);
@@ -115,17 +113,30 @@ try {
 } catch {}
 
 if (hasDist) {
-  await app.register(fastifyStatic, { root: dist, wildcard: false });
+  await app.register(fastifyStatic, {
+    root: dist,
+    wildcard: false,
+    etag: true,
+    setHeaders(response, filePath) {
+      if (filePath.startsWith(join(dist, 'assets'))) {
+        response.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      } else if (filePath.endsWith('index.html')) {
+        response.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  });
   app.setNotFoundHandler((request, reply) => {
-    if (request.url.startsWith('/api/') || request.url.startsWith('/functions/')) return reply.code(404).send({ error: 'Not found' });
-    return reply.sendFile('index.html');
+    if (/^\/(?:api|functions)(?:[/?]|$)/.test(request.url)) {
+      return reply.header('Cache-Control', 'no-store').code(404).send({ error: 'Not found' });
+    }
+    return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
   });
 }
 
 app.setErrorHandler((error, request, reply) => {
   request.log.error(error);
   const status = Number(error.statusCode || error.status || 500);
-  reply.code(status >= 400 && status < 600 ? status : 500).send({
+  reply.header('Cache-Control', 'no-store').code(status >= 400 && status < 600 ? status : 500).send({
     error: status >= 500 && config.production ? 'Internal server error' : error.message,
   });
 });

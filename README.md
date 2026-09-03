@@ -12,7 +12,7 @@
 
 **Own the platform. Own the data. Own the DNS.**
 
-Rootminster is the self-hosted management platform behind Open Domains. It brings DNS, domain requests, user accounts, staff tooling, security controls, integrations, APIs, background jobs and a curated module system together in one deployable stack.
+Rootminster is the self-hosted management platform behind Open Domains. It brings DNS, domain requests, user accounts, staff tooling, security controls, integrations, APIs and background jobs together in one deployable stack.
 
 </div>
 
@@ -32,7 +32,6 @@ It gives operators one place to manage the full lifecycle of a domain service:
 | 🛡️ | **Safety screening** | Explainable request risk scoring, protected-brand signals, velocity checks and staff overrides. |
 | 🔑 | **Scoped API tokens** | Restrict tokens by permission, hostname, DNS type and expiry. |
 | 📡 | **Dynamic DNS** | Dedicated DDNS endpoints for controlled A and AAAA record updates. |
-| 🧩 | **Module Store** | Install integrity-verified modules from the official curated registry. |
 | ⚙️ | **Background automation** | DNS checks, synchronisation, cleanup and scheduled platform maintenance. |
 | 📊 | **Analytics** | Optional per-subdomain analytics through Umami. |
 | 💬 | **Discord tooling** | Signed slash commands for user and staff workflows. |
@@ -40,26 +39,6 @@ It gives operators one place to manage the full lifecycle of a domain service:
 | 🔍 | **Audit trail** | Keep an operational record of sensitive platform actions. |
 
 Rootminster is deliberately modular. Core platform functions stay lean while optional services can be switched on, configured and replaced from the admin interface.
-
----
-
-## 🧩 A platform that can grow with you
-
-Rootminster includes a built-in **Module Store** backed by a curated GitHub registry.
-
-Modules are not blindly downloaded and executed. The store validates registry metadata, verifies SHA-256 integrity, checks supported permissions, restricts trusted download locations and records installation activity in the audit log.
-
-Installed modules can be:
-
-- enabled or disabled
-- updated
-- quarantined
-- rolled back to a previous version
-- removed cleanly
-
-Module configuration is managed from the admin UI, while sensitive settings are encrypted before being stored in PostgreSQL.
-
-> The default registry is `open-domains/Rootminster-modules`.
 
 ---
 
@@ -168,7 +147,6 @@ Admin → Module Settings
 
 Rootminster currently exposes modules for:
 
-- Module Store
 - Cloudflare DNS
 - SMTP email
 - Cloudflare Turnstile
@@ -264,9 +242,6 @@ Key protections include:
 - Cloudflare Turnstile support
 - audited administrative actions
 - request risk screening
-- trusted module registry restrictions
-- SHA-256 module integrity verification
-- module quarantine and rollback support
 
 ### Request safety screening
 

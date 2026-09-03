@@ -7,13 +7,6 @@ const cache = new Map();
 const CACHE_MS = 15_000;
 
 export const MODULE_DEFINITIONS = Object.freeze({
-  module_store: {
-    name: 'Module Store', description: 'Install integrity-verified modules from the official curated GitHub registry.', defaultEnabled: true,
-    fields: [
-      { key: 'registry_url', label: 'Registry URL', type: 'url', required: true },
-    ],
-    env: () => ({ enabled: true, registry_url: process.env.MODULE_REGISTRY_URL || 'https://raw.githubusercontent.com/open-domains/Rootminster-modules/main/registry.json' }),
-  },
   disposable_email: {
     name: 'Disposable Email Detection', description: 'Block registrations from known temporary email services and administrator-supplied domains.', defaultEnabled: false,
     fields: [{ key: 'additional_domains', label: 'Additional blocked domains (comma separated)', type: 'text' }],

@@ -131,15 +131,6 @@ export const rootminster = {
     async update(id, data) { return request(`/api/admin/modules/${encodeURIComponent(id)}`, { method: 'PUT', body: data }); },
     async importEnvironment() { return request('/api/admin/modules/import-environment', { method: 'POST', body: {} }); },
   },
-  moduleStore: {
-    async list() { return request('/api/admin/module-store'); },
-    async manifest(id) { return request(`/api/admin/module-store/${encodeURIComponent(id)}/manifest`); },
-    async install(id, manifestSha256) { return request(`/api/admin/module-store/${encodeURIComponent(id)}/install`, { method: 'POST', body: { manifest_sha256: manifestSha256 } }); },
-    async setState(id, enabled) { return request(`/api/admin/module-store/${encodeURIComponent(id)}/state`, { method: 'POST', body: { enabled } }); },
-    async quarantine(id, quarantined) { return request(`/api/admin/module-store/${encodeURIComponent(id)}/quarantine`, { method: 'POST', body: { quarantined } }); },
-    async rollback(id) { return request(`/api/admin/module-store/${encodeURIComponent(id)}/rollback`, { method: 'POST', body: {} }); },
-    async remove(id) { return request(`/api/admin/module-store/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
-  },
   functions: {
     async invoke(name, data = {}) {
       const result = await request(`/api/functions/${encodeURIComponent(name)}`, {

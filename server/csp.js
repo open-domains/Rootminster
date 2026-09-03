@@ -1,9 +1,4 @@
-export const CSP_SCRIPT_HASHES = Object.freeze([
-  // Static Google Analytics bootstrap in index.html.
-  "'sha256-wQNcntwe3G83H1+3Fbqkxq7Z0TlIdoWRj9I3fRGFQO4='",
-  // Cloudflare edge bootstrap currently injected after the document body.
-  "'sha256-ogQbUhKdp41/4HBFZpIa6bSUJqoP3Mp3/HQfUwKITPY='",
-]);
+export const CSP_SCRIPT_HASHES = Object.freeze([]);
 
 export const contentSecurityPolicy = Object.freeze({
   defaultSrc: ["'self'"],
