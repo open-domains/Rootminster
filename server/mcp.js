@@ -42,6 +42,17 @@ export function mcpBearerToken(value) {
   return match?.[1] || null;
 }
 
+export function mcpConsentContentSecurityPolicy(redirectUri) {
+  const redirectOrigin = new URL(redirectUri).origin;
+  return [
+    "default-src 'none'",
+    "style-src 'unsafe-inline'",
+    `form-action 'self' ${redirectOrigin}`,
+    "frame-ancestors 'none'",
+    "base-uri 'none'",
+  ].join('; ');
+}
+
 function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -290,6 +301,9 @@ export async function registerMcpRoutes(app) {
     );
     const fields = `<input type="hidden" name="consent_token" value="${escapeHtml(consentToken)}">`;
     reply.header('Cache-Control', 'no-store');
+    // Chromium applies form-action to the redirect after the POST as well as
+    // the form target. Permit only this registered client's validated origin.
+    reply.header('Content-Security-Policy', mcpConsentContentSecurityPolicy(query.redirect_uri));
     return reply.type('text/html; charset=utf-8').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Authorize Rootminster</title><style>body{font-family:system-ui;background:#111827;color:#f9fafb;display:grid;min-height:100vh;place-items:center;margin:0}.card{max-width:520px;padding:32px;border:1px solid #374151;border-radius:16px;background:#1f2937}button{padding:12px 18px;border:0;border-radius:8px;font-weight:700;cursor:pointer}.allow{background:#7c3aed;color:white}.deny{background:#374151;color:white}form{display:flex;gap:12px}</style></head><body><main class="card"><h1>Connect ${escapeHtml(client.client_name)}</h1><p>This connection uses your Rootminster account as <strong>${escapeHtml(user.email)}</strong>. It can read your account data. Staff and admins can also review, approve, and reject subdomain requests according to their current Rootminster role.</p><form method="post" action="/oauth/authorize">${fields}<button class="allow" name="decision" value="allow">Authorize</button><button class="deny" name="decision" value="deny">Cancel</button></form></main></body></html>`);
   });
 

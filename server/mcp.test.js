@@ -1,13 +1,24 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { mcpBearerToken } from './mcp.js';
+import { mcpBearerToken, mcpConsentContentSecurityPolicy } from './mcp.js';
 
 test('MCP bearer authentication accepts case-insensitive schemes', () => {
   assert.equal(mcpBearerToken('Bearer rmcp_at_example'), 'rmcp_at_example');
   assert.equal(mcpBearerToken('bearer rmcp_at_example'), 'rmcp_at_example');
   assert.equal(mcpBearerToken('Basic example'), null);
   assert.equal(mcpBearerToken('Bearer token with spaces'), null);
+});
+
+test('MCP consent CSP permits only the validated callback origin', () => {
+  assert.equal(
+    mcpConsentContentSecurityPolicy('https://chatgpt.com/connector/oauth/callback?state=secret'),
+    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://chatgpt.com; frame-ancestors 'none'; base-uri 'none'",
+  );
+  assert.equal(
+    mcpConsentContentSecurityPolicy('http://localhost:3456/callback'),
+    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' http://localhost:3456; frame-ancestors 'none'; base-uri 'none'",
+  );
 });
 
 test('MCP authorization sends MFA-pending sessions through the dashboard and resumes them', async () => {
