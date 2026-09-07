@@ -5,6 +5,8 @@ import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import R2BackupPanel from '@/components/R2BackupPanel';
 
 function ModuleCard({ module, onSaved }) {
   const [enabled, setEnabled] = useState(module.enabled);
@@ -41,7 +43,7 @@ function ModuleCard({ module, onSaved }) {
   };
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <section className={`overflow-hidden rounded-xl border border-border bg-card shadow-sm ${module.id === 'r2_backup' ? 'md:col-span-2' : ''}`}>
       <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -67,12 +69,15 @@ function ModuleCard({ module, onSaved }) {
               </div>
               {field.type === 'boolean' ? (
                 <div className="flex h-10 items-center justify-between rounded-md border border-border px-3"><span className="text-xs text-muted-foreground">Enabled</span><Switch checked={settings[field.key] === true || settings[field.key] === 'true'} onCheckedChange={(value) => setSettings((current) => ({ ...current, [field.key]: value }))} /></div>
+              ) : field.type === 'select' ? (
+                <Select value={String(settings[field.key])} onValueChange={(value) => setSettings((current) => ({ ...current, [field.key]: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{field.options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
               ) : (
                 <div className="relative">
                   <Input type={secret && !showSecrets[field.key] ? 'password' : field.type === 'number' ? 'number' : field.type === 'url' ? 'url' : 'text'} min={field.min} max={field.max} step={field.step} value={settings[field.key]} onChange={(event) => setSettings((current) => ({ ...current, [field.key]: event.target.value }))} placeholder={secret && field.configured ? 'Leave blank to keep the stored secret' : ''} className={secret ? 'pr-10 font-mono text-xs' : ''} />
                   {secret && <button type="button" onClick={() => setShowSecrets((current) => ({ ...current, [field.key]: !current[field.key] }))} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label="Show or hide secret">{showSecrets[field.key] ? <EyeOff size={15} /> : <Eye size={15} />}</button>}
                 </div>
               )}
+              {field.description && <p className="text-[11px] leading-4 text-muted-foreground">{field.description}</p>}
             </div>
           );
         })}
@@ -80,6 +85,7 @@ function ModuleCard({ module, onSaved }) {
           <Button onClick={save} disabled={saving || testing} className="w-full gap-2">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save module</Button>
           {module.id === 'glitchtip' && <Button type="button" variant="outline" onClick={testGlitchTip} disabled={!enabled || saving || testing} className="w-full gap-2">{testing ? <Loader2 size={14} className="animate-spin" /> : <Bug size={14} />} Send test event</Button>}
         </div>
+        {module.id === 'r2_backup' && <R2BackupPanel moduleEnabled={enabled} />}
       </div>
     </section>
   );

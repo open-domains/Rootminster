@@ -19,6 +19,8 @@ import { registerPublicApiRoutes } from './public-api.js';
 import { getModuleConfig, registerModuleSettingsRoutes } from './module-settings.js';
 import { contentSecurityPolicy } from './csp.js';
 import { captureServerException, closeServerGlitchTip, configureServerGlitchTip, registerGlitchTipRoutes } from './glitchtip.js';
+import { backupRestoreInProgress } from './backup-service.js';
+import { registerBackupRoutes } from './backup-routes.js';
 
 assertProductionConfiguration();
 
@@ -56,6 +58,12 @@ app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string
     done(null, Object.fromEntries(new URLSearchParams(body)));
   } catch (error) {
     done(error);
+  }
+});
+
+app.addHook('onRequest', async (request, reply) => {
+  if (backupRestoreInProgress() && request.url.split('?')[0] !== '/api/health') {
+    return reply.header('Retry-After', '60').code(503).send({ error: 'Rootminster is restoring a database backup' });
   }
 });
 
@@ -115,6 +123,7 @@ await registerSetupRoutes(app);
 await registerDiscordRoutes(app);
 await registerPublicApiRoutes(app);
 await registerModuleSettingsRoutes(app);
+await registerBackupRoutes(app);
 await registerGlitchTipRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);

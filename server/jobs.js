@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { pool, withAdvisoryLock } from './database.js';
 import { invokeInternal } from './function-runner.js';
+import { runScheduledBackup } from './backup-service.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', display_name: 'Rootminster Jobs' };
 
@@ -20,6 +21,14 @@ cron.schedule('30 3 * * 0', () => run('cleanupSuspendedRecords'), { timezone: 'U
 cron.schedule('0 2 */6 * *', () => run('scheduledSync'), { timezone: 'UTC' });
 cron.schedule('0 3 1 */2 *', () => run('verifyDnsRecords'), { timezone: 'UTC' });
 cron.schedule('0 23 * * 0', () => run('weeklyStatsDiscord'), { timezone: 'UTC' });
+cron.schedule('*/15 * * * *', async () => {
+  try {
+    const result = await runScheduledBackup();
+    if (!result?.skipped) console.log('[jobs] scheduled Cloudflare R2 backup completed');
+  } catch (error) {
+    console.error('[jobs] scheduled Cloudflare R2 backup failed', error);
+  }
+}, { timezone: 'UTC' });
 cron.schedule('0 4 * * *', async () => {
   await pool.query('DELETE FROM sessions WHERE expires_at <= now()');
   await pool.query('DELETE FROM email_verifications WHERE expires_at <= now()');

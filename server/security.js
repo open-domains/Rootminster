@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import argon2 from 'argon2';
+import * as OTPAuth from 'otpauth';
 
 export const randomToken = (bytes = 32) => crypto.randomBytes(bytes).toString('base64url');
 export const sha256 = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
@@ -76,4 +77,14 @@ export function decryptTotpSecret(value) {
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'));
   decipher.setAuthTag(Buffer.from(tag, 'base64url'));
   return Buffer.concat([decipher.update(Buffer.from(encrypted, 'base64url')), decipher.final()]).toString('utf8');
+}
+
+export function verifyCurrentTotp(user, code) {
+  const token = String(code || '').replace(/\s/g, '');
+  if (!/^\d{6}$/.test(token) || !user?.totp_enabled || !user?.totp_secret) return false;
+  const totp = new OTPAuth.TOTP({
+    issuer: 'OpenDomains', label: user.email, algorithm: 'SHA1', digits: 6, period: 30,
+    secret: OTPAuth.Secret.fromBase32(decryptTotpSecret(user.totp_secret)),
+  });
+  return totp.validate({ token, window: 1 }) !== null;
 }

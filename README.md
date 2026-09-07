@@ -37,6 +37,7 @@ It gives operators one place to manage the full lifecycle of a domain service:
 | 💬 | **Discord tooling** | Signed slash commands for user and staff workflows. |
 | 💳 | **Donations** | Optional Stripe-backed donations and donation-gated features. |
 | 🔍 | **Audit trail** | Keep an operational record of sensitive platform actions. |
+| 💾 | **Encrypted backups** | Schedule verified PostgreSQL backups to Cloudflare R2 with hard free-tier safety budgets. |
 
 Rootminster is deliberately modular. Core platform functions stay lean while optional services can be switched on, configured and replaced from the admin interface.
 
@@ -147,6 +148,7 @@ Admin → Module Settings
 
 Rootminster currently exposes modules for:
 
+- Cloudflare R2 Backup
 - GlitchTip error monitoring
 - Cloudflare DNS
 - SMTP email
@@ -164,6 +166,20 @@ Secrets stored through Module Settings are encrypted with AES-256-GCM and are ne
 Existing environment-based integration settings can be imported once into the database. After checking the imported configuration, the matching optional environment variables can be removed.
 
 Only bootstrap and runtime values need to remain in the environment, such as database connectivity, application URL, encryption keys and initial setup settings.
+
+### Cloudflare R2 backups
+
+The optional Cloudflare R2 Backup module creates native PostgreSQL archives, encrypts them locally with AES-256-GCM and uploads only the encrypted result. To configure it:
+
+1. Create a dedicated **Standard storage** R2 bucket in the Cloudflare dashboard.
+2. Create an R2 Object Read & Write API token restricted to that bucket.
+3. Enter the account ID, bucket name, access key ID and secret under **Admin → Module Settings → Cloudflare R2 Backup**.
+4. Enable and save the module, then select **Test R2 connection** and **Back up now**.
+5. Keep `BACKUP_ENCRYPTION_KEY` or the existing `MODULE_ENCRYPTION_KEY` outside the server in a password manager. Restores are impossible without the same key.
+
+Rootminster deliberately stays below the R2 Standard free allowance. Its defaults cap backup objects at 9 GB, Class A operations at 900,000 per month and Class B operations at 9,000,000 per month. Older managed archives are removed before an upload would cross the storage or retention limit. The counters cover Rootminster activity only, so the bucket and credentials should be dedicated to this installation.
+
+The production image includes a PostgreSQL 17 client for version-compatible `pg_dump` and `pg_restore` operations. Scheduled backups run from the jobs service. Every restore first creates an additional safety backup, validates the archive, restores it in a single database transaction and revokes active sessions and access grants.
 
 ---
 
