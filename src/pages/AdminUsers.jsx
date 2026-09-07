@@ -3,7 +3,9 @@ import { rootminster } from '@/api/rootminsterClient';
 import DataTable from '@/components/DataTable';
 import UserDetailModal from '@/components/UserDetailModal';
 import { Button } from '@/components/ui/button';
-import { Shield, Ban, Unlock, Heart, GitBranch, KeyRound, AlertTriangle, Users, UserCheck, Crown, Key } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Shield, Ban, Unlock, Heart, GitBranch, KeyRound, AlertTriangle, Users, UserCheck, Crown, Key, Trash2, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -19,13 +21,18 @@ export default function AdminUsers() {
   const [donations, setDonations] = useState([]);
   const [donationsEnabled, setDonationsEnabled] = useState(false);
   const [migrateModalOpen, setMigrateModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirmationText, setConfirmationText] = useState('');
   const [pendingAction, setPendingAction] = useState(null); // { label, description, action }
 
   const load = async () => {
-    const [usRes, recs, publicConfig] = await Promise.all([
+    const [usRes, recs, publicConfig, currentUser] = await Promise.all([
       rootminster.functions.invoke('adminListUsers', {}),
       rootminster.entities.DnsRecord.list(),
       rootminster.config.getPublic(),
+      rootminster.auth.me(),
     ]);
     const enabled = !!publicConfig.features?.donations;
     const dons = enabled
@@ -36,6 +43,8 @@ export default function AdminUsers() {
     setDnsRecords(recs);
     setDonations(dons);
     setDonationsEnabled(enabled);
+    setCurrentUserId(currentUser.id);
+    setSelectedIds(previous => new Set([...previous].filter(id => us.some(user => user.id === id) && id !== currentUser.id)));
     setLoading(false);
   };
 
@@ -44,7 +53,48 @@ export default function AdminUsers() {
   const updateUser = (user_id, data) =>
     rootminster.functions.invoke('adminListUsers', { action: 'update_user', user_id, data });
 
-  const confirm = (label, description, action) => setPendingAction({ label, description, action });
+  const confirm = (label, description, action, destructive = false) => {
+    setConfirmationText('');
+    setPendingAction({ label, description, action, destructive });
+  };
+
+  const toggleSelected = (userId) => {
+    if (userId === currentUserId) return;
+    setSelectedIds(previous => {
+      const next = new Set(previous);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const deleteSelectedUsers = () => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    const selectedEmails = users.filter(user => selectedIds.has(user.id)).map(user => user.email);
+    const accountList = selectedEmails.length <= 5
+      ? selectedEmails.join('\n')
+      : `${selectedEmails.slice(0, 5).join('\n')}\n+ ${selectedEmails.length - 5} more`;
+    confirm(
+      t('adminUsers.deleteAccountsTitle', { count: ids.length }),
+      `${t('adminUsers.deleteAccountsDesc', { count: ids.length })}\n\n${accountList}`,
+      async () => {
+        setDeleting(true);
+        try {
+          const response = await rootminster.functions.invoke('adminListUsers', { action: 'delete_users', user_ids: ids });
+          setSelectedIds(new Set());
+          if (selectedUser && ids.includes(selectedUser.id)) setSelectedUser(null);
+          toast.success(t('adminUsers.deletedAccountsToast', { count: response.data?.users || ids.length }));
+          await load();
+        } catch (error) {
+          toast.error(error?.response?.data?.error || error?.message || t('adminUsers.deleteAccountsFailed'));
+        } finally {
+          setDeleting(false);
+        }
+      },
+      true,
+    );
+  };
 
   const promoteAdmin = async (user) => {
     confirm(t('adminUsers.makeAdmin'), t('adminUsers.makeAdminDesc', { email: user.email }), async () => {
@@ -161,6 +211,14 @@ export default function AdminUsers() {
   const getUserSubdomains = (email) => dnsRecords.filter(r => r.owner_email === email && r.managed);
 
   const columns = [
+    { key: '_selected', label: t('adminUsers.selectColumn'), render: (_, row) => (
+      <Checkbox
+        checked={selectedIds.has(row.id)}
+        disabled={row.id === currentUserId}
+        onCheckedChange={() => toggleSelected(row.id)}
+        aria-label={row.id === currentUserId ? t('adminUsers.cannotSelectOwnAccount') : t('adminUsers.selectAccount', { email: row.email })}
+      />
+    ) },
     { key: 'display_name', label: t('adminUsers.colName'), render: (v, row) => {
       const name = v || row.full_name;
       return (
@@ -247,17 +305,40 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <AlertDialog open={!!pendingAction} onOpenChange={open => !open && setPendingAction(null)}>
+      <AlertDialog open={!!pendingAction} onOpenChange={open => {
+        if (!open) {
+          setPendingAction(null);
+          setConfirmationText('');
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle size={16} className="text-accent" /> {pendingAction?.label}
             </AlertDialogTitle>
-            <AlertDialogDescription>{pendingAction?.description}</AlertDialogDescription>
+            <AlertDialogDescription className="whitespace-pre-line">{pendingAction?.description}</AlertDialogDescription>
+            {pendingAction?.destructive && (
+              <div className="space-y-2 pt-2">
+                <label htmlFor="delete-accounts-confirmation" className="text-sm font-medium text-foreground">
+                  {t('adminUsers.typeDeleteToConfirm')}
+                </label>
+                <Input
+                  id="delete-accounts-confirmation"
+                  value={confirmationText}
+                  onChange={(event) => setConfirmationText(event.target.value)}
+                  autoComplete="off"
+                  placeholder="DELETE"
+                />
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { pendingAction?.action(); setPendingAction(null); }}>{t('adminUsers.confirm')}</AlertDialogAction>
+            <AlertDialogAction
+              className={pendingAction?.destructive ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+              disabled={pendingAction?.destructive && confirmationText !== 'DELETE'}
+              onClick={() => { pendingAction?.action(); setPendingAction(null); setConfirmationText(''); }}
+            >{pendingAction?.destructive ? t('adminUsers.deletePermanently') : t('adminUsers.confirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -268,9 +349,17 @@ export default function AdminUsers() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('adminUsers.title')}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">{t('adminUsers.subtitle')}</p>
         </div>
-        <Button onClick={() => setMigrateModalOpen(true)} className="h-9 gap-2 px-4">
-          <GitBranch size={13} /> {t('adminUsers.migrateBtn')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {selectedIds.size > 0 && (
+            <Button variant="destructive" onClick={deleteSelectedUsers} disabled={deleting} className="h-9 gap-2 px-4">
+              {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              {t('adminUsers.deleteSelected', { count: selectedIds.size })}
+            </Button>
+          )}
+          <Button onClick={() => setMigrateModalOpen(true)} className="h-9 gap-2 px-4">
+            <GitBranch size={13} /> {t('adminUsers.migrateBtn')}
+          </Button>
+        </div>
       </div>
 
       <div className={`grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card ${donationsEnabled ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>

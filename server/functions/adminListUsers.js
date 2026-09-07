@@ -1,5 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { pool } from '../database.js';
+import { deleteUserAccounts } from '../lib/admin-user-deletion.js';
 const ADMIN_USER_FIELDS = new Set(['display_name', 'full_name', 'role', 'status', 'ns_unlocked', 'legacy_donor', 'disable_email_notifications']);
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
@@ -9,6 +10,22 @@ export default async function (req) {
     if (actor.role !== 'admin' && actor.role !== 'staff')
         return Response.json({ error: 'Forbidden' }, { status: 403 });
     const body = req.method === 'POST' ? await req.json() : {};
+    if (body.action === 'delete_users') {
+        if (actor.role !== 'admin')
+            return Response.json({ error: 'Forbidden' }, { status: 403 });
+        try {
+            const result = await deleteUserAccounts(body.user_ids, actor);
+            await platform.asServiceRole.entities.AuditLog.create({
+                actor_email: actor.email, actor_role: actor.role,
+                action: 'users_bulk_deleted', entity_type: 'User',
+                description: `Permanently deleted ${result.users} user account(s) and their associated data`,
+            });
+            return Response.json({ success: true, ...result });
+        }
+        catch (error) {
+            return Response.json({ error: error.message || 'Account deletion failed' }, { status: error.status || 500 });
+        }
+    }
     // Update user action
     if (body.action === 'update_user') {
         if (actor.role !== 'admin')
