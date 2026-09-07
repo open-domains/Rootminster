@@ -117,6 +117,7 @@ function ProductSidebar({ user, mobile, onClose }) {
 }
 
 export default function Layout() {
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -134,6 +135,14 @@ export default function Layout() {
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
   const isPrivileged = isAdmin || isStaff;
+  const requestedReturnTo = new URLSearchParams(location.search).get('return_to');
+  const mcpReturnTo = requestedReturnTo === '/oauth/authorize' || requestedReturnTo?.startsWith('/oauth/authorize?')
+    ? requestedReturnTo
+    : null;
+  const finishMfa = () => {
+    setTwoFaVerified(true);
+    if (mcpReturnTo) window.location.assign(mcpReturnTo);
+  };
 
   useEffect(() => {
     rootminster.auth.me().then(async u => {
@@ -151,7 +160,7 @@ export default function Layout() {
             const res = await rootminster.functions.invoke('twoFactorAuth', { action: 'verify_trusted', device_token: trustedToken });
             if (res.data?.valid) {
               sessionStorage.setItem('2fa_verified', '1');
-              setTwoFaVerified(true);
+              finishMfa();
             } else localStorage.removeItem('od_trusted_device');
           } catch {
             localStorage.removeItem('od_trusted_device');
@@ -189,13 +198,13 @@ export default function Layout() {
           <h1 className="text-xl font-semibold text-foreground">2FA Required</h1>
           <p className="mt-2 text-sm text-muted-foreground">Staff and admin accounts must enable two-factor authentication.</p>
         </div>
-        <TwoFactorSetup user={user} onUpdated={() => { setUser(u => ({ ...u, totp_enabled: true, mfa_verified: true })); setTwoFaVerified(true); }} />
+        <TwoFactorSetup user={user} onUpdated={() => { setUser(u => ({ ...u, totp_enabled: true, mfa_verified: true })); finishMfa(); }} />
         <button onClick={() => rootminster.auth.logout()} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">Sign out</button>
       </div>
     </div>
   );
 
-  if (user?.totp_enabled && !twoFaVerified) return <TwoFactorChallenge onVerified={() => setTwoFaVerified(true)} onLogout={() => { sessionStorage.removeItem('2fa_verified'); rootminster.auth.logout(); }} />;
+  if (user?.totp_enabled && !twoFaVerified) return <TwoFactorChallenge onVerified={finishMfa} onLogout={() => { sessionStorage.removeItem('2fa_verified'); rootminster.auth.logout(); }} />;
 
   if (user?.status === 'disabled') return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background px-6 text-center">
