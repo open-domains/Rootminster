@@ -178,3 +178,41 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   version text PRIMARY KEY,
   applied_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS backup_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  status text NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+  trigger text NOT NULL CHECK (trigger IN ('manual', 'scheduled', 'pre_restore')),
+  provider text NOT NULL DEFAULT 'cloudflare_r2',
+  file_name text NOT NULL,
+  object_key text,
+  size_bytes bigint,
+  checksum_sha256 text,
+  started_at timestamptz NOT NULL DEFAULT now(),
+  completed_at timestamptz,
+  verified_at timestamptz,
+  deleted_at timestamptz,
+  error_message text,
+  created_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  created_by_email citext
+);
+
+ALTER TABLE backup_runs ADD COLUMN IF NOT EXISTS object_key text;
+ALTER TABLE backup_runs ALTER COLUMN provider SET DEFAULT 'cloudflare_r2';
+
+CREATE INDEX IF NOT EXISTS backup_runs_started_idx ON backup_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS backup_runs_status_idx ON backup_runs(status, completed_at DESC);
+
+CREATE TABLE IF NOT EXISTS backup_usage_monthly (
+  month_key text PRIMARY KEY,
+  class_a_operations integer NOT NULL DEFAULT 0 CHECK (class_a_operations >= 0),
+  class_b_operations integer NOT NULL DEFAULT 0 CHECK (class_b_operations >= 0),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- The retired Google Drive integration stored OAuth credentials in module
+-- settings. Remove those credentials and its short-lived authorization state
+-- when upgrading an installation that tested the previous backup provider.
+DELETE FROM entity_records
+WHERE entity_type = 'PlatformSettings' AND data->>'key' = 'module:google_drive_backup';
+DROP TABLE IF EXISTS backup_oauth_states;

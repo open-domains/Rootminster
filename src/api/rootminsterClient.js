@@ -132,6 +132,15 @@ export const rootminster = {
     async importEnvironment() { return request('/api/admin/modules/import-environment', { method: 'POST', body: {} }); },
     async testGlitchTip() { return request('/api/admin/modules/glitchtip/test', { method: 'POST', body: {} }); },
   },
+  backups: {
+    async status() { return request('/api/admin/backups'); },
+    async testR2() { return request('/api/admin/backups/r2/test', { method: 'POST', body: {} }); },
+    async create() { return request('/api/admin/backups', { method: 'POST', body: {} }); },
+    async verify(id) { return request(`/api/admin/backups/${encodeURIComponent(id)}/verify`, { method: 'POST', body: {} }); },
+    async restore(id, confirmation, totpCode) { return request(`/api/admin/backups/${encodeURIComponent(id)}/restore`, { method: 'POST', body: { confirmation, totp_code: totpCode } }); },
+    async delete(id) { return request(`/api/admin/backups/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
+    downloadUrl(id) { return `/api/admin/backups/${encodeURIComponent(id)}/download`; },
+  },
   functions: {
     async invoke(name, data = {}) {
       const result = await request(`/api/functions/${encodeURIComponent(name)}`, {

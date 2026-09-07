@@ -7,6 +7,25 @@ const cache = new Map();
 const CACHE_MS = 15_000;
 
 export const MODULE_DEFINITIONS = Object.freeze({
+  r2_backup: {
+    name: 'Cloudflare R2 Backup', description: 'Encrypted PostgreSQL backups with strict free-tier storage and operation budgets.', defaultEnabled: false,
+    fields: [
+      { key: 'account_id', label: 'Cloudflare account ID', type: 'text', required: true },
+      { key: 'bucket_name', label: 'R2 bucket name', type: 'text', required: true, description: 'Use a Standard storage bucket dedicated to Rootminster backups.' },
+      { key: 'access_key_id', label: 'R2 access key ID', type: 'secret', required: true },
+      { key: 'secret_access_key', label: 'R2 secret access key', type: 'secret', required: true },
+      { key: 'path_prefix', label: 'Object path prefix', type: 'text', required: true },
+      { key: 'frequency', label: 'Automatic backup frequency', type: 'select', options: [{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'manual', label: 'Manual only' }] },
+      { key: 'backup_hour_utc', label: 'Backup hour (UTC)', type: 'number', min: 0, max: 23, step: 1 },
+      { key: 'backup_weekday_utc', label: 'Weekly backup day', type: 'select', options: [{ value: '0', label: 'Sunday' }, { value: '1', label: 'Monday' }, { value: '2', label: 'Tuesday' }, { value: '3', label: 'Wednesday' }, { value: '4', label: 'Thursday' }, { value: '5', label: 'Friday' }, { value: '6', label: 'Saturday' }] },
+      { key: 'retention_count', label: 'Backups to retain', type: 'number', min: 1, max: 365, step: 1 },
+      { key: 'max_storage_gb', label: 'Maximum backup storage (GB)', type: 'number', min: 1, max: 9, step: 0.1, description: 'Hard-capped at 9 GB to retain 10% free-tier headroom.' },
+      { key: 'max_class_a_monthly', label: 'Monthly Class A operation limit', type: 'number', min: 1, max: 900000, step: 1 },
+      { key: 'max_class_b_monthly', label: 'Monthly Class B operation limit', type: 'number', min: 1, max: 9000000, step: 1 },
+      { key: 'notify_on_failure', label: 'Email the platform contact when a backup fails', type: 'boolean' },
+    ],
+    env: () => ({ enabled: false, account_id: '', bucket_name: '', access_key_id: '', secret_access_key: '', path_prefix: 'rootminster', frequency: 'daily', backup_hour_utc: 2, backup_weekday_utc: '0', retention_count: 30, max_storage_gb: 9, max_class_a_monthly: 900000, max_class_b_monthly: 9000000, notify_on_failure: true }),
+  },
   glitchtip: {
     name: 'GlitchTip monitoring', description: 'Optional privacy-conscious browser and server error reporting with browser performance traces.', defaultEnabled: false,
     fields: [
@@ -142,6 +161,10 @@ function normaliseField(field, value) {
     const maximum = Number.isFinite(field.max) ? field.max : 10_000_000;
     return Math.max(minimum, Math.min(Number(value) || 0, maximum));
   }
+  if (field.type === 'select') {
+    const selected = String(value ?? '');
+    return field.options?.some((option) => option.value === selected) ? selected : String(field.options?.[0]?.value || '');
+  }
   return String(value ?? '').trim().slice(0, field.type === 'secret' ? 10_000 : 2_000);
 }
 
@@ -195,6 +218,10 @@ export async function saveModule(id, input, actor, { importEnvironment = false }
     const { buildEnvelopeEndpoint } = await import('./glitchtip.js');
     buildEnvelopeEndpoint(output.dsn);
   }
+  if (id === 'r2_backup' && output.enabled) {
+    const { validateR2Settings } = await import('./backup-service.js');
+    validateR2Settings(output);
+  }
   const data = { key: `${MODULE_PREFIX}${id}`, value: JSON.stringify(output), description: `${definition.name} module configuration` };
   if (existing?.record) await store.update('PlatformSettings', existing.record.id, data);
   else await store.create('PlatformSettings', data, actor);
@@ -207,7 +234,7 @@ function adminView(id, definition, runtime, stored) {
   return {
     id, name: definition.name, description: definition.description, enabled: Boolean(runtime.enabled),
     source: stored ? 'database' : 'environment',
-    fields: definition.fields.map((field) => ({
+    fields: definition.fields.filter((field) => !field.internal).map((field) => ({
       ...field,
       value: secrets.has(field.key) ? '' : runtime[field.key],
       configured: secrets.has(field.key) ? Boolean(runtime[field.key]) : undefined,
