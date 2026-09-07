@@ -9,7 +9,7 @@ import { serializeUser, store } from './store.js';
 
 const MCP_RESOURCE = `${config.appUrl}/mcp`;
 const STAFF_ROLES = new Set(['staff', 'admin']);
-const PROTOCOL_VERSIONS = new Set(['2025-06-18', '2025-03-26', '2024-11-05']);
+const PROTOCOL_VERSIONS = new Set(['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']);
 
 async function requireMcpModule(_request, reply) {
   if (!(await getModuleConfig('mcp')).enabled) return reply.code(404).send({ error: 'Not found' });
@@ -30,10 +30,16 @@ function redirectWithParams(uri, values) {
 function validRedirectUri(value) {
   try {
     const url = new URL(value);
+    if (url.hash || url.username || url.password) return false;
     return url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname));
   } catch {
     return false;
   }
+}
+
+export function mcpBearerToken(value) {
+  const match = /^Bearer\s+(\S+)$/i.exec(String(value || '').trim());
+  return match?.[1] || null;
 }
 
 function escapeHtml(value) {
@@ -77,9 +83,8 @@ async function issueTokens({ clientId, userId, resource, scope, mfaVerifiedAt = 
 }
 
 async function authenticateMcp(request) {
-  const authorization = String(request.headers.authorization || '');
-  if (!authorization.startsWith('Bearer ')) return null;
-  const raw = authorization.slice(7).trim();
+  const raw = mcpBearerToken(request.headers.authorization);
+  if (!raw) return null;
   const result = await pool.query(
     `SELECT u.* FROM mcp_oauth_tokens t
      JOIN users u ON u.id = t.user_id
@@ -198,7 +203,7 @@ async function callTool(name, args, user) {
 async function handleMcp(request, reply) {
   const user = await authenticateMcp(request);
   if (!user) {
-    reply.header('WWW-Authenticate', `Bearer resource_metadata="${config.appUrl}/.well-known/oauth-protected-resource"`);
+    reply.header('WWW-Authenticate', `Bearer resource_metadata="${config.appUrl}/.well-known/oauth-protected-resource/mcp", scope="rootminster"`);
     return reply.code(401).send({ error: 'Unauthorized' });
   }
   const body = request.body || {};
@@ -268,8 +273,11 @@ export async function registerMcpRoutes(app) {
     const client = await getOauthClient(query.client_id);
     const problem = validateAuthorizeRequest(query, client);
     if (problem) return reply.code(400).type('text/plain').send(problem);
-    const user = await authenticateRequest(request);
+    const user = await authenticateRequest(request, { allowMfaPending: true });
     if (!user) return reply.redirect(`/login?return_to=${encodeURIComponent(request.url)}`);
+    if (user.mfa_required && !user.mfa_verified) {
+      return reply.redirect(`/user-dashboard?return_to=${encodeURIComponent(request.url)}`);
+    }
     const consentToken = randomToken(32);
     const requestData = Object.fromEntries(
       ['client_id', 'redirect_uri', 'response_type', 'state', 'code_challenge', 'code_challenge_method', 'resource', 'scope']
