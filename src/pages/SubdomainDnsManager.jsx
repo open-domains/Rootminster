@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { rootminster } from '@/api/rootminsterClient';
@@ -8,12 +8,14 @@ import DnsToolbar from '@/components/dns/DnsToolbar';
 import DnsRecordRow from '@/components/dns/DnsRecordRow';
 import DnsAddRow from '@/components/dns/DnsAddRow';
 import DnsTemplateDialog from '@/components/dns/DnsTemplateDialog';
+import DnsImportDialog from '@/components/dns/DnsImportDialog';
 import {
   ArrowLeft, Plus, Download, Upload, Check, Trash2, Globe, ChevronDown, Cloud, Sparkles, ShieldCheck, BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PROXYABLE_TYPES, BASE_RECORD_TYPES, TTL_OPTIONS } from '@/components/dns/dnsConfig';
 import { usePublicConfig } from '@/lib/public-config';
+import { createDnsBackup, parseDnsBackup } from '@/lib/dns-transfer';
 
 // Derive the top-level subdomain root a record belongs to.
 function subRootOf(r) {
@@ -52,6 +54,11 @@ export default function SubdomainDnsManager() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateApplying, setTemplateApplying] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRecords, setImportRecords] = useState([]);
+  const [importFileName, setImportFileName] = useState('');
+  const [importApplying, setImportApplying] = useState(false);
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     if (!subdomainName) navigate('/my-subdomains');
@@ -149,7 +156,7 @@ export default function SubdomainDnsManager() {
   };
 
   // Add root and arbitrarily nested records through the same direct mutation path.
-  const createRecord = async ({ isRoot, label, full, record_type, record_value, proxied, ttl }) => {
+  const createRecord = async ({ isRoot, label, full, record_type, record_value, proxied, ttl, priority, cname_flatten }) => {
     const name = isRoot ? subdomainName : (full || `${label}.${subdomainName}`);
     await mutateDns({
       action: 'create',
@@ -158,6 +165,8 @@ export default function SubdomainDnsManager() {
       content: record_value.trim(),
       ttl,
       proxied,
+      ...(priority !== undefined ? { priority } : {}),
+      ...(cname_flatten !== undefined ? { cname_flatten } : {}),
     });
   };
 
@@ -202,6 +211,55 @@ export default function SubdomainDnsManager() {
       await load();
     } finally {
       setTemplateApplying(false);
+    }
+  };
+
+  const handleExport = () => {
+    const backup = createDnsBackup(subdomainName, records);
+    const blob = new Blob([`${JSON.stringify(backup, null, 2)}\n`], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${subdomainName.replace(/[^a-z0-9.-]/gi, '_')}-dns-backup.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    toast.success(`Exported ${backup.records.length} DNS record${backup.records.length === 1 ? '' : 's'}`);
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      if (file.size > 256 * 1024) throw new Error('DNS backup files must be 256 KB or smaller');
+      const backup = parseDnsBackup(await file.text(), subdomainName);
+      setImportRecords(backup.records);
+      setImportFileName(file.name);
+      setImportOpen(true);
+    } catch (error) {
+      toast.error(error.message || 'Could not read this DNS backup');
+    }
+  };
+
+  const handleImportApply = async (recordsToImport) => {
+    setImportApplying(true);
+    let applied = 0;
+    try {
+      for (const record of recordsToImport) {
+        await createRecord(record);
+        applied += 1;
+      }
+      toast.success(`Imported ${applied} DNS record${applied === 1 ? '' : 's'}`);
+      setImportOpen(false);
+      setImportRecords([]);
+      await load();
+    } catch (error) {
+      toast.error(`${applied ? `${applied} imported before the error. ` : ''}${error?.response?.data?.error || error?.message || 'DNS import failed'}`);
+      await load();
+    } finally {
+      setImportApplying(false);
     }
   };
 
@@ -346,10 +404,11 @@ export default function SubdomainDnsManager() {
             <Sparkles size={14} /> {t('dnsManager.templates')}
           </Button>
 
-          <Button onClick={() => toast.info(t('dnsManager.importToast'))} variant="outline" className="h-9 w-full gap-2 sm:w-auto">
+          <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
+          <Button onClick={() => importInputRef.current?.click()} variant="outline" className="h-9 w-full gap-2 sm:w-auto">
             <Upload size={14} /> {t('dnsManager.import')}
           </Button>
-          <Button onClick={() => toast.info(t('dnsManager.exportToast'))} variant="outline" className="h-9 w-full gap-2 sm:w-auto">
+          <Button onClick={handleExport} variant="outline" className="h-9 w-full gap-2 sm:w-auto">
             <Download size={14} /> {t('dnsManager.export')}
           </Button>
           <Button onClick={() => navigate(`/analytics?subdomain=${encodeURIComponent(subdomainName)}`)} variant="outline" className="h-9 w-full gap-2 min-[420px]:col-span-3 sm:w-auto">
@@ -364,6 +423,18 @@ export default function SubdomainDnsManager() {
         existingRecords={records}
         onApply={handleApplyTemplate}
         applying={templateApplying}
+      />
+
+      <DnsImportDialog
+        open={importOpen}
+        onClose={() => { setImportOpen(false); setImportRecords([]); }}
+        baseName={subdomainName}
+        importedRecords={importRecords}
+        existingRecords={records}
+        availableTypes={availableTypes}
+        fileName={importFileName}
+        onApply={handleImportApply}
+        applying={importApplying}
       />
 
       {/* ── Bulk action bar ── */}

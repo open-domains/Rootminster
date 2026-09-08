@@ -287,8 +287,6 @@
     "templates": "Modèles",
     "import": "Importer",
     "export": "Exporter",
-    "importToast": "L'import en masse n'est pas encore disponible. Ajoutez les enregistrements individuellement pour l'instant.",
-    "exportToast": "Utilisez l'export Cloudflare pour la zone complète",
     "selectedCount": "{{count}} sélectionnés",
     "setTtl": "Définir le TTL",
     "toggleProxy": "Basculer le proxy",

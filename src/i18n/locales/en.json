@@ -287,8 +287,6 @@
     "templates": "Templates",
     "import": "Import",
     "export": "Export",
-    "importToast": "Bulk import is not available yet. Add records individually for now.",
-    "exportToast": "Use Cloudflare export for full zone",
     "selectedCount": "{{count}} selected",
     "setTtl": "Set TTL",
     "toggleProxy": "Toggle proxy",

@@ -287,8 +287,6 @@
     "templates": "Plantillas",
     "import": "Importar",
     "export": "Exportar",
-    "importToast": "La importación masiva aún no está disponible. Añade registros individualmente por ahora.",
-    "exportToast": "Usa la exportación de Cloudflare para la zona completa",
     "selectedCount": "{{count}} seleccionados",
     "setTtl": "Definir TTL",
     "toggleProxy": "Alternar proxy",

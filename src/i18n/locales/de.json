@@ -287,8 +287,6 @@
     "templates": "Vorlagen",
     "import": "Import",
     "export": "Export",
-    "importToast": "Massenimport ist noch nicht verfügbar. Füge Einträge vorerst einzeln hinzu.",
-    "exportToast": "Verwende den Cloudflare-Export für die gesamte Zone",
     "selectedCount": "{{count}} ausgewählt",
     "setTtl": "TTL festlegen",
     "toggleProxy": "Proxy umschalten",
