@@ -21,6 +21,7 @@ import { contentSecurityPolicy } from './csp.js';
 import { captureServerException, closeServerGlitchTip, configureServerGlitchTip, registerGlitchTipRoutes } from './glitchtip.js';
 import { backupRestoreInProgress } from './backup-service.js';
 import { registerBackupRoutes } from './backup-routes.js';
+import { registerTermsRoutes } from './terms-routes.js';
 
 assertProductionConfiguration();
 
@@ -124,6 +125,7 @@ await registerDiscordRoutes(app);
 await registerPublicApiRoutes(app);
 await registerModuleSettingsRoutes(app);
 await registerBackupRoutes(app);
+await registerTermsRoutes(app);
 await registerGlitchTipRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);

@@ -126,6 +126,17 @@ export const rootminster = {
       return request('/api/config');
     },
   },
+  terms: {
+    async current() { const result = await request('/api/terms/current'); return result.terms; },
+    async published() { const result = await request('/api/terms/versions'); return result.versions; },
+    async getPublished(version) { const result = await request(`/api/terms/versions/${encodeURIComponent(version)}`); return result.terms; },
+    async accept() { const result = await request('/api/terms/accept', { method: 'POST', body: {} }); return result.user; },
+    async listAdmin() { const result = await request('/api/admin/terms'); return result.versions; },
+    async create(data) { const result = await request('/api/admin/terms', { method: 'POST', body: data }); return result.terms; },
+    async update(id, data) { const result = await request(`/api/admin/terms/${encodeURIComponent(id)}`, { method: 'PUT', body: data }); return result.terms; },
+    async publish(id, confirmation) { const result = await request(`/api/admin/terms/${encodeURIComponent(id)}/publish`, { method: 'POST', body: { confirmation } }); return result.terms; },
+    async deleteDraft(id) { return request(`/api/admin/terms/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
+  },
   modules: {
     async list() { return request('/api/admin/modules'); },
     async update(id, data) { return request(`/api/admin/modules/${encodeURIComponent(id)}`, { method: 'PUT', body: data }); },

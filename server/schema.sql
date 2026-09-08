@@ -98,6 +98,126 @@ CREATE TABLE IF NOT EXISTS oauth_states (
 ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'google';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted_version text;
 
+CREATE TABLE IF NOT EXISTS terms_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  version text NOT NULL UNIQUE,
+  title text NOT NULL,
+  summary text NOT NULL DEFAULT '',
+  content text NOT NULL,
+  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+  is_current boolean NOT NULL DEFAULT false,
+  effective_at timestamptz,
+  published_at timestamptz,
+  created_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  created_by_email citext,
+  published_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  published_by_email citext,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (NOT is_current OR status = 'published')
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS terms_versions_current_unique
+  ON terms_versions(is_current) WHERE is_current;
+CREATE INDEX IF NOT EXISTS terms_versions_published_idx
+  ON terms_versions(published_at DESC) WHERE status = 'published';
+
+CREATE TABLE IF NOT EXISTS terms_acceptances (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  terms_version_id uuid NOT NULL REFERENCES terms_versions(id),
+  version text NOT NULL,
+  accepted_at timestamptz NOT NULL DEFAULT now(),
+  ip inet,
+  user_agent text,
+  UNIQUE(user_id, terms_version_id)
+);
+
+CREATE INDEX IF NOT EXISTS terms_acceptances_user_idx
+  ON terms_acceptances(user_id, accepted_at DESC);
+
+INSERT INTO terms_versions(version, title, summary, content, status, is_current, effective_at, published_at)
+VALUES (
+  '2026-08',
+  'Terms of Service',
+  'Open Domains is for lawful, non-commercial projects. Malicious use, phishing, spam, malware, gambling, adult content, impersonation and rights violations are prohibited.',
+  $terms$## 1. Acceptance of Terms
+
+By using Open Domains ("the Platform"), you agree to these Terms of Service. If you do not agree, do not use the Platform. We may update these terms at any time; continued use constitutes acceptance.
+
+## 2. Eligibility
+
+You must be at least 13 years old to use Open Domains. By using the Platform, you represent that you are legally capable of entering into a binding agreement. If you are under 18, you must have parental consent.
+
+## 3. Acceptable Use
+
+You may use Open Domains subdomains only for lawful purposes. You agree not to use any subdomain for:
+
+- Adult or sexually explicit content of any kind
+- Gambling or betting services of any kind
+- Phishing, fraud, or deceptive practices
+- Distributing malware, spyware, or ransomware
+- Spam or unsolicited bulk communications
+- Child sexual abuse material (CSAM) or any illegal content
+- Hosting content that infringes intellectual property rights
+- DDoS attacks, port scanning, or network abuse
+- Impersonating other people, companies, or services
+- Any activity that violates applicable laws
+
+## 4. Subdomain Ownership and Approval
+
+Subdomains are granted through a manual review process. Approval is at our sole discretion. We do not guarantee approval of any request. Approved subdomains remain the property of Open Domains — we grant you a revocable license to use them.
+
+Open Domains reserves the right to delete, suspend, or revoke any domain or subdomain at any time, for any reason, and without prior notice or explanation. This includes but is not limited to violations of these Terms, abuse, inactivity, or any other reason at our sole discretion.
+
+## 4a. Legal Responsibility
+
+You accept full and sole legal responsibility for all content hosted under your subdomain. Open Domains bears no liability whatsoever for any content, claims, damages, fines, or legal proceedings arising from your use of the service or the content you host.
+
+You agree to indemnify and hold harmless Open Domains, its operators, and affiliates from any claim, loss, liability, or expense (including legal fees) arising from your use of the Platform or violation of these Terms.
+
+## 5. Non-Commercial Use and Fair Usage
+
+Open Domains is provided exclusively for personal, educational, community, open-source, hobby, and other non-commercial projects. Commercial or business use is not permitted.
+
+You must not use a subdomain for a business, company, paid service, revenue-generating project, client project, commercial promotion, advertising operation, online shop, or any other activity intended primarily for commercial gain.
+
+You also agree not to abuse the service by hoarding subdomains, automating requests, or consuming disproportionate platform resources. We may reject, suspend, or revoke any subdomain that we reasonably believe is being used for a commercial or business purpose.
+
+## 6. DNS Changes and Edits
+
+All changes to DNS records require admin approval. You may not attempt to bypass the approval process. Any unauthorized or fraudulent attempts to modify DNS records will result in immediate account suspension.
+
+## 7. Availability and Uptime
+
+We provide the Platform "as is" and make no guarantees about uptime, availability, or continuity of service. DNS is provided through Cloudflare's infrastructure, which has its own terms and service levels. We are not liable for Cloudflare outages or changes to their service.
+
+## 8. Termination
+
+We may terminate or suspend your account and revoke all associated subdomains at any time, with or without notice, if you violate these Terms or for any other reason at our discretion. You may close your account at any time by contacting support.
+
+## 9. Limitation of Liability
+
+To the maximum extent permitted by law, Open Domains is not liable for any direct, indirect, incidental, special, or consequential damages arising from your use of the Platform, including loss of data, revenue, or business. Your sole remedy for dissatisfaction is to stop using the Platform.
+
+## 10. Governing Law
+
+These Terms of Service are governed by and construed in accordance with the laws of England and Wales, United Kingdom. You agree to submit to the exclusive jurisdiction of the courts of England and Wales in respect of any dispute or claim arising out of or in connection with these Terms or your use of the Platform.
+
+## 11. Contact
+
+For questions about these Terms, contact us at hello@open-domains.net or through our [Contact page](/contact).$terms$,
+  'published', true, '2026-08-01T00:00:00Z', '2026-08-01T00:00:00Z'
+)
+ON CONFLICT (version) DO NOTHING;
+
+INSERT INTO terms_acceptances(user_id, terms_version_id, version, accepted_at)
+SELECT users.id, terms_versions.id, terms_versions.version, users.tos_accepted_at
+FROM users
+JOIN terms_versions ON terms_versions.version = users.tos_accepted_version
+WHERE users.tos_accepted_at IS NOT NULL
+ON CONFLICT (user_id, terms_version_id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS mcp_oauth_clients (
   client_id text PRIMARY KEY,
   client_name text NOT NULL,

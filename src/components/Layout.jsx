@@ -7,7 +7,6 @@ import TwoFactorSetup from '@/components/TwoFactorSetup';
 import CommandPalette from '@/components/CommandPalette';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import { CURRENT_TERMS_VERSION } from '@/lib/terms';
 import { cn } from '@/lib/utils';
 import { usePublicConfig } from '@/lib/public-config';
 import {
@@ -129,6 +128,7 @@ export default function Layout() {
   const [mobileNav, setMobileNav] = useState(false);
   const [showTos, setShowTos] = useState(false);
   const [tosIsUpdate, setTosIsUpdate] = useState(false);
+  const [currentTerms, setCurrentTerms] = useState(null);
   const [twoFaVerified, setTwoFaVerified] = useState(false);
   const [twoFaPending, setTwoFaPending] = useState(false);
 
@@ -145,10 +145,11 @@ export default function Layout() {
   };
 
   useEffect(() => {
-    rootminster.auth.me().then(async u => {
+    Promise.all([rootminster.auth.me(), rootminster.terms.current()]).then(async ([u, terms]) => {
       setUser(u);
+      setCurrentTerms(terms);
       setTwoFaVerified(Boolean(u.mfa_verified));
-      if (u.tos_accepted_version !== CURRENT_TERMS_VERSION) {
+      if (u.tos_accepted_version !== terms.version) {
         setTosIsUpdate(Boolean(u.tos_accepted_at));
         setShowTos(true);
       }
@@ -226,7 +227,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <TosModal open={showTos} isUpdate={tosIsUpdate} onAccepted={() => setShowTos(false)} />
+      <TosModal open={showTos} isUpdate={tosIsUpdate} terms={currentTerms} onAccepted={(updatedUser) => { setUser(updatedUser); setShowTos(false); }} />
 
       <div className="flex min-h-screen">
         <ProductSidebar user={user} />

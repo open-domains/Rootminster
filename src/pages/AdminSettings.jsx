@@ -8,12 +8,14 @@ import { toast } from 'sonner';
 import { Loader2, Save, Bell, MessageCircle, WrenchIcon, Megaphone, ExternalLink, Globe2, RefreshCw, Plus, LockKeyhole, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import BlocklistManager from '@/components/BlocklistManager';
+import TermsManager from '@/components/TermsManager';
 
 const TABS = [
 { id: 'general', label: 'General' },
 { id: 'zones', label: 'Zones & Requests' },
 { id: 'safety', label: 'Safety Screening' },
-{ id: 'blocklist', label: 'Blocklist' }];
+{ id: 'blocklist', label: 'Blocklist' },
+{ id: 'terms', label: 'Terms' }];
 
 const SectionCard = ({ icon: Icon, title, description, iconTint = 'primary', children }) =>
   <div className="rounded-lg border border-border bg-card p-5">
@@ -297,6 +299,8 @@ export default function AdminSettings() {const { t } = useTranslation();
       <div className="max-w-2xl">
           <BlocklistManager currentUser={currentUser} />
         </div> :
+      activeTab === 'terms' ?
+      <TermsManager /> :
       activeTab === 'safety' ?
       <div className="grid gap-5 xl:grid-cols-2">
         <SectionCard icon={ShieldAlert} iconTint={safetyEnabled ? 'emerald' : 'accent'} title="Automated request screening" description="Score accepted requests and explain potential safety risks to staff reviewers.">
