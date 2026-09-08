@@ -1,6 +1,6 @@
 import { authenticateRequest, publicUser } from './auth.js';
 import { pool, transaction } from './database.js';
-import * as store from './store.js';
+import { serializeUser, store } from './store.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VERSION = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;
@@ -43,14 +43,14 @@ function publicTerms(row) {
   };
 }
 
-async function audit(actor, action, description) {
+async function audit(actor, action, description, executor = pool) {
   await store.create('AuditLog', {
     actor_email: actor.email,
     actor_role: actor.role,
     action,
     entity_type: 'TermsVersion',
     description,
-  }, actor);
+  }, actor, executor);
 }
 
 export async function registerTermsRoutes(app) {
@@ -91,7 +91,7 @@ export async function registerTermsRoutes(app) {
         [terms.version, actor.id],
       );
     });
-    return { user: publicUser(store.serializeUser(updated.rows[0])) };
+    return { user: publicUser(serializeUser(updated.rows[0])) };
   });
 
   app.get('/api/admin/terms', async (request, reply) => {
@@ -110,12 +110,15 @@ export async function registerTermsRoutes(app) {
     const parsed = validateTermsInput(request.body);
     if (parsed.error) return reply.code(400).send({ error: parsed.error });
     try {
-      const result = await pool.query(
-        `INSERT INTO terms_versions(version, title, summary, content, created_by_id, created_by_email)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [parsed.value.version, parsed.value.title, parsed.value.summary, parsed.value.content, actor.id, actor.email],
-      );
-      await audit(actor, 'terms_draft_created', `Created Terms draft ${parsed.value.version}`);
+      const result = await transaction(async (client) => {
+        const created = await client.query(
+          `INSERT INTO terms_versions(version, title, summary, content, created_by_id, created_by_email)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [parsed.value.version, parsed.value.title, parsed.value.summary, parsed.value.content, actor.id, actor.email],
+        );
+        await audit(actor, 'terms_draft_created', `Created Terms draft ${parsed.value.version}`, client);
+        return created;
+      });
       return reply.code(201).send({ terms: result.rows[0] });
     } catch (error) {
       if (error.code === '23505') return reply.code(409).send({ error: 'That Terms version already exists' });
@@ -130,13 +133,16 @@ export async function registerTermsRoutes(app) {
     const parsed = validateTermsInput(request.body);
     if (parsed.error) return reply.code(400).send({ error: parsed.error });
     try {
-      const result = await pool.query(
-        `UPDATE terms_versions SET version = $1, title = $2, summary = $3, content = $4, updated_at = now()
-         WHERE id = $5 AND status = 'draft' RETURNING *`,
-        [parsed.value.version, parsed.value.title, parsed.value.summary, parsed.value.content, id],
-      );
+      const result = await transaction(async (client) => {
+        const updated = await client.query(
+          `UPDATE terms_versions SET version = $1, title = $2, summary = $3, content = $4, updated_at = now()
+           WHERE id = $5 AND status = 'draft' RETURNING *`,
+          [parsed.value.version, parsed.value.title, parsed.value.summary, parsed.value.content, id],
+        );
+        if (updated.rowCount) await audit(actor, 'terms_draft_updated', `Updated Terms draft ${parsed.value.version}`, client);
+        return updated;
+      });
       if (!result.rowCount) return reply.code(409).send({ error: 'Published Terms versions are immutable' });
-      await audit(actor, 'terms_draft_updated', `Updated Terms draft ${parsed.value.version}`);
       return { terms: result.rows[0] };
     } catch (error) {
       if (error.code === '23505') return reply.code(409).send({ error: 'That Terms version already exists' });
@@ -155,14 +161,15 @@ export async function registerTermsRoutes(app) {
         throw Object.assign(new Error('Enter the version exactly to confirm publication'), { status: 400 });
       }
       await client.query('UPDATE terms_versions SET is_current = false WHERE is_current = true');
-      return client.query(
+      const published = await client.query(
         `UPDATE terms_versions SET status = 'published', is_current = true, effective_at = now(), published_at = now(),
           published_by_id = $1, published_by_email = $2, updated_at = now() WHERE id = $3 RETURNING *`,
         [actor.id, actor.email, id],
       );
+      await audit(actor, 'terms_version_published', `Published Terms ${published.rows[0].version} as the current version`, client);
+      return published;
     });
     if (!result) return reply.code(409).send({ error: 'Only draft Terms can be published' });
-    await audit(actor, 'terms_version_published', `Published Terms ${result.rows[0].version} as the current version`);
     return { terms: result.rows[0] };
   });
 
@@ -170,9 +177,12 @@ export async function registerTermsRoutes(app) {
     const actor = await requireAdmin(request, reply);
     const id = actor && validId(request, reply);
     if (!id) return;
-    const result = await pool.query("DELETE FROM terms_versions WHERE id = $1 AND status = 'draft' RETURNING version", [id]);
+    const result = await transaction(async (client) => {
+      const deleted = await client.query("DELETE FROM terms_versions WHERE id = $1 AND status = 'draft' RETURNING version", [id]);
+      if (deleted.rowCount) await audit(actor, 'terms_draft_deleted', `Deleted Terms draft ${deleted.rows[0].version}`, client);
+      return deleted;
+    });
     if (!result.rowCount) return reply.code(409).send({ error: 'Only draft Terms can be deleted' });
-    await audit(actor, 'terms_draft_deleted', `Deleted Terms draft ${result.rows[0].version}`);
     return { success: true };
   });
 }

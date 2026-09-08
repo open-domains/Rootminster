@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { validateTermsInput } from './terms-routes.js';
+import { store } from './store.js';
 
 const valid = {
   version: '2026-09.1',
@@ -8,6 +9,10 @@ const valid = {
   summary: 'A short summary',
   content: 'These are sufficiently detailed Terms of Service for this validation test.',
 };
+
+test('terms audit dependency exposes the record creation API', () => {
+  assert.equal(typeof store.create, 'function');
+});
 
 test('validateTermsInput normalizes a valid draft', () => {
   assert.deepEqual(validateTermsInput({ ...valid, version: ' 2026-09.1 ' }).value, valid);
