@@ -11,6 +11,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  GLITCHTIP_AUTH_TOKEN: ${{ secrets.GLITCHTIP_AUTH_TOKEN }}
 
 jobs:
   build-and-push:
@@ -22,6 +23,40 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build browser application
+        run: npm run build
+        env:
+          VITE_GLITCHTIP_RELEASE: ${{ github.sha }}
+
+      - name: Upload GlitchTip sourcemaps
+        if: env.GLITCHTIP_AUTH_TOKEN != ''
+        uses: ./.github/actions/upload-glitchtip-sourcemaps
+        with:
+          url: ${{ vars.GLITCHTIP_URL || 'https://glitchtip-bu8c.srv946251.hstgr.cloud' }}
+          auth-token: ${{ env.GLITCHTIP_AUTH_TOKEN }}
+          organization: ${{ vars.GLITCHTIP_ORG || 'opendomains' }}
+          project: ${{ vars.GLITCHTIP_PROJECT || 'rootminster' }}
+          release: ${{ github.sha }}
+          path: ./dist
+
+      - name: Warn when GlitchTip upload is not configured
+        if: env.GLITCHTIP_AUTH_TOKEN == ''
+        run: echo "::warning::GLITCHTIP_AUTH_TOKEN is not configured; skipping sourcemap upload"
+
+      - name: Prepare production bundle
+        run: |
+          find dist -type f -name '*.map' -delete
+          touch dist/.rootminster-prebuilt
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

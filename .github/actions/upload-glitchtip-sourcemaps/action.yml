@@ -1,0 +1,58 @@
+name: Upload GlitchTip sourcemaps
+description: Inject debug IDs and upload browser sourcemaps to GlitchTip
+
+inputs:
+  url:
+    description: Base URL of the GlitchTip instance
+    required: true
+  auth-token:
+    description: GlitchTip API token with release upload permission
+    required: true
+  organization:
+    description: GlitchTip organization slug
+    required: true
+  project:
+    description: GlitchTip project slug
+    required: true
+  release:
+    description: Release identifier compiled into the browser bundle
+    required: true
+  path:
+    description: Directory containing built JavaScript and sourcemaps
+    required: false
+    default: ./dist
+
+runs:
+  using: composite
+  steps:
+    - name: Install GlitchTip CLI
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl -fsSL https://glitchtip.com/install.sh -o "${RUNNER_TEMP}/install-glitchtip-cli.sh"
+        sh "${RUNNER_TEMP}/install-glitchtip-cli.sh"
+        if command -v glitchtip-cli >/dev/null 2>&1; then
+          echo "GLITCHTIP_CLI=$(command -v glitchtip-cli)" >> "$GITHUB_ENV"
+        elif [ -x "$HOME/.local/bin/glitchtip-cli" ]; then
+          echo "GLITCHTIP_CLI=$HOME/.local/bin/glitchtip-cli" >> "$GITHUB_ENV"
+        else
+          echo "GlitchTip CLI was not installed in an expected location" >&2
+          exit 1
+        fi
+
+    - name: Inject debug IDs and upload sourcemaps
+      shell: bash
+      env:
+        SENTRY_URL: ${{ inputs.url }}
+        SENTRY_AUTH_TOKEN: ${{ inputs.auth-token }}
+        SENTRY_ORG: ${{ inputs.organization }}
+        SENTRY_PROJECT: ${{ inputs.project }}
+        SOURCEMAP_PATH: ${{ inputs.path }}
+        GLITCHTIP_RELEASE: ${{ inputs.release }}
+      run: |
+        set -euo pipefail
+        "$GLITCHTIP_CLI" sourcemaps inject "$SOURCEMAP_PATH"
+        "$GLITCHTIP_CLI" sourcemaps upload "$SOURCEMAP_PATH" \
+          --release "$GLITCHTIP_RELEASE" \
+          --org "$SENTRY_ORG" \
+          --project "$SENTRY_PROJECT"

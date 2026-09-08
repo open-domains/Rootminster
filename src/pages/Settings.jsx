@@ -14,10 +14,12 @@ import TwoFactorSetup from '@/components/TwoFactorSetup';
 import TrustedBrowsers from '@/components/TrustedBrowsers';
 import { usePublicConfig } from '@/lib/public-config';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Settings() {
   const { t } = useTranslation();
   const { config: publicConfig } = usePublicConfig();
+  const { checkAppState } = useAuth();
   const [searchParams] = useSearchParams();
   const [user, setUser] = useState(null);
   const [fullName, setFullName] = useState('');
@@ -33,7 +35,18 @@ export default function Settings() {
     ...(publicConfig.features.donations ? [{ id: 'support', label: t('settings.navSupport'), icon: HeartHandshake }] : []),
   ];
 
-  const refreshUser = () => rootminster.auth.me().then(u => { setUser(u); setFullName(u?.display_name || u?.full_name || ''); });
+  const refreshUser = async () => {
+    try {
+      const currentUser = await rootminster.auth.me();
+      setUser(currentUser);
+      setFullName(currentUser?.display_name || currentUser?.full_name || '');
+      return currentUser;
+    } catch (error) {
+      if (error?.status === 401) await checkAppState();
+      else toast.error(t('settings.saveFailed'));
+      return null;
+    }
+  };
 
   useEffect(() => { refreshUser(); }, []);
 

@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/lib/AuthContext';
 import { Toaster as SonnerToaster } from 'sonner';
@@ -13,6 +13,7 @@ import RoleProtectedRoute from '@/components/RoleProtectedRoute';
 import SetupGate from '@/components/SetupGate';
 import BrandRuntime from '@/components/BrandRuntime';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
+import { lazyWithReload as lazy } from '@/lib/lazyWithReload';
 
 const PageNotFound = lazy(() => import('./lib/PageNotFound'));
 

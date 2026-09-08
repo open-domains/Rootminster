@@ -4,6 +4,11 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
+  build: {
+    // Generate uploadable maps without publishing sourceMappingURL comments in
+    // the production JavaScript. CI removes the .map files after uploading.
+    sourcemap: 'hidden',
+  },
   resolve: {
     alias: {
       '@': new URL('./src', import.meta.url).pathname,

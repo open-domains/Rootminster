@@ -30,6 +30,7 @@ export default function ReportAbuse() {
   const [sending, setSending] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
   const [siteKey, setSiteKey] = useState('');
+  const [turnstileError, setTurnstileError] = useState('');
   const turnstileRef = useRef(null);
   const widgetIdRef = useRef(null);
 
@@ -46,8 +47,12 @@ export default function ReportAbuse() {
       if (window.turnstile && turnstileRef.current && widgetIdRef.current === null) {
         widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
           sitekey: siteKey,
-          callback: (token) => setTurnstileToken(token),
+          callback: (token) => { setTurnstileToken(token); setTurnstileError(''); },
           'expired-callback': () => setTurnstileToken(''),
+          'error-callback': () => {
+            setTurnstileToken('');
+            setTurnstileError('The security check failed. Please retry it.');
+          },
           theme: 'dark',
         });
       }
@@ -60,7 +65,7 @@ export default function ReportAbuse() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!turnstileToken) {
+    if (siteKey && !turnstileToken) {
       toast.error('Please complete the security check.');
       return;
     }
@@ -82,7 +87,7 @@ export default function ReportAbuse() {
     }
   };
 
-  const canSubmit = form.subdomain && form.abuse_type && form.description && !!turnstileToken;
+  const canSubmit = form.subdomain && form.abuse_type && form.description && (!siteKey || !!turnstileToken);
 
   return (
     <div className="bg-slate-950 min-h-screen text-white">
@@ -151,9 +156,20 @@ export default function ReportAbuse() {
             </div>
 
             {/* Cloudflare Turnstile */}
-            <div className="flex justify-center py-2">
-              <div ref={turnstileRef}></div>
-            </div>
+            {siteKey && (
+              <div className="py-2 text-center">
+                <div className="flex justify-center"><div ref={turnstileRef}></div></div>
+                {turnstileError && (
+                  <div className="mt-2">
+                    <p className="text-xs text-red-400">{turnstileError}</p>
+                    <Button type="button" variant="outline" size="sm" className="mt-2 border-slate-700 bg-transparent" onClick={() => {
+                      setTurnstileError('');
+                      if (widgetIdRef.current !== null && window.turnstile) window.turnstile.reset(widgetIdRef.current);
+                    }}>Retry security check</Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <Button type="submit" disabled={sending || !canSubmit}
               className="w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50">

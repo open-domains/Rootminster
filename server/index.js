@@ -147,7 +147,7 @@ if (hasDist) {
     if (/^\/(?:api|functions)(?:[/?]|$)/.test(request.url)) {
       return reply.header('Cache-Control', 'no-store').code(404).send({ error: 'Not found' });
     }
-    return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
+    return reply.header('Cache-Control', 'no-store').sendFile('index.html');
   });
 }
 

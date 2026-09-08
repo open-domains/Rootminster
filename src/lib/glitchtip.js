@@ -39,6 +39,7 @@ export function initializeClientGlitchTip() {
         dsn: glitchtip.dsn,
         tunnel: glitchtip.tunnel,
         environment: glitchtip.environment,
+        release: import.meta.env.VITE_GLITCHTIP_RELEASE || undefined,
         sampleRate: glitchtip.errorSampleRate,
         tracesSampleRate,
         integrations: (defaults) => tracesSampleRate > 0

@@ -5,7 +5,10 @@ RUN npm install --include=dev --no-audit --no-fund
 
 FROM dependencies AS build
 COPY . .
-RUN npm run build && npm prune --omit=dev
+RUN if [ ! -f dist/.rootminster-prebuilt ]; then npm run build; fi \
+  && rm -f dist/.rootminster-prebuilt \
+  && find dist -type f -name '*.map' -delete \
+  && npm prune --omit=dev
 
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production

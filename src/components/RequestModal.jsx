@@ -36,6 +36,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
   const [recaptchaToken, setRecaptchaToken] = useState('');
   const [siteKey, setSiteKey] = useState('');
   const [verificationLoading, setVerificationLoading] = useState(true);
+  const [verificationError, setVerificationError] = useState('');
   const turnstileRef = useRef(null);
   const widgetIdRef = useRef(null);
   const debounceRef = useRef(null);
@@ -65,8 +66,12 @@ export default function RequestModal({ open, onClose, onSuccess }) {
       if (window.turnstile && turnstileRef.current && widgetIdRef.current === null) {
         widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
           sitekey: siteKey,
-          callback: token => setRecaptchaToken(token),
+          callback: token => { setRecaptchaToken(token); setVerificationError(''); },
           'expired-callback': () => setRecaptchaToken(''),
+          'error-callback': () => {
+            setRecaptchaToken('');
+            setVerificationError('The security check failed. Please retry it.');
+          },
           theme: 'dark',
         });
       }
@@ -85,6 +90,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
     setPreviewLink('');
     setAvailability(null);
     setRecaptchaToken('');
+    setVerificationError('');
     if (widgetIdRef.current !== null && window.turnstile) window.turnstile.reset(widgetIdRef.current);
     widgetIdRef.current = null;
   };
@@ -332,6 +338,15 @@ export default function RequestModal({ open, onClose, onSuccess }) {
 
                 {verificationRequired && <section className="border-t border-border pt-6">
                   <div className="flex justify-center"><div ref={turnstileRef} /></div>
+                  {verificationError && (
+                    <div className="mt-3 text-center">
+                      <p className="text-xs text-destructive">{verificationError}</p>
+                      <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => {
+                        setVerificationError('');
+                        if (widgetIdRef.current !== null && window.turnstile) window.turnstile.reset(widgetIdRef.current);
+                      }}>Retry security check</Button>
+                    </div>
+                  )}
                 </section>}
               </div>
             </div>

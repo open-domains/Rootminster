@@ -14,6 +14,22 @@ Rootminster can report browser and server failures to any GlitchTip instance usi
 
 The backend configuration updates immediately. Reload open Rootminster browser tabs after changing the module so the frontend receives the new public ingestion configuration.
 
+## GitHub Actions sourcemaps
+
+The production image workflow builds the browser application once, injects GlitchTip debug IDs, uploads its hidden sourcemaps, and packages that exact JavaScript bundle into the Docker image. The `.map` files are deleted before the image is assembled and are never served by Rootminster.
+
+Add this GitHub Actions repository secret:
+
+- `GLITCHTIP_AUTH_TOKEN` — an API token permitted to upload releases and sourcemaps.
+
+The workflow defaults to the OpenDomains instance, organization and project. Forks can override them with these repository variables:
+
+- `GLITCHTIP_URL`
+- `GLITCHTIP_ORG`
+- `GLITCHTIP_PROJECT`
+
+Each build uses the full Git commit SHA as its release identifier. When the secret is absent, the image still builds but GitHub Actions emits a warning and skips the upload.
+
 ## Privacy and security
 
 - GlitchTip DSNs contain a public ingestion key, not an administrative API token.
