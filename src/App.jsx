@@ -13,6 +13,7 @@ import RoleProtectedRoute from '@/components/RoleProtectedRoute';
 import SetupGate from '@/components/SetupGate';
 import BrandRuntime from '@/components/BrandRuntime';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
+import CookieConsentManager from '@/components/CookieConsentManager';
 import { lazyWithReload as lazy } from '@/lib/lazyWithReload';
 
 const PageNotFound = lazy(() => import('./lib/PageNotFound'));
@@ -32,6 +33,7 @@ const FAQ = lazy(() => import('@/pages/FAQ'));
 const About = lazy(() => import('@/pages/About'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const PrivacyPolicy = lazy(() => import('@/pages/PrivacyPolicy'));
+const CookiePolicy = lazy(() => import('@/pages/CookiePolicy'));
 const TermsOfService = lazy(() => import('@/pages/TermsOfService'));
 const ReportAbuse = lazy(() => import('@/pages/ReportAbuse'));
 const RdapLookup = lazy(() => import('@/pages/RdapLookup'));
@@ -122,6 +124,7 @@ const AuthenticatedApp = () => {
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+      <Route path="/cookie-policy" element={<CookiePolicy />} />
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/report-abuse" element={<ReportAbuse />} />
       <Route path="/rdap" element={<RdapLookup />} />
@@ -222,6 +225,7 @@ function App() {
                   <AuthenticatedApp />
                 </Suspense>
               </SetupGate>
+              <CookieConsentManager />
             </BrandRuntime>
           </AppErrorBoundary>
         </Router>

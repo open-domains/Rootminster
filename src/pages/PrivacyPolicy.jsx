@@ -1,83 +1,65 @@
 import { Link } from 'react-router-dom';
-import { Layers } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-
-function PublicNav() {
-  return (
-    <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center"><Layers size={16} className="text-white" /></div>
-          <span className="font-bold text-white">Open Domains</span>
-        </Link>
-        <Link to="/dashboard"><Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">Get Started</Button></Link>
-      </div>
-    </nav>
-  );
-}
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 
 function Section({ title, children }) {
   return (
-    <section className="mb-10">
-      <h2 className="text-lg font-bold text-white mb-3">{title}</h2>
-      <div className="text-slate-400 leading-relaxed space-y-3 text-sm">{children}</div>
+    <section className="space-y-3">
+      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+      <div className="space-y-3 text-sm leading-7 text-muted-foreground">{children}</div>
     </section>
   );
 }
 
 export default function PrivacyPolicy() {
   return (
-    <div className="bg-slate-950 min-h-screen text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <PublicNav />
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-20">
-        <h1 className="text-4xl font-bold text-white mb-2">Privacy Policy</h1>
-        <p className="text-slate-500 text-sm mb-12">Last updated: January 2024</p>
+      <main className="mx-auto max-w-4xl space-y-10 px-4 py-16 sm:px-6 sm:py-20">
+        <header className="border-b border-border pb-8">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Legal</p>
+          <h1 className="text-4xl font-bold tracking-tight">Privacy Policy</h1>
+          <p className="mt-3 text-sm text-muted-foreground">Last updated: 9 September 2026</p>
+        </header>
 
         <Section title="1. Introduction">
-          <p>Open Domains ("we", "us", or "our") is committed to protecting your personal information. This Privacy Policy explains what data we collect, how we use it, and your rights regarding your data when you use our platform at open-domains.net.</p>
+          <p>Open Domains (we, us or our) operates the Rootminster platform. This policy explains what personal data we collect, why we use it, who we share it with and the choices available to you.</p>
         </Section>
-
-        <Section title="2. Information We Collect">
-          <p><strong className="text-slate-300">Account Information:</strong> When you register, we collect your email address and optionally your name. This is used to manage your account and communicate with you about your requests.</p>
-          <p><strong className="text-slate-300">Subdomain Request Data:</strong> We collect the information you submit when requesting a subdomain — including the desired subdomain name, DNS record type, target value, and any project description you provide.</p>
-          <p><strong className="text-slate-300">Usage Data:</strong> We may collect basic usage statistics such as pages visited and features used to improve the platform. We do not use third-party advertising trackers beyond what is required for AdSense.</p>
-          <p><strong className="text-slate-300">Communications:</strong> Messages sent through our contact form or request conversations are stored to facilitate support and review.</p>
+        <Section title="2. Information we collect">
+          <p><strong className="text-foreground">Account data:</strong> your name, email address, authentication details, role, security settings and connected social or Discord identities.</p>
+          <p><strong className="text-foreground">Requests and DNS data:</strong> requested names, records, targets, project descriptions, review messages and related activity.</p>
+          <p><strong className="text-foreground">Security and technical data:</strong> IP address, device and browser information, audit events, abuse signals, error diagnostics and API activity.</p>
+          <p><strong className="text-foreground">Optional analytics:</strong> when you consent, Umami and Google Analytics collect basic visit and feature-usage information. Their scripts are not loaded before analytics consent.</p>
+          <p><strong className="text-foreground">Communications and payments:</strong> support messages, abuse reports and donation transaction references where relevant. We do not store full card details.</p>
         </Section>
-
-        <Section title="3. How We Use Your Information">
-          <p>We use your data to: process and review subdomain requests; communicate with you about the status of your requests; send transactional emails (approvals, rejections, questions); provide customer support; maintain platform security and prevent abuse; and improve the platform experience.</p>
-          <p>We do not sell your personal data to third parties. We do not use your data for targeted advertising beyond standard Google AdSense contextual ads.</p>
+        <Section title="3. How we use information">
+          <p>We use data to provide and secure accounts, process and review domain requests, manage DNS, send status and security notifications, operate role-based tools, investigate abuse, provide support, maintain backups, diagnose errors and improve the platform.</p>
+          <p>We do not sell personal data or use it for targeted advertising.</p>
         </Section>
-
-        <Section title="4. Data Sharing">
-          <p>We share your data only when necessary: with Cloudflare to create and manage DNS records on your behalf; with email service providers to send transactional notifications; and with law enforcement when required by applicable law.</p>
-          <p>DNS records (subdomain names and their targets) are public by nature — anyone with a DNS lookup tool can see which IP or domain your subdomain points to. This is inherent to how DNS works.</p>
+        <Section title="4. Service providers and sharing">
+          <p>Data may be processed by Cloudflare for DNS, anti-abuse checks and configured backups; Stripe for optional donations; email providers for transactional messages; GitHub, Google or Discord when you choose a connected login or integration; GlitchTip for scrubbed diagnostics; and Google Analytics or our self-hosted Umami instance only when analytics consent is given.</p>
+          <p>We may also disclose information when required by law or necessary to protect users and the service. DNS records are public by design and can be queried by anyone.</p>
         </Section>
-
-        <Section title="5. Data Retention">
-          <p>We retain your account data for as long as your account is active. Request history and audit logs are retained for 2 years. If you request account deletion, we will remove your personal data within 30 days, except where retention is required by law.</p>
+        <Section title="5. Retention and deletion">
+          <p>We retain account and request data while needed to provide the service and meet security, legal and operational requirements. Retention periods can vary by data type and deployment settings. Administrators can delete an account and its related domains; backups and security logs may expire on a separate schedule.</p>
         </Section>
-
-        <Section title="6. Cookies">
-          <p>We use essential cookies for session management and authentication. We may use Google AdSense cookies for ad serving. You can control non-essential cookies through your browser settings. Disabling cookies may affect your ability to use the platform.</p>
+        <Section title="6. Cookies and browser storage">
+          <p>Essential storage supports authentication, security and preferences. Optional analytics storage is used only after consent. You can reject or withdraw analytics consent at any time without losing access to core features.</p>
+          <p>Names, purposes and durations are listed in our <Link to="/cookie-policy" className="text-primary hover:underline">Cookie Policy</Link>.</p>
         </Section>
-
-        <Section title="7. Your Rights">
-          <p>Depending on your jurisdiction, you may have the right to: access a copy of your personal data; correct inaccurate data; request deletion of your data; object to processing; and data portability. To exercise these rights, contact us at hello@open-domains.net.</p>
+        <Section title="7. Your rights">
+          <p>Depending on where you live, you may have rights to access, correct, delete, restrict or object to processing of your personal data, and to receive a portable copy. You may also withdraw consent for consent-based processing. We may need to verify your identity before fulfilling a request.</p>
         </Section>
-
         <Section title="8. Security">
-          <p>We use industry-standard security measures including HTTPS encryption, access controls, and regular security reviews. However, no system is 100% secure. Please use a strong, unique password for your account.</p>
+          <p>We use HTTPS, access controls, role-based permissions, audit logging and account-security features to protect data. No internet service can guarantee absolute security, so use a strong unique password and enable two-factor authentication.</p>
         </Section>
-
-        <Section title="9. Changes to This Policy">
-          <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Continued use of the platform after changes constitutes acceptance of the updated policy.</p>
+        <Section title="9. Changes to this policy">
+          <p>We may update this policy as Rootminster or its providers change. The current version and effective date will be published here.</p>
         </Section>
-
         <Section title="10. Contact">
-          <p>Questions about this Privacy Policy? Contact us at privacy@opendomains.dev or through our <Link to="/contact" className="text-indigo-400 hover:underline">Contact page</Link>.</p>
+          <p>For privacy questions or requests, email <a href="mailto:hello@open-domains.net" className="text-primary hover:underline">hello@open-domains.net</a> or use our <Link to="/contact" className="text-primary hover:underline">contact page</Link>.</p>
         </Section>
-      </div>
+      </main>
+      <PublicFooter />
     </div>
   );
 }

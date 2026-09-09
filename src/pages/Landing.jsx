@@ -219,7 +219,7 @@ export default function Landing() {
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 text-xs text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <div className="flex items-center gap-2"><img src={branding.logo_url} alt={branding.platform_name} className="h-6 w-6 rounded bg-white p-0.5" /><span className="font-medium text-foreground">{branding.short_name}</span></div>
-          <div className="flex flex-wrap gap-x-5 gap-y-2"><Link to="/about" className="hover:text-foreground">About</Link><Link to="/guides" className="hover:text-foreground">Guides</Link><Link to="/privacy-policy" className="hover:text-foreground">Privacy</Link><Link to="/terms-of-service" className="hover:text-foreground">Terms</Link><Link to="/report-abuse" className="hover:text-foreground">Report abuse</Link></div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2"><Link to="/about" className="hover:text-foreground">About</Link><Link to="/guides" className="hover:text-foreground">Guides</Link><Link to="/privacy-policy" className="hover:text-foreground">Privacy</Link><Link to="/cookie-policy" className="hover:text-foreground">Cookies</Link><Link to="/terms-of-service" className="hover:text-foreground">Terms</Link><Link to="/report-abuse" className="hover:text-foreground">Report abuse</Link></div>
         </div>
       </footer>
     </div>

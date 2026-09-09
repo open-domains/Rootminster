@@ -105,6 +105,7 @@ export function PublicFooter() {
             <p className="text-foreground text-sm font-semibold mb-3">{t('footer.legal')}</p>
             <div className="space-y-2">
               <Link to="/privacy-policy" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.privacyPolicy')}</Link>
+              <Link to="/cookie-policy" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">Cookie Policy</Link>
               <Link to="/terms-of-service" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.termsOfService')}</Link>
             </div>
           </div>
