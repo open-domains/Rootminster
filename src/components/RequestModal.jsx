@@ -16,6 +16,7 @@ import {
   validateSubdomainLabel, validateRecordValue, getRecordValuePlaceholder, getRecordTypeHint
 } from './dnsValidation';
 import { usePublicConfig } from '@/lib/public-config';
+import { loadTurnstile } from '@/lib/turnstile';
 
 const DEFAULT_ROW = () => ({ record_type: 'A', record_value: '', ttl: 3600, proxied: false });
 
@@ -61,10 +62,12 @@ export default function RequestModal({ open, onClose, onSuccess }) {
 
   useEffect(() => {
     if (!open || !siteKey) return;
+    let cancelled = false;
     widgetIdRef.current = null;
-    const tryRender = () => {
-      if (window.turnstile && turnstileRef.current && widgetIdRef.current === null) {
-        widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+    loadTurnstile()
+      .then((turnstile) => {
+        if (cancelled || !turnstileRef.current || widgetIdRef.current !== null) return;
+        widgetIdRef.current = turnstile.render(turnstileRef.current, {
           sitekey: siteKey,
           callback: token => { setRecaptchaToken(token); setVerificationError(''); },
           'expired-callback': () => setRecaptchaToken(''),
@@ -74,12 +77,15 @@ export default function RequestModal({ open, onClose, onSuccess }) {
           },
           theme: 'dark',
         });
-      }
+      })
+      .catch(() => {
+        if (!cancelled) setVerificationError('The security check could not load. Please retry it.');
+      });
+    return () => {
+      cancelled = true;
+      if (widgetIdRef.current !== null && window.turnstile?.remove) window.turnstile.remove(widgetIdRef.current);
+      widgetIdRef.current = null;
     };
-    const interval = setInterval(() => {
-      if (window.turnstile) { tryRender(); clearInterval(interval); }
-    }, 200);
-    return () => clearInterval(interval);
   }, [open, siteKey]);
 
   const reset = () => {

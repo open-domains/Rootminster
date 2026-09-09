@@ -1,4 +1,5 @@
 import { getPublicConfig } from '@/lib/public-config';
+import { shouldIgnoreClientErrorEvent } from '@/lib/client-error-filter';
 
 let sdk;
 let startup;
@@ -46,7 +47,7 @@ export function initializeClientGlitchTip() {
           ? [...defaults, sdk.browserTracingIntegration()]
           : defaults,
         sendDefaultPii: false,
-        beforeSend: scrubClientEvent,
+        beforeSend: (event) => shouldIgnoreClientErrorEvent(event) ? null : scrubClientEvent(event),
         beforeSendTransaction: scrubClientEvent,
       });
       return sdk;

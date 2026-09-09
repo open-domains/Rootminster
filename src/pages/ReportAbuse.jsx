@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { rootminster } from '@/api/rootminsterClient';
 import { toast } from 'sonner';
+import { loadTurnstile } from '@/lib/turnstile';
 
 function PublicNav() {
   return (
@@ -42,10 +43,12 @@ export default function ReportAbuse() {
 
   useEffect(() => {
     if (!siteKey) return;
+    let cancelled = false;
     widgetIdRef.current = null;
-    const tryRender = () => {
-      if (window.turnstile && turnstileRef.current && widgetIdRef.current === null) {
-        widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+    loadTurnstile()
+      .then((turnstile) => {
+        if (cancelled || !turnstileRef.current || widgetIdRef.current !== null) return;
+        widgetIdRef.current = turnstile.render(turnstileRef.current, {
           sitekey: siteKey,
           callback: (token) => { setTurnstileToken(token); setTurnstileError(''); },
           'expired-callback': () => setTurnstileToken(''),
@@ -55,12 +58,15 @@ export default function ReportAbuse() {
           },
           theme: 'dark',
         });
-      }
+      })
+      .catch(() => {
+        if (!cancelled) setTurnstileError('The security check could not load. Please retry it.');
+      });
+    return () => {
+      cancelled = true;
+      if (widgetIdRef.current !== null && window.turnstile?.remove) window.turnstile.remove(widgetIdRef.current);
+      widgetIdRef.current = null;
     };
-    const interval = setInterval(() => {
-      if (window.turnstile) { tryRender(); clearInterval(interval); }
-    }, 200);
-    return () => clearInterval(interval);
   }, [siteKey]);
 
   const submit = async (e) => {
