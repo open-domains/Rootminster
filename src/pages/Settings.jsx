@@ -228,7 +228,7 @@ export default function Settings() {
                 <p className="mt-0.5 text-xs text-muted-foreground">Request permanent deletion of your account. An administrator will review the request before anything is removed.</p>
               </div>
               <div className="space-y-4 p-5">
-                {deletionRequest ? (
+                {deletionRequest?.status === 'pending' ? (
                   <>
                     <div className="rounded-lg border border-border bg-muted/30 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
