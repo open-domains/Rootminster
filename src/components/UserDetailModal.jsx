@@ -3,12 +3,13 @@ import { rootminster } from '@/api/rootminsterClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import StatusBadge from '@/components/StatusBadge';
-import { Ban, CheckCircle, Globe } from 'lucide-react';
+import { Ban, CheckCircle, Eye, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 export default function UserDetailModal({ user, subdomains, onClose, onUpdated }) {const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [impersonationReason, setImpersonationReason] = useState('');
 
   if (!user) return null;
 
@@ -24,6 +25,22 @@ export default function UserDetailModal({ user, subdomains, onClose, onUpdated }
     setLoading(false);
     onUpdated();
     onClose();
+  };
+
+  const viewAsUser = async () => {
+    if (impersonationReason.trim().length < 10) {
+      toast.error('Enter a clear audit reason of at least 10 characters');
+      return;
+    }
+    if (!window.confirm(`Begin a fully audited view-as session for ${user.email}?`)) return;
+    setLoading(true);
+    try {
+      await rootminster.impersonation.start(user.id, impersonationReason.trim());
+      window.location.assign('/user-dashboard');
+    } catch (error) {
+      toast.error(error.message || 'Could not start view-as session');
+      setLoading(false);
+    }
   };
 
   return (
@@ -59,6 +76,12 @@ export default function UserDetailModal({ user, subdomains, onClose, onUpdated }
             {isDisabled ? <><CheckCircle size={13} /> {t("operational.user_detail_modal.enable_account_bc6a32")}</> : <><Ban size={13} /> {t("operational.user_detail_modal.disable_account_bb27a5")}</>}
           </Button>
         </div>
+
+        {user.role === 'user' && user.status === 'active' && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+          <div className="mb-3"><p className="flex items-center gap-2 text-sm font-semibold text-amber-300"><Eye size={15} /> View as this user</p><p className="mt-1 text-xs text-slate-400">Actions will use the user’s permissions. The start, stop, administrator, target, reason, IP and browser are written to the audit log.</p></div>
+          <textarea value={impersonationReason} onChange={(event) => setImpersonationReason(event.target.value)} maxLength={500} rows={3} placeholder="Required reason for audit trail…" className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+          <div className="mt-3 flex justify-end"><Button onClick={viewAsUser} disabled={loading || impersonationReason.trim().length < 10} className="gap-2 bg-amber-600 text-white hover:bg-amber-700"><Eye size={14} /> Start view-as session</Button></div>
+        </div>}
 
         <div>
           <div className="flex items-center gap-2 mb-3">

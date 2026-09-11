@@ -22,6 +22,7 @@ export function publicUser(user) {
   delete result.totp_secret;
   delete result.metadata;
   delete result._session_id;
+  delete result._parent_session_id;
   return result;
 }
 
@@ -35,18 +36,34 @@ export async function authenticateRequest(request, { allowMfaPending = false } =
   const raw = tokenFromRequest(request);
   if (!raw) return null;
   const result = await pool.query(
-    `SELECT u.*, s.id AS _session_id, s.mfa_verified_at AS _session_mfa_verified_at
+    `SELECT u.*, s.id AS _session_id, s.mfa_verified_at AS _session_mfa_verified_at,
+            s.parent_session_id AS _parent_session_id,
+            s.impersonator_user_id AS _impersonator_user_id,
+            s.impersonation_reason AS _impersonation_reason,
+            s.impersonation_started_at AS _impersonation_started_at,
+            admin.email AS _impersonator_email,
+            coalesce(admin.display_name, admin.full_name, admin.email) AS _impersonator_name,
+            EXISTS(SELECT 1 FROM webauthn_credentials wc WHERE wc.user_id = u.id) AS _passkey_enabled
      FROM sessions s JOIN users u ON u.id = s.user_id
+     LEFT JOIN users admin ON admin.id = s.impersonator_user_id
      WHERE s.token_hash = $1 AND s.expires_at > now() AND u.status = 'active'`,
     [sha256(raw)],
   );
   const row = result.rows[0];
   if (!row) return null;
-  const mfaRequired = Boolean(row.totp_enabled || ['staff', 'admin'].includes(row.role));
+  const mfaRequired = Boolean(row.totp_enabled || row._passkey_enabled || ['staff', 'admin'].includes(row.role));
   const mfaVerified = !mfaRequired || Boolean(row._session_mfa_verified_at);
   if (!mfaVerified && !allowMfaPending) return null;
   pool.query('UPDATE sessions SET last_used_at = now() WHERE token_hash = $1', [sha256(raw)]).catch(() => {});
-  return { ...serializeUser(row), _session_id: row._session_id, mfa_required: mfaRequired, mfa_verified: mfaVerified };
+  const impersonation = row._impersonator_user_id ? {
+    active: true,
+    actor_id: row._impersonator_user_id,
+    actor_email: row._impersonator_email,
+    actor_name: row._impersonator_name,
+    reason: row._impersonation_reason,
+    started_at: row._impersonation_started_at,
+  } : null;
+  return { ...serializeUser(row), _session_id: row._session_id, _parent_session_id: row._parent_session_id, passkey_enabled: Boolean(row._passkey_enabled), mfa_required: mfaRequired, mfa_verified: mfaVerified, impersonation };
 }
 
 export async function markSessionMfaVerified(user) {
@@ -54,13 +71,18 @@ export async function markSessionMfaVerified(user) {
   await pool.query('UPDATE sessions SET mfa_verified_at = now(), last_used_at = now() WHERE id = $1 AND user_id = $2', [user._session_id, user.id]);
 }
 
-export async function createSession(userId, request, reply) {
+export async function createSession(userId, request, reply, options = {}) {
   const token = randomToken(32);
   const expires = new Date(Date.now() + config.sessionDays * 86_400_000);
-  await pool.query(
-    `INSERT INTO sessions(user_id, token_hash, user_agent, ip, expires_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [userId, sha256(token), request.headers['user-agent'] || null, request.ip || null, expires],
+  const result = await pool.query(
+    `INSERT INTO sessions(user_id, token_hash, user_agent, ip, expires_at, mfa_verified_at,
+                          impersonator_user_id, impersonation_reason, impersonation_started_at, parent_session_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id`,
+    [userId, sha256(token), request.headers['user-agent'] || null, request.ip || null, expires,
+      options.mfaVerified ? new Date() : null, options.impersonatorUserId || null,
+      options.impersonationReason || null, options.impersonatorUserId ? new Date() : null,
+      options.parentSessionId || null],
   );
   reply.setCookie(config.cookieName, token, {
     path: '/',
@@ -69,7 +91,7 @@ export async function createSession(userId, request, reply) {
     secure: config.production,
     expires,
   });
-  return token;
+  return { token, id: result.rows[0]?.id };
 }
 
 async function sendVerification(user, token) {

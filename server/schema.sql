@@ -33,13 +33,49 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at timestamptz NOT NULL,
   last_used_at timestamptz NOT NULL DEFAULT now(),
   mfa_verified_at timestamptz,
+  impersonator_user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  impersonation_reason text,
+  impersonation_started_at timestamptz,
+  parent_session_id uuid REFERENCES sessions(id) ON DELETE CASCADE,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mfa_verified_at timestamptz;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS impersonator_user_id uuid REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS impersonation_reason text;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS impersonation_started_at timestamptz;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS parent_session_id uuid REFERENCES sessions(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(expires_at);
+CREATE INDEX IF NOT EXISTS sessions_impersonator_idx ON sessions(impersonator_user_id) WHERE impersonator_user_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  credential_id text NOT NULL UNIQUE,
+  public_key bytea NOT NULL,
+  counter bigint NOT NULL DEFAULT 0,
+  transports jsonb NOT NULL DEFAULT '[]'::jsonb,
+  device_type text,
+  backed_up boolean NOT NULL DEFAULT false,
+  name text NOT NULL DEFAULT 'Passkey',
+  last_used_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS webauthn_credentials_user_idx ON webauthn_credentials(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS webauthn_challenges (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE CASCADE,
+  challenge text NOT NULL,
+  purpose text NOT NULL CHECK (purpose IN ('register', 'authenticate', 'mfa')),
+  expires_at timestamptz NOT NULL DEFAULT now() + interval '5 minutes',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS webauthn_challenges_expiry_idx ON webauthn_challenges(expires_at);
 
 CREATE TABLE IF NOT EXISTS discord_accounts (
   discord_user_id text PRIMARY KEY,

@@ -7,6 +7,7 @@ import TwoFactorSetup from '@/components/TwoFactorSetup';
 import CommandPalette from '@/components/CommandPalette';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import PasskeyManager from '@/components/PasskeyManager';
 import { cn } from '@/lib/utils';
 import { usePublicConfig } from '@/lib/public-config';
 import {
@@ -192,21 +193,22 @@ export default function Layout() {
 
   if (!authChecked || twoFaPending) return <div className="fixed inset-0 flex items-center justify-center bg-background"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
 
-  if (isPrivileged && !user?.totp_enabled) return (
+  if (isPrivileged && !user?.totp_enabled && !user?.passkey_enabled) return (
     <div className="fixed inset-0 flex items-center justify-center bg-background px-6">
       <div className="w-full max-w-lg space-y-5">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-card"><Shield size={23} className="text-primary" /></div>
           <h1 className="text-xl font-semibold text-foreground">2FA Required</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Staff and admin accounts must enable two-factor authentication.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Staff and admin accounts must enable an authenticator app or passkey.</p>
         </div>
         <TwoFactorSetup user={user} onUpdated={() => { setUser(u => ({ ...u, totp_enabled: true, mfa_verified: true })); finishMfa(); }} />
+        <PasskeyManager onUpdated={() => { setUser(u => ({ ...u, passkey_enabled: true, mfa_verified: true })); finishMfa(); }} />
         <button onClick={() => rootminster.auth.logout()} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">Sign out</button>
       </div>
     </div>
   );
 
-  if (user?.totp_enabled && !twoFaVerified) return <TwoFactorChallenge onVerified={finishMfa} onLogout={() => { sessionStorage.removeItem('2fa_verified'); rootminster.auth.logout(); }} />;
+  if ((user?.totp_enabled || user?.passkey_enabled) && !twoFaVerified) return <TwoFactorChallenge hasPasskey={user?.passkey_enabled} hasTotp={user?.totp_enabled} onVerified={finishMfa} onLogout={() => { sessionStorage.removeItem('2fa_verified'); rootminster.auth.logout(); }} />;
 
   if (user?.status === 'disabled') return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background px-6 text-center">
@@ -225,6 +227,14 @@ export default function Layout() {
   const initials = ((user?.display_name || user?.full_name || user?.email || 'U')[0] || 'U').toUpperCase();
   const displayName = user?.display_name || user?.full_name || 'User';
   const cmdItems = [...userNav, ...resourceNav, ...(isPrivileged ? adminNav.filter(i => !i.adminOnly || isAdmin) : [])];
+  const stopImpersonation = async () => {
+    try {
+      await rootminster.impersonation.stop();
+      window.location.assign('/admin-users');
+    } catch {
+      await rootminster.auth.logout();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -282,6 +292,18 @@ export default function Layout() {
               </DropdownMenu>
             </div>
           </header>
+
+          {user?.impersonation?.active && (
+            <div className="border-b-2 border-red-700 bg-red-600 px-4 py-3 text-white shadow-lg sm:px-6 lg:px-7" role="alert">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex-1">
+                  <p className="text-sm font-extrabold uppercase tracking-wide">Admin view-as session active</p>
+                  <p className="text-xs text-red-50">You are viewing Rootminster as <strong>{user.email}</strong>. Started by {user.impersonation.actor_email}. Reason: {user.impersonation.reason}</p>
+                </div>
+                <Button onClick={stopImpersonation} variant="outline" className="shrink-0 border-white bg-white font-bold text-red-700 hover:bg-red-50">Stop viewing as user</Button>
+              </div>
+            </div>
+          )}
 
           {bannerEnabled && bannerText && !bannerDismissed && (
             <div className="border-b border-primary/20 bg-primary/5 px-4 py-2.5 text-xs text-foreground sm:px-6 lg:px-7">

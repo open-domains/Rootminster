@@ -228,6 +228,8 @@ DDNS tokens must be restricted to owned hostnames and A/AAAA record types. The e
 
 It will **not** silently create a new DNS record if the target record does not already exist.
 
+The account token manager can also render a local QR setup payload for compatible mobile and router helpers. The QR uses `rootminster-ddns://setup?config=<base64url>`; the decoded JSON contains `version`, `service`, `endpoint`, `token`, `hostnames`, `record_types`, and `use_request_ip`. The QR is generated in the browser and includes the secret, so it is only available while the newly-created token is visible.
+
 ### Rate limiting
 
 Default limits include:

@@ -121,6 +121,24 @@ export const rootminster = {
       return result.data;
     },
   },
+  passkeys: {
+    async list() { const result = await request('/api/auth/passkeys'); return result.data; },
+    async registrationOptions() { return request('/api/auth/passkeys/register/options', { method: 'POST', body: {} }); },
+    async verifyRegistration(challengeId, response, name) { return request('/api/auth/passkeys/register/verify', { method: 'POST', body: { challenge_id: challengeId, response, name } }); },
+    async remove(id) { return request(`/api/auth/passkeys/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
+    async loginOptions() { return request('/api/auth/passkeys/login/options', { method: 'POST', body: {} }); },
+    async verifyLogin(challengeId, response) { return request('/api/auth/passkeys/login/verify', { method: 'POST', body: { challenge_id: challengeId, response } }); },
+    async mfaOptions() { return request('/api/auth/passkeys/mfa/options', { method: 'POST', body: {} }); },
+    async verifyMfa(challengeId, response) { return request('/api/auth/passkeys/mfa/verify', { method: 'POST', body: { challenge_id: challengeId, response } }); },
+  },
+  impersonation: {
+    async start(userId, reason) {
+      const result = await request('/api/admin/impersonation/start', { method: 'POST', body: { user_id: userId, reason } });
+      if (typeof window !== 'undefined') window.localStorage.removeItem(TOKEN_KEY);
+      return result;
+    },
+    async stop() { return request('/api/auth/impersonation/stop', { method: 'POST', body: {} }); },
+  },
   config: {
     async getPublic() {
       return request('/api/config');

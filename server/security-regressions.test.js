@@ -77,3 +77,27 @@ test('trusted browser tokens survive normal logout and are checked before render
   assert.match(layout, /verify_trusted/);
   assert.ok(layout.indexOf("action: 'verify_trusted'") < layout.indexOf('setAuthChecked(true)'), 'trusted-device verification must finish before the authenticated UI renders');
 });
+
+test('passkeys require verified WebAuthn ceremonies and single-use challenges', async () => {
+  const passkeys = await source('./passkeys.js');
+  assert.match(passkeys, /DELETE FROM webauthn_challenges/);
+  assert.match(passkeys, /requireUserVerification:\s*true/);
+  assert.match(passkeys, /expectedOrigin/);
+  assert.match(passkeys, /expectedRPID/);
+  assert.match(passkeys, /UPDATE webauthn_credentials SET counter/);
+  assert.match(passkeys, /canManagePasskeys/);
+});
+
+test('impersonation is admin-only, reasoned, visible and audited', async () => {
+  const routes = await source('./impersonation-routes.js');
+  const layout = await readFile(new URL('../src/components/Layout.jsx', import.meta.url), 'utf8');
+  assert.match(routes, /actor\.role !== 'admin'/);
+  assert.match(routes, /reason\.length < 10/);
+  assert.match(routes, /target\.role !== 'user'/);
+  assert.match(routes, /impersonation_started/);
+  assert.match(routes, /impersonation_stopped/);
+  assert.match(routes, /impersonated_request/);
+  assert.match(routes, /security-sensitive action is unavailable/);
+  assert.match(layout, /Admin view-as session active/);
+  assert.match(layout, /Stop viewing as user/);
+});

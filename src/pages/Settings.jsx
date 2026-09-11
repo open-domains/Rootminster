@@ -12,6 +12,7 @@ import DonationWidget from '@/components/DonationWidget';
 import ApiTokenManager from '@/components/ApiTokenManager';
 import TwoFactorSetup from '@/components/TwoFactorSetup';
 import TrustedBrowsers from '@/components/TrustedBrowsers';
+import PasskeyManager from '@/components/PasskeyManager';
 import { usePublicConfig } from '@/lib/public-config';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -211,6 +212,7 @@ export default function Settings() {
               </section>
 
               <TwoFactorSetup user={user} onUpdated={refreshUser} />
+              <PasskeyManager onUpdated={refreshUser} />
               <TrustedBrowsers user={user} />
             </>
           )}

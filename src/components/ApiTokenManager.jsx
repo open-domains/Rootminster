@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { Copy, ExternalLink, Key, Loader2, Plus, Radio, ShieldCheck, Terminal, Trash2 } from 'lucide-react';
+import { Copy, Download, ExternalLink, Key, Loader2, Plus, Radio, ScanLine, ShieldCheck, Terminal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import QRCode from 'qrcode';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,25 @@ export default function ApiTokenManager({ user }) {
   const [hostnames, setHostnames] = useState('');
   const [recordTypes, setRecordTypes] = useState([]);
   const [expiresDays, setExpiresDays] = useState('90');
+  const [ddnsQr, setDdnsQr] = useState('');
+
+  const ddnsSetup = newToken?.scopes?.includes('dns:dynamic') ? {
+    version: 1,
+    service: 'rootminster-ddns',
+    endpoint: `${window.location.origin}/api/v1/dynamic-dns`,
+    token: newToken.token,
+    hostnames: newToken.allowed_hostnames || [],
+    record_types: newToken.allowed_record_types || ['A', 'AAAA'],
+    use_request_ip: true,
+  } : null;
+
+  useEffect(() => {
+    if (!ddnsSetup) { setDdnsQr(''); return; }
+    const encoded = btoa(JSON.stringify(ddnsSetup)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+    QRCode.toDataURL(`rootminster-ddns://setup?config=${encoded}`, { width: 320, margin: 2, errorCorrectionLevel: 'M' })
+      .then(setDdnsQr)
+      .catch(() => setDdnsQr(''));
+  }, [newToken]);
 
   const load = async () => {
     setLoading(true);
@@ -92,6 +112,13 @@ export default function ApiTokenManager({ user }) {
       <div><p className="text-sm font-semibold text-emerald-300">Copy this token now</p><p className="mt-0.5 text-xs text-muted-foreground">It is stored as a hash and cannot be shown again.</p></div>
       <div className="flex items-center gap-2"><code className="min-w-0 flex-1 break-all rounded-md bg-background px-3 py-2 text-xs text-emerald-300">{newToken.token}</code><Button size="icon" variant="outline" onClick={() => copy(newToken.token)} aria-label="Copy API token"><Copy size={14} /></Button></div>
       <div className="rounded-md border border-border bg-background/60 p-3"><p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Terminal size={12} /> Example</p><code className="mt-2 block break-all text-xs text-foreground">{newToken.scopes?.includes('dns:dynamic') ? `curl -X POST -H "Authorization: Bearer ${newToken.token}" -H "Content-Type: application/json" -d '{"hostname":"${newToken.allowed_hostnames?.[0] || 'host.example.com'}","use_request_ip":true}' ${window.location.origin}/api/v1/dynamic-dns` : `curl -H "Authorization: Bearer ${newToken.token}" ${window.location.origin}/api/v1/me`}</code></div>
+      {ddnsSetup && <div className="grid gap-4 rounded-md border border-sky-500/30 bg-background/70 p-4 sm:grid-cols-[180px_1fr]">
+        <div className="flex items-center justify-center rounded-lg bg-white p-2">{ddnsQr ? <img src={ddnsQr} alt="Dynamic DNS setup QR code" className="h-40 w-40" /> : <Loader2 className="animate-spin text-slate-700" />}</div>
+        <div className="space-y-3"><div><p className="flex items-center gap-2 text-sm font-semibold"><ScanLine size={15} /> Scan to configure DDNS</p><p className="mt-1 text-xs text-muted-foreground">For Rootminster-compatible mobile and router helpers. It includes the endpoint, permitted hostnames, record types and this one-time-visible token.</p></div>
+          <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">Treat this QR code like a password. Anyone who scans it can update the listed addresses until the token expires or is revoked.</div>
+          <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => copy(JSON.stringify(ddnsSetup))}><Copy size={13} className="mr-1.5" /> Copy setup JSON</Button>{ddnsQr && <Button size="sm" variant="outline" asChild><a href={ddnsQr} download="rootminster-ddns-setup.png"><Download size={13} className="mr-1.5" /> Download QR</a></Button>}</div>
+        </div>
+      </div>}
       <Button size="sm" variant="outline" onClick={() => setNewToken(null)}>I have saved it</Button>
     </div>}
 

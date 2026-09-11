@@ -30,7 +30,10 @@ export default function AdminAuditLogs() {const { t } = useTranslation();
     request_submitted: 'text-blue-400',
     sync_completed: 'text-indigo-400',
     edit_request_approved: 'text-emerald-400',
-    ownership_transferred: 'text-purple-400'
+    ownership_transferred: 'text-purple-400',
+    impersonation_started: 'text-amber-400',
+    impersonation_stopped: 'text-amber-400',
+    impersonated_request: 'text-orange-400'
   };
 
   const columns = [

@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Shield } from 'lucide-react';
+import { Fingerprint } from 'lucide-react';
+import { startAuthentication } from '@simplewebauthn/browser';
 import { toast } from 'sonner';
 
 const TRUSTED_KEY = 'od_trusted_device';
 
-export default function TwoFactorChallenge({ onVerified, onLogout }) {
+export default function TwoFactorChallenge({ onVerified, onLogout, hasPasskey = false, hasTotp = true }) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [trustBrowser, setTrustBrowser] = useState(true);
@@ -34,6 +36,19 @@ export default function TwoFactorChallenge({ onVerified, onLogout }) {
     } finally { setLoading(false); }
   };
 
+  const verifyPasskey = async () => {
+    setLoading(true);
+    try {
+      const ceremony = await rootminster.passkeys.mfaOptions();
+      const response = await startAuthentication({ optionsJSON: ceremony.options });
+      await rootminster.passkeys.verifyMfa(ceremony.challenge_id, response);
+      sessionStorage.setItem('2fa_verified', '1');
+      onVerified();
+    } catch (error) {
+      if (error.name !== 'NotAllowedError') toast.error(error.message || 'Passkey verification failed');
+    } finally { setLoading(false); }
+  };
+
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-950 px-6">
       <div className="w-full max-w-sm space-y-6">
@@ -42,11 +57,13 @@ export default function TwoFactorChallenge({ onVerified, onLogout }) {
             <Shield size={28} className="text-indigo-400" />
           </div>
           <h1 className="text-white text-xl font-bold">Two-Factor Authentication</h1>
-          <p className="text-slate-400 text-sm">Enter the 6-digit code from your authenticator app to continue.</p>
+          <p className="text-slate-400 text-sm">{hasPasskey && !hasTotp ? 'Use your passkey to continue.' : hasPasskey ? 'Use a passkey or enter the 6-digit code from your authenticator app.' : 'Enter the 6-digit code from your authenticator app to continue.'}</p>
         </div>
 
         <div className="space-y-3">
-          <Input
+          {hasPasskey && window.PublicKeyCredential && <Button variant="outline" onClick={verifyPasskey} disabled={loading} className="h-11 w-full gap-2 border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20"><Fingerprint size={17} /> Use a passkey</Button>}
+          {hasPasskey && hasTotp && window.PublicKeyCredential && <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-slate-600"><span className="h-px flex-1 bg-slate-800" />or use a code<span className="h-px flex-1 bg-slate-800" /></div>}
+          {hasTotp && <Input
             value={code}
             onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
             onKeyDown={e => e.key === 'Enter' && verify()}
@@ -54,17 +71,17 @@ export default function TwoFactorChallenge({ onVerified, onLogout }) {
             maxLength={6}
             autoFocus
             className="bg-slate-900 border-slate-700 text-white text-center tracking-widest text-2xl font-mono h-14"
-          />
-          <Button
+          />}
+          {hasTotp && <Button
             onClick={verify}
             disabled={loading || code.length !== 6}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11"
           >
             {loading ? 'Verifying…' : 'Verify'}
-          </Button>
+          </Button>}
         </div>
 
-        <label className="flex items-start gap-3 cursor-pointer select-none">
+        {hasTotp && <label className="flex items-start gap-3 cursor-pointer select-none">
           <Checkbox
             checked={trustBrowser}
             onCheckedChange={(v) => setTrustBrowser(v === true)}
@@ -74,7 +91,7 @@ export default function TwoFactorChallenge({ onVerified, onLogout }) {
             Trust this browser for 30 days
             <span className="block text-slate-500 text-xs mt-0.5">You won't be asked for a code on this device until the trust expires or is revoked.</span>
           </span>
-        </label>
+        </label>}
 
         <button
           onClick={onLogout}

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Github, LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { Fingerprint } from 'lucide-react';
+import { startAuthentication } from '@simplewebauthn/browser';
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { usePublicConfig } from '@/lib/public-config';
@@ -16,6 +18,20 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const loginWithPasskey = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const ceremony = await rootminster.passkeys.loginOptions();
+      const response = await startAuthentication({ optionsJSON: ceremony.options });
+      await rootminster.passkeys.verifyLogin(ceremony.challenge_id, response);
+      const returnTo = searchParams.get('return_to');
+      window.location.href = returnTo?.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/user-dashboard';
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') setError(err.message || 'Passkey sign-in failed');
+    } finally { setLoading(false); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,6 +67,13 @@ export default function Login() {
           {error}
         </div>
       )}
+
+      {typeof window !== 'undefined' && window.PublicKeyCredential && <>
+        <Button type="button" variant="outline" className="mb-4 h-12 w-full gap-3 font-medium" onClick={loginWithPasskey} disabled={loading}>
+          <Fingerprint className="h-5 w-5" /> Sign in with a passkey
+        </Button>
+        <div className="relative mb-4"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div><div className="relative flex justify-center text-xs text-muted-foreground"><span className="bg-card px-2">or use another method</span></div></div>
+      </>}
 
       {(config.oauth.google || config.oauth.github) && (
         <>

@@ -23,6 +23,8 @@ import { backupRestoreInProgress } from './backup-service.js';
 import { registerBackupRoutes } from './backup-routes.js';
 import { registerTermsRoutes } from './terms-routes.js';
 import { registerAccountDeletionRoutes } from './account-deletion-routes.js';
+import { registerPasskeyRoutes } from './passkeys.js';
+import { registerImpersonationRoutes } from './impersonation-routes.js';
 
 assertProductionConfiguration();
 
@@ -120,7 +122,9 @@ app.get('/api/config', async () => {
   };
 });
 
+await registerImpersonationRoutes(app);
 await registerAuthRoutes(app);
+await registerPasskeyRoutes(app);
 await registerSetupRoutes(app);
 await registerDiscordRoutes(app);
 await registerPublicApiRoutes(app);
