@@ -125,20 +125,20 @@ function CaseRow({ item, onChanged }) {
                 ...(snapshot.trusted_devices || []).map((x) => ({ ...x, _kind: 'Trusted device' })),
               ]} render={(row) => <div><p className="font-medium">{row._kind}</p><p className="mt-1 break-all text-muted-foreground">{row.name || row.subdomain || row.email || row.id}</p></div>} />
 
-              {item.status === 'pending' && (
+              {['pending', 'failed'].includes(item.status) && (
                 <section className="space-y-3 rounded-lg border border-border bg-background/50 p-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Admin decision notes / denial reason</label>
                     <Textarea value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1.5 min-h-24" placeholder="Required when denying. Optional internal context when approving." />
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
-                    <Button variant="outline" disabled={acting} onClick={() => decide('deny')}>Deny request</Button>
-                    <Button variant="destructive" disabled={acting} onClick={() => decide('approve')}>Approve & permanently delete</Button>
+                    {item.status === 'pending' && <Button variant="outline" disabled={acting} onClick={() => decide('deny')}>Deny request</Button>}
+                    <Button variant="destructive" disabled={acting} onClick={() => decide('approve')}>{item.status === 'failed' ? 'Retry permanent deletion' : 'Approve & permanently delete'}</Button>
                   </div>
                 </section>
               )}
 
-              {item.status !== 'pending' && (
+              {!['pending', 'failed'].includes(item.status) && (
                 <section className="rounded-lg border border-border bg-background/50 p-4 text-sm">
                   <p><strong>Decision:</strong> {item.status}</p>
                   {caseData?.decision_reason && <p className="mt-1 text-muted-foreground">{caseData.decision_reason}</p>}
