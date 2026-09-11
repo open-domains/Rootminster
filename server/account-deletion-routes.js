@@ -89,7 +89,6 @@ async function userCaseSnapshot(user) {
     account: {
       id: user.id,
       email: user.email,
-      display_name: user.display_name,
       full_name: user.full_name,
       role: user.role,
       status: user.status,
@@ -121,7 +120,6 @@ async function currentUserRow(userId) {
     id: row.id,
     email: row.email,
     full_name: row.full_name,
-    display_name: row.display_name,
     role: row.role,
     status: row.status,
     email_verified_at: row.email_verified_at,
@@ -187,7 +185,7 @@ export async function registerAccountDeletionRoutes(app) {
       `INSERT INTO account_deletion_requests(user_id, user_email, user_name, user_role, reason, snapshot)
        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
        RETURNING id, reason, status, requested_at`,
-      [user.id, user.email, user.display_name || user.full_name || '', user.role, reason, JSON.stringify(snapshot)],
+      [user.id, user.email, user.full_name || '', user.role, reason, JSON.stringify(snapshot)],
     );
     return reply.code(201).send({ request: result.rows[0] });
   });

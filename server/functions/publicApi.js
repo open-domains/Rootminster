@@ -192,7 +192,6 @@ export default async function (req) {
             return respond({
                 id: user.id,
                 email: user.email,
-                display_name: user.display_name || null,
                 full_name: user.full_name || null,
                 role: user.role,
                 ns_unlocked: user.ns_unlocked || false,

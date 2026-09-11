@@ -129,7 +129,6 @@ export default function AdminSubdomains() {
       const matchesSearch = !needle || [
         item.full_name,
         item.owner_email,
-        item.user?.display_name,
         item.user?.full_name,
         item.owner_id,
       ].some(value => normalize(value).includes(needle));
@@ -225,7 +224,7 @@ export default function AdminSubdomains() {
               </thead>
               <tbody>
                 {filtered.map(item => {
-                  const ownerName = item.user?.display_name || item.user?.full_name;
+                  const ownerName = item.user?.full_name;
                   return (
                     <tr
                       key={item.id}
@@ -292,7 +291,7 @@ export default function AdminSubdomains() {
                     <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Account</p>
                     <p className="mt-1 flex items-center gap-2 text-sm text-foreground">
                       <UserRound size={13} className="text-muted-foreground" />
-                      {selectedUser?.display_name || selectedUser?.full_name || 'No display name'}
+                      {selectedUser?.full_name || 'No full name'}
                     </p>
                   </div>
                   <div>

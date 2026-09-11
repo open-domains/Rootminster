@@ -42,7 +42,7 @@ export async function authenticateRequest(request, { allowMfaPending = false } =
             s.impersonation_reason AS _impersonation_reason,
             s.impersonation_started_at AS _impersonation_started_at,
             admin.email AS _impersonator_email,
-            coalesce(admin.display_name, admin.full_name, admin.email) AS _impersonator_name,
+            coalesce(admin.full_name, admin.email) AS _impersonator_name,
             EXISTS(SELECT 1 FROM webauthn_credentials wc WHERE wc.user_id = u.id) AS _passkey_enabled
      FROM sessions s JOIN users u ON u.id = s.user_id
      LEFT JOIN users admin ON admin.id = s.impersonator_user_id
@@ -130,13 +130,12 @@ async function upsertOauthUser(email, name) {
     throw Object.assign(new Error('This account is disabled'), { status: 403 });
   }
   return pool.query(
-    `INSERT INTO users(email, full_name, display_name, status, email_verified_at)
-     VALUES ($1, $2, $2, 'active', now())
+    `INSERT INTO users(email, full_name, status, email_verified_at)
+     VALUES ($1, $2, 'active', now())
      ON CONFLICT (email) DO UPDATE SET
        email_verified_at = coalesce(users.email_verified_at, now()),
        status = CASE WHEN users.status = 'pending' THEN 'active' ELSE users.status END,
        full_name = coalesce(users.full_name, excluded.full_name),
-       display_name = coalesce(users.display_name, excluded.display_name),
        updated_at = now()
      RETURNING *`,
     [normalizedEmail, name || null],
@@ -160,8 +159,8 @@ export async function registerAuthRoutes(app) {
     if (existing.rowCount) return reply.code(409).send({ error: 'An account with this email already exists' });
     const passwordHash = await hashPassword(password);
     const result = await pool.query(
-      `INSERT INTO users(email, password_hash, full_name, display_name, status, email_verified_at)
-       VALUES ($1, $2, $3, $3, $4, $5) RETURNING *`,
+      `INSERT INTO users(email, password_hash, full_name, status, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [email, passwordHash, firstName, verificationRequired ? 'pending' : 'active', verificationRequired ? null : new Date()],
     );
     const user = serializeUser(result.rows[0]);
@@ -222,8 +221,14 @@ export async function registerAuthRoutes(app) {
   app.patch('/api/auth/me', async (request, reply) => {
     const user = await authenticateRequest(request);
     if (!user) return reply.code(401).send({ error: 'Unauthorized' });
-    const allowed = ['display_name', 'full_name', 'disable_email_notifications'];
+    const allowed = ['full_name', 'disable_email_notifications'];
     const updates = Object.fromEntries(Object.entries(request.body || {}).filter(([key]) => allowed.includes(key)));
+    if (Object.hasOwn(updates, 'full_name')) {
+      updates.full_name = String(updates.full_name || '').trim();
+      if (updates.full_name.length < 2 || updates.full_name.length > 120) {
+        return reply.code(400).send({ error: 'Full name must be between 2 and 120 characters' });
+      }
+    }
     const fields = [];
     const values = [];
     for (const [key, value] of Object.entries(updates)) {

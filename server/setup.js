@@ -61,8 +61,8 @@ export async function registerSetupRoutes(app) {
         const existing = await client.query('SELECT EXISTS(SELECT 1 FROM users) AS installed');
         if (existing.rows[0].installed) throw Object.assign(new Error('Rootminster has already been set up'), { status: 409 });
         const created = await client.query(
-          `INSERT INTO users(email, password_hash, full_name, display_name, role, status, email_verified_at)
-           VALUES ($1, $2, $3, $3, 'admin', 'active', now()) RETURNING *`,
+          `INSERT INTO users(email, password_hash, full_name, role, status, email_verified_at)
+           VALUES ($1, $2, $3, 'admin', 'active', now()) RETURNING *`,
           [input.email, passwordHash, input.firstName],
         );
         await client.query(

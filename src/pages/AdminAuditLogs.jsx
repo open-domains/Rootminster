@@ -19,7 +19,7 @@ export default function AdminAuditLogs() {const { t } = useTranslation();
     ).then(([l, users]) => {
       setLogs(l);
       const map = {};
-      users.forEach((u) => {if (u.email) map[u.email] = u.display_name || u.full_name || u.email;});
+      users.forEach((u) => {if (u.email) map[u.email] = u.full_name || u.email;});
       setUserNames(map);
     }).finally(() => setLoading(false));
   }, []);

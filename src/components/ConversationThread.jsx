@@ -51,7 +51,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
       if (emails.length) {
         const users = await rootminster.entities.User.list();
         const map = {};
-        users.forEach(u => { if (u.email) map[u.email] = u.display_name || u.full_name || u.email; });
+        users.forEach(u => { if (u.email) map[u.email] = u.full_name || u.email; });
         setUserNames(map);
       }
     } finally {

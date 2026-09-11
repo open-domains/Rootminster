@@ -8,6 +8,7 @@ import CommandPalette from '@/components/CommandPalette';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import PasskeyManager from '@/components/PasskeyManager';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePublicConfig } from '@/lib/public-config';
 import {
@@ -224,8 +225,8 @@ export default function Layout() {
     </div>
   );
 
-  const initials = ((user?.display_name || user?.full_name || user?.email || 'U')[0] || 'U').toUpperCase();
-  const displayName = user?.display_name || user?.full_name || 'User';
+  const initials = ((user?.full_name || user?.email || 'U')[0] || 'U').toUpperCase();
+  const fullName = user?.full_name || 'User';
   const cmdItems = [...userNav, ...resourceNav, ...(isPrivileged ? adminNav.filter(i => !i.adminOnly || isAdmin) : [])];
   const stopImpersonation = async () => {
     try {
@@ -278,7 +279,7 @@ export default function Layout() {
                 <DropdownMenuTrigger asChild>
                   <button className="ml-0 flex items-center gap-2 rounded-md p-0.5 hover:bg-muted sm:ml-1 sm:p-1 sm:pr-2">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">{initials}</span>
-                    <span className="hidden text-left sm:block"><span className="block max-w-[120px] truncate text-xs font-medium text-foreground">{displayName}</span><span className="block text-[10px] capitalize text-muted-foreground">{user?.role || 'user'}</span></span>
+                    <span className="hidden text-left sm:block"><span className="block max-w-[120px] truncate text-xs font-medium text-foreground">{fullName}</span><span className="block text-[10px] capitalize text-muted-foreground">{user?.role || 'user'}</span></span>
                     <ChevronDown size={13} className="hidden text-muted-foreground sm:block" />
                   </button>
                 </DropdownMenuTrigger>

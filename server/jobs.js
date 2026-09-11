@@ -3,7 +3,7 @@ import { pool, withAdvisoryLock } from './database.js';
 import { invokeInternal } from './function-runner.js';
 import { runScheduledBackup } from './backup-service.js';
 
-const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', display_name: 'Rootminster Jobs' };
+const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Jobs' };
 
 async function run(name, body = {}) {
   return withAdvisoryLock(`rootminster:${name}`, async () => {

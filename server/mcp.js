@@ -184,7 +184,7 @@ async function reviewWithSafety(request) {
 }
 
 async function callTool(name, args, user) {
-  if (name === 'get_my_account') return toolResult({ account: { id: user.id, email: user.email, first_name: user.full_name, display_name: user.display_name, role: user.role } });
+  if (name === 'get_my_account') return toolResult({ account: { id: user.id, email: user.email, full_name: user.full_name, role: user.role } });
   if (name === 'list_my_subdomains') return toolResult({ subdomains: await ownedRecords('DnsRecord', user, limitValue(args.limit)) });
   if (name === 'list_my_requests') return toolResult({ requests: await ownedRecords('SubdomainRequest', user, limitValue(args.limit)) });
   if (!STAFF_ROLES.has(user.role)) throw Object.assign(new Error('This tool requires a staff or admin role'), { status: 403 });

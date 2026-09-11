@@ -40,7 +40,7 @@ export default async function (req) {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
     const { request_id, admin_notes } = await req.json();
-    const reviewerName = user.display_name || user.full_name || user.email;
+    const reviewerName = user.full_name || user.email;
     const request = await platform.asServiceRole.entities.SubdomainRequest.filter({ id: request_id });
     if (!request.length)
         return Response.json({ error: 'Request not found' }, { status: 404 });

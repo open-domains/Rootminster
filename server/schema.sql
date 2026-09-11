@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS users (
   email citext NOT NULL UNIQUE,
   password_hash text,
   full_name text,
-  display_name text,
   role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'staff', 'admin')),
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('pending', 'active', 'disabled')),
   email_verified_at timestamptz,
@@ -20,6 +19,19 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Consolidate the retired display-name field into full_name on upgrades.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'display_name'
+  ) THEN
+    UPDATE users
+    SET full_name = coalesce(nullif(trim(full_name), ''), nullif(trim(display_name), ''));
+    ALTER TABLE users DROP COLUMN display_name;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS users_role_idx ON users(role);
 CREATE INDEX IF NOT EXISTS users_status_idx ON users(status);

@@ -12,7 +12,7 @@ import { sendEmail } from './mail.js';
 import { createR2Client, r2Limits } from './r2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', display_name: 'Rootminster Backups' };
+const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Backups' };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let restoreInProgress = false;
 

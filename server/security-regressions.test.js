@@ -100,4 +100,16 @@ test('impersonation is admin-only, reasoned, visible and audited', async () => {
   assert.match(routes, /security-sensitive action is unavailable/);
   assert.match(layout, /Admin view-as session active/);
   assert.match(layout, /Stop viewing as user/);
+  assert.match(layout, /import \{ Button \} from '@\/components\/ui\/button'/);
+});
+
+test('account names use full_name and validate profile updates', async () => {
+  const auth = await source('./auth.js');
+  const store = await source('./store.js');
+  const settings = await readFile(new URL('../src/pages/Settings.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(store, /display_name/);
+  assert.match(auth, /allowed = \['full_name', 'disable_email_notifications'\]/);
+  assert.match(auth, /Full name must be between 2 and 120 characters/);
+  assert.match(settings, /updateMe\(\{ full_name: fullName \}\)/);
+  assert.doesNotMatch(settings, /display_name|settings\.displayName/);
 });

@@ -287,7 +287,7 @@ export async function registerPublicApiRoutes(app) {
       store.filter('ApiToken', { user_id: identity.user.id }, '-created_date', 100),
     ]);
     return data(reply, {
-      id: identity.user.id, email: identity.user.email, name: identity.user.display_name || identity.user.full_name,
+      id: identity.user.id, email: identity.user.email, name: identity.user.full_name,
       role: identity.user.role, ns_unlocked: Boolean(identity.user.ns_unlocked), created_at: identity.user.created_date,
       stats: { records: records.length, requests: requests.length, pending_requests: requests.filter((item) => ACTIVE_REQUEST_STATUSES.includes(item.status)).length, api_tokens: tokens.filter((token) => token.revoked !== true).length },
     });

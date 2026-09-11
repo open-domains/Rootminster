@@ -7,7 +7,6 @@ test('serializeUser exposes accepted terms version', () => {
     id: '123',
     email: 'test@example.com',
     full_name: 'Test User',
-    display_name: 'Tester',
     role: 'user',
     status: 'active',
     email_verified_at: new Date('2024-01-01T00:00:00Z'),

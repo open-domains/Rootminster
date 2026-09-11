@@ -44,7 +44,7 @@ export default function Settings() {
     try {
       const currentUser = await rootminster.auth.me();
       setUser(currentUser);
-      setFullName(currentUser?.display_name || currentUser?.full_name || '');
+      setFullName(currentUser?.full_name || '');
       return currentUser;
     } catch (error) {
       if (error?.status === 401) await checkAppState();
@@ -100,16 +100,16 @@ export default function Settings() {
   const save = async () => {
     setSaving(true);
     try {
-      await rootminster.auth.updateMe({ display_name: fullName });
+      await rootminster.auth.updateMe({ full_name: fullName });
       const updated = await rootminster.auth.me();
       setUser(updated);
-      setFullName(updated?.display_name || updated?.full_name || '');
+      setFullName(updated?.full_name || '');
       toast.success(t('settings.profileUpdated'));
     } catch { toast.error(t('settings.saveFailed')); }
     finally { setSaving(false); }
   };
 
-  const initials = (user?.display_name || user?.full_name)?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?';
+  const initials = user?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?';
   const roleKey = user?.role ? `settings.role${user.role.charAt(0).toUpperCase() + user.role.slice(1)}` : null;
   const roleLabel = roleKey ? t(roleKey) : t('common.user');
 
@@ -150,7 +150,7 @@ export default function Settings() {
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">{initials}</div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{user?.display_name || user?.full_name || t('common.user')}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{user?.full_name || t('common.user')}</p>
                       <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
                       <span className="mt-1.5 inline-flex items-center gap-1 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"><Shield size={10} /> {roleLabel}</span>
                     </div>
@@ -158,8 +158,8 @@ export default function Settings() {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">{t('settings.displayName')}</Label>
-                      <Input value={fullName} onChange={e => setFullName(e.target.value)} className="h-9" />
+                      <Label className="text-xs">{t('settings.fullName')}</Label>
+                      <Input value={fullName} onChange={e => setFullName(e.target.value)} minLength={2} maxLength={120} autoComplete="name" className="h-9" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">{t('settings.email')}</Label>
@@ -168,7 +168,7 @@ export default function Settings() {
                   </div>
 
                   <div className="flex justify-end border-t border-border pt-4">
-                    <Button onClick={save} disabled={saving} className="h-9">{saving ? t('common.saving') : t('settings.saveChanges')}</Button>
+                    <Button onClick={save} disabled={saving || fullName.trim().length < 2} className="h-9">{saving ? t('common.saving') : t('settings.saveChanges')}</Button>
                   </div>
                 </div>
               </section>

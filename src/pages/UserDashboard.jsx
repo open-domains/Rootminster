@@ -8,7 +8,6 @@ import {
 import CarbonAd from '@/components/CarbonAd';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import RequestModal from '@/components/RequestModal';
 import GithubMigrateModal from '@/components/GithubMigrateModal';
 import StatusBadge from '@/components/StatusBadge';
@@ -174,8 +173,6 @@ export default function UserDashboard() {
   const [showMigrateModal, setShowMigrateModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [displayNameInput, setDisplayNameInput] = useState('');
-  const [savingName, setSavingName] = useState(false);
   const [tab, setTab] = useState('all');
 
   const load = async () => {
@@ -256,7 +253,7 @@ export default function UserDashboard() {
     { id: 'issues', label: 'Issues', count: groupedRecords.filter(g => needsInfoSubs.has(g[0].name) || g.some(r => r.status === 'suspended' || r.dns_verified === false)).length },
   ];
 
-  const firstName = (user?.display_name || user?.full_name)?.split(' ')[0];
+  const firstName = user?.full_name?.split(' ')[0];
 
   return (
     <div className="space-y-6">
@@ -278,43 +275,6 @@ export default function UserDashboard() {
           </Button>
         </div>
       </div>
-
-      {/* Display name prompt */}
-      {!user?.display_name && (
-        <div className="bg-card border border-border rounded-2xl px-5 py-4">
-          <p className="text-foreground text-sm font-medium mb-0.5">{t('dashboard.setDisplayName')}</p>
-          <p className="text-muted-foreground text-xs mb-3">{t('dashboard.setDisplayNameSub')}</p>
-          <div className="flex gap-2 max-w-sm">
-            <Input
-              value={displayNameInput}
-              onChange={e => setDisplayNameInput(e.target.value)}
-              placeholder={t('dashboard.namePlaceholder')}
-              className="h-9 text-sm"
-              onKeyDown={e => e.key === 'Enter' && !savingName && displayNameInput.trim() && (async () => {
-                setSavingName(true);
-                await rootminster.auth.updateMe({ display_name: displayNameInput.trim() });
-                const u = await rootminster.auth.me();
-                setUser(u);
-                setSavingName(false);
-              })()}
-            />
-            <Button
-              size="sm"
-              disabled={!displayNameInput.trim() || savingName}
-              onClick={async () => {
-                setSavingName(true);
-                await rootminster.auth.updateMe({ display_name: displayNameInput.trim() });
-                const u = await rootminster.auth.me();
-                setUser(u);
-                setSavingName(false);
-              }}
-              className="shrink-0"
-            >
-              {savingName ? t('dashboard.saving') : t('dashboard.save')}
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Needs-info alert */}
       {needsInfo > 0 && (

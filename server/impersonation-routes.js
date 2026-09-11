@@ -80,7 +80,7 @@ export async function registerImpersonationRoutes(app) {
       parentSessionId: actor._session_id,
     });
     await audit(actor, 'impersonation_started', target, reason, request, session.id);
-    return { success: true, target: { id: target.id, email: target.email, display_name: target.display_name || target.full_name } };
+    return { success: true, target: { id: target.id, email: target.email, full_name: target.full_name } };
   });
 
   app.post('/api/auth/impersonation/stop', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (request, reply) => {

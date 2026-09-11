@@ -53,7 +53,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     if (!request?.requester_email) return;
     rootminster.entities.User.list().then(users => {
       const match = users.find(u => u.email === request.requester_email);
-      setRequesterName(match?.display_name || match?.full_name || null);
+      setRequesterName(match?.full_name || null);
     }).catch(() => {});
   }, [request?.requester_email]);
   const [adminNotes, setAdminNotes] = useState('');

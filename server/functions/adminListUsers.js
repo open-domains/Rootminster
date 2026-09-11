@@ -1,7 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { pool } from '../database.js';
 import { deleteUserAccounts } from '../lib/admin-user-deletion.js';
-const ADMIN_USER_FIELDS = new Set(['display_name', 'full_name', 'role', 'status', 'ns_unlocked', 'legacy_donor', 'disable_email_notifications']);
+const ADMIN_USER_FIELDS = new Set(['full_name', 'role', 'status', 'ns_unlocked', 'legacy_donor', 'disable_email_notifications']);
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
     const actor = await platform.auth.me();

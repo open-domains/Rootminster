@@ -94,7 +94,7 @@ export default function AdminRequests() {
       try {
         const users = await rootminster.entities.User.list();
         const map = {};
-        users.forEach(usr => { if (usr.email) map[usr.email] = usr.display_name || usr.full_name || usr.email; });
+        users.forEach(usr => { if (usr.email) map[usr.email] = usr.full_name || usr.email; });
         setUserNames(map);
       } catch (_) {}
     } finally {

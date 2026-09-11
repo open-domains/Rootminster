@@ -35,12 +35,11 @@ const imported = await transaction(async (client) => {
     const email = String(sourceUser.email || sourceUser.created_by || '').trim().toLowerCase();
     if (!email) continue;
     const result = await client.query(
-      `INSERT INTO users(email, full_name, display_name, role, status, email_verified_at, tos_accepted_at,
+      `INSERT INTO users(email, full_name, role, status, email_verified_at, tos_accepted_at,
         ns_unlocked, legacy_donor, disable_email_notifications, totp_enabled, metadata, created_at, updated_at)
-       VALUES ($1,$2,$3,$4,'active',now(),$5,$6,$7,$8,false,$9::jsonb,$10,$11)
+       VALUES ($1,$2,$3,'active',now(),$4,$5,$6,$7,false,$8::jsonb,$9,$10)
        ON CONFLICT (email) DO UPDATE SET
          full_name = coalesce(excluded.full_name, users.full_name),
-         display_name = coalesce(excluded.display_name, users.display_name),
          role = excluded.role,
          ns_unlocked = excluded.ns_unlocked,
          legacy_donor = excluded.legacy_donor,
@@ -49,8 +48,7 @@ const imported = await transaction(async (client) => {
        RETURNING id`,
       [
         email,
-        sourceUser.full_name || null,
-        sourceUser.display_name || null,
+        sourceUser.full_name || sourceUser.display_name || null,
         ['user', 'staff', 'admin'].includes(sourceUser.role) ? sourceUser.role : 'user',
         sourceUser.tos_accepted_at || null,
         !!sourceUser.ns_unlocked,

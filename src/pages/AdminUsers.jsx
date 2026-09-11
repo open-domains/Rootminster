@@ -219,8 +219,8 @@ export default function AdminUsers() {
         aria-label={row.id === currentUserId ? t('adminUsers.cannotSelectOwnAccount') : t('adminUsers.selectAccount', { email: row.email })}
       />
     ) },
-    { key: 'display_name', label: t('adminUsers.colName'), render: (v, row) => {
-      const name = v || row.full_name;
+    { key: 'full_name', label: t('adminUsers.colName'), render: (v, row) => {
+      const name = v;
       return (
         <button onClick={() => setSelectedUser(row)} className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left">
           <div className="w-7 h-7 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center text-primary text-xs font-semibold shrink-0">
@@ -378,7 +378,7 @@ export default function AdminUsers() {
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
       ) : (
-        <DataTable columns={columns} data={users} searchKeys={['email', 'display_name', 'full_name']} emptyMessage={t('adminUsers.empty')} />
+        <DataTable columns={columns} data={users} searchKeys={['email', 'full_name']} emptyMessage={t('adminUsers.empty')} />
       )}
       <AdminMigrateModal open={migrateModalOpen} onClose={() => setMigrateModalOpen(false)} onSuccess={load} />
       <UserDetailModal

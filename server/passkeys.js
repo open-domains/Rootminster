@@ -87,7 +87,7 @@ export async function registerPasskeyRoutes(app) {
       rpID,
       userID: new TextEncoder().encode(user.id),
       userName: user.email,
-      userDisplayName: user.display_name || user.full_name || user.email,
+      userDisplayName: user.full_name || user.email,
       attestationType: 'none',
       excludeCredentials: credentials.map((item) => ({ id: item.credential_id, transports: item.transports || [] })),
       authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
