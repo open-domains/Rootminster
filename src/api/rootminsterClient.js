@@ -137,6 +137,14 @@ export const rootminster = {
     async publish(id, confirmation) { const result = await request(`/api/admin/terms/${encodeURIComponent(id)}/publish`, { method: 'POST', body: { confirmation } }); return result.terms; },
     async deleteDraft(id) { return request(`/api/admin/terms/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
   },
+  accountDeletion: {
+    async getMine() { return request('/api/account-deletion-request'); },
+    async request(reason = '') { return request('/api/account-deletion-request', { method: 'POST', body: { reason } }); },
+    async cancel(id) { return request(`/api/account-deletion-request/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
+    async listAdmin() { return request('/api/admin/account-deletion-requests'); },
+    async getAdmin(id) { return request(`/api/admin/account-deletion-requests/${encodeURIComponent(id)}`); },
+    async decide(id, decision, reason = '') { return request(`/api/admin/account-deletion-requests/${encodeURIComponent(id)}/decision`, { method: 'POST', body: { decision, reason } }); },
+  },
   modules: {
     async list() { return request('/api/admin/modules'); },
     async update(id, data) { return request(`/api/admin/modules/${encodeURIComponent(id)}`, { method: 'PUT', body: data }); },
