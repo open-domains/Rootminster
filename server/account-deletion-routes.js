@@ -142,7 +142,8 @@ async function notifyOutcome(requestRow, outcome, reason = '') {
     ? `<p>Hi ${escapeHtml(requestRow.user_name || 'there')},</p><p>Your account deletion request has been approved and your Open Domains account and associated managed data have been permanently deleted.</p><p>If you did not expect this message, please contact support.</p>`
     : `<p>Hi ${escapeHtml(requestRow.user_name || 'there')},</p><p>Your account deletion request was reviewed and was not approved.</p>${reason ? `<p><strong>Reason:</strong> ${escapeHtml(reason)}</p>` : ''}<p>Your account remains active. You can contact support if you have questions.</p>`;
   try {
-    await sendEmail({ to: requestRow.user_email, subject, body });
+    const delivery = await sendEmail({ to: requestRow.user_email, subject, body });
+    if (delivery?.disabled) throw new Error('Email delivery is disabled');
     await pool.query(
       `UPDATE account_deletion_requests SET notification_status = 'sent', notification_error = NULL, updated_at = now() WHERE id = $1`,
       [requestRow.id],
@@ -243,7 +244,7 @@ export async function registerAccountDeletionRoutes(app) {
        SET status = CASE WHEN $2 = 'approve' THEN 'approved' ELSE 'denied' END,
            decided_at = now(), decided_by_id = $3, decided_by_email = $4,
            decision_reason = $5, updated_at = now()
-       WHERE id = $1 AND status = 'pending'
+       WHERE id = $1 AND (status = 'pending' OR (status = 'failed' AND $2 = 'approve'))
        RETURNING *`,
       [request.params.id, decision, actor.id, actor.email, reason],
     );
