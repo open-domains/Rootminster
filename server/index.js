@@ -22,6 +22,7 @@ import { captureServerException, closeServerGlitchTip, configureServerGlitchTip,
 import { backupRestoreInProgress } from './backup-service.js';
 import { registerBackupRoutes } from './backup-routes.js';
 import { registerTermsRoutes } from './terms-routes.js';
+import { registerAccountDeletionRoutes } from './account-deletion-routes.js';
 
 assertProductionConfiguration();
 
@@ -126,6 +127,7 @@ await registerPublicApiRoutes(app);
 await registerModuleSettingsRoutes(app);
 await registerBackupRoutes(app);
 await registerTermsRoutes(app);
+await registerAccountDeletionRoutes(app);
 await registerGlitchTipRoutes(app);
 await registerEntityRoutes(app);
 await registerFunctionRoutes(app);

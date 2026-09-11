@@ -294,6 +294,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS platform_settings_key_unique ON entity_records
 CREATE UNIQUE INDEX IF NOT EXISTS cloudflare_record_unique ON entity_records((data->>'cloudflare_record_id'))
   WHERE entity_type = 'DnsRecord' AND data->>'cloudflare_record_id' IS NOT NULL AND data->>'cloudflare_record_id' <> '';
 
+CREATE TABLE IF NOT EXISTS account_deletion_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  user_email citext NOT NULL,
+  user_name text,
+  user_role text,
+  reason text NOT NULL DEFAULT '',
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'denied', 'failed')),
+  requested_at timestamptz NOT NULL DEFAULT now(),
+  decided_at timestamptz,
+  decided_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  decided_by_email citext,
+  decision_reason text NOT NULL DEFAULT '',
+  snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
+  deletion_summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+  notification_status text NOT NULL DEFAULT 'pending' CHECK (notification_status IN ('pending', 'sent', 'failed', 'not_required')),
+  notification_error text,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS account_deletion_requests_status_idx
+  ON account_deletion_requests(status, requested_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS account_deletion_requests_pending_user_unique
+  ON account_deletion_requests(user_id) WHERE status = 'pending' AND user_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version text PRIMARY KEY,
   applied_at timestamptz NOT NULL DEFAULT now()
