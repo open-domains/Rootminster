@@ -50,7 +50,7 @@ export function createDiscordRequests({ database = store, invoke = invokeInterna
     const openButtons = groups.map((bundle, i) => button(`Open ${i + 1}`, 'view', bundle.id));
     return discordMessage(`**${scope === 'pending' ? 'Staff review queue' : 'Your requests'}**\n${items.map((item, i) => `${i + 1}. ${item}`).join('\n') || 'No requests on this page.'}`, [
       ...(groups.length ? [row(...openButtons)] : []),
-      row(button('Previous', `list-${scope}`, String(Math.max(0, offset - 5)), 2, offset === 0), button('Refresh', `list-${scope}`, String(offset)), button('Next', `list-${scope}`, String(offset + 5), 2, rows.length <= 5)),
+      row(button('Previous', `previous-${scope}`, String(Math.max(0, offset - 5)), 2, offset === 0), button('Refresh', `refresh-${scope}`, String(offset)), button('Next', `next-${scope}`, String(offset + 5), 2, rows.length <= 5)),
       row(button('My requests', 'list-mine', '0'), ...(staff(actor) ? [button('Staff queue', 'list-pending', '0')] : []), { type: 2, style: 5, label: 'New request on site', url: `${config.appUrl}/my-requests` }),
     ]);
   }
@@ -102,6 +102,8 @@ export function createDiscordRequests({ database = store, invoke = invokeInterna
       return act(actor, id, action, modalText(interaction.data.components));
     }
     if (action.startsWith('list-')) return list(actor, action.slice(5), /^\d+$/.test(id) ? Number(id) : NaN);
+    const navigation = /^(?:previous|refresh|next)-(mine|pending)$/.exec(action);
+    if (navigation) return list(actor, navigation[1], /^\d+$/.test(id) ? Number(id) : NaN);
     if (action === 'view') return view(actor, id);
     if (action === 'history') return view(actor, id, false, '', /^\d+$/.test(page) ? Number(page) : NaN);
     if (action === 'approve') { if (!staff(actor)) fail('Staff access required.'); return view(actor, id, true); }

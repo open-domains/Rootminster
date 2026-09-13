@@ -83,6 +83,31 @@ test('conversation pages expose older messages without exposing internal notes',
  const {ui}=setup([request],comments);const result=await ui.component({type:3,data:{custom_id:`rm:history:${id}:3`}},owner);
  assert.match(JSON.stringify(result.embeds),/message0/);assert.doesNotMatch(JSON.stringify(result.embeds),/message4/);
 });
+test('list buttons have unique IDs and navigate to the correct scope and offset', async () => {
+  const rows = Array.from({ length: 12 }, (_, i) => ({ ...request, id: `${String(i + 1).padStart(8, '0')}-1111-4111-8111-111111111111`, records: [{ record_type: 'A', record_value: '8.8.8.8' }] }));
+  for (const [actor, scope] of [[owner, 'mine'], [admin, 'mine'], [admin, 'pending']]) {
+    for (const offset of [0, 5, 10, 15]) {
+      const { ui, calls } = setup(rows);
+      const panel = await ui.list(actor, scope, offset);
+      const controls = buttons(panel).filter(button => button.custom_id);
+      assert.equal(new Set(controls.map(button => button.custom_id)).size, controls.length);
+      for (const [label, target] of [['Previous', Math.max(0, offset - 5)], ['Refresh', offset], ['Next', offset + 5], ['My requests', 0], ...(actor === admin ? [['Staff queue', 0]] : [])]) {
+        const control = controls.find(button => button.label === label);
+        await ui.component({ type: 3, data: { custom_id: control.custom_id } }, actor);
+        const search = calls.at(-1)[1];
+        assert.equal(search.offset, target);
+        assert.equal(Boolean(search.statuses), label === 'Staff queue' || (label !== 'My requests' && scope === 'pending'));
+      }
+    }
+  }
+  const { ui } = setup();
+  for (const action of ['previous', 'refresh', 'next']) {
+    await assert.rejects(ui.component({ type: 3, data: { custom_id: `rm:${action}-pending:0` } }, owner), /staff/);
+    await assert.rejects(ui.component({ type: 3, data: { custom_id: `rm:${action}-mine:bad` } }, owner), /page/);
+  }
+  // Existing messages still use the original list action IDs.
+  await ui.component({ type: 3, data: { custom_id: 'rm:list-mine:0' } }, owner);
+});
 test('long messages fit Discord limits and disable mentions',()=>{
  const result=discordMessage('@everyone'.repeat(1000));assert.equal(result.content.length,1950);assert.deepEqual(result.allowed_mentions.parse,[]);
 });
