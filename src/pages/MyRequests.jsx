@@ -1,3 +1,4 @@
+import { groupSubdomainRequests } from '../../shared/subdomain-requests.js';
 import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { rootminster } from '@/api/rootminsterClient';
@@ -22,6 +23,7 @@ const STATUS_ICON = {
 function useStatusMeta() {
   const { t } = useTranslation();
   return {
+    user_responded: { label: 'Reply sent', icon: MessageCircle, tone: 'text-primary', detail: 'Your reply is waiting for the review team.' },
     pending: { label: t('myRequests.statusPendingLabel'), icon: Clock3, tone: 'text-primary', detail: t('myRequests.statusPendingDetail') },
     needs_info: { label: t('myRequests.statusNeedsInfoLabel'), icon: MessageCircle, tone: 'text-accent', detail: t('myRequests.statusNeedsInfoDetail') },
     approved: { label: t('myRequests.statusApprovedLabel'), icon: CheckCircle2, tone: 'text-emerald-400', detail: t('myRequests.statusApprovedDetail') },
@@ -29,7 +31,7 @@ function useStatusMeta() {
   };
 }
 
-function RequestDetail({ request, user, onBack, onAppeal }) {
+function RequestDetail({ request, user, onBack, onAppeal, onStatusChange }) {
   const { t } = useTranslation();
   const STATUS_META = useStatusMeta();
   const meta = STATUS_META[request.status] || STATUS_META.pending;
@@ -38,8 +40,8 @@ function RequestDetail({ request, user, onBack, onAppeal }) {
 
   const detailRows = [
     [t('myRequests.detailsDomain'), fullName],
-    [t('myRequests.detailsRecordType'), request.record_type || '—'],
-    [t('myRequests.detailsTarget'), request.record_value || '—'],
+    [t('myRequests.detailsRecordType'), request._records.map(r => r.record_type).join(', ')],
+    [t('myRequests.detailsTarget'), request._records.map(r => `${r.record_type}: ${r.record_value}`).join('; ')],
     [t('myRequests.detailsRoot'), request.root_domain || '—'],
     [t('myRequests.detailsSubmitted'), request.created_date ? format(new Date(request.created_date), 'd MMM yyyy, HH:mm') : '—'],
     [t('myRequests.detailsReviewed'), request.reviewed_at ? format(new Date(request.reviewed_at), 'd MMM yyyy, HH:mm') : t('myRequests.notReviewed')],
@@ -48,6 +50,7 @@ function RequestDetail({ request, user, onBack, onAppeal }) {
 
   const nextKey = {
     pending: 'myRequests.nextPending',
+    user_responded: 'myRequests.nextPending',
     needs_info: 'myRequests.nextNeedsInfo',
     approved: 'myRequests.nextApproved',
     rejected: 'myRequests.nextRejected',
@@ -120,7 +123,7 @@ function RequestDetail({ request, user, onBack, onAppeal }) {
             </section>
           )}
 
-          <ConversationThread requestId={request.id} requestType="subdomain" currentUser={user} readOnly={request.status === 'approved'} />
+          <ConversationThread requestId={request.id} requestType="subdomain" currentUser={user} onStatusChange={onStatusChange} readOnly={request.status === 'approved'} />
         </div>
 
         <aside className="space-y-4">
@@ -162,9 +165,10 @@ export default function MyRequests() {
       const u = await rootminster.auth.me();
       setUser(u);
       const reqs = await rootminster.entities.SubdomainRequest.filter({ requester_email: u.email }, '-created_date', 100);
-      setRequests(reqs);
+      const grouped = groupSubdomainRequests(reqs);
+      setRequests(grouped);
       if (selectedRequest) {
-        const fresh = reqs.find(r => r.id === selectedRequest.id);
+        const fresh = grouped.find(r => r._request_ids.includes(selectedRequest.id));
         if (fresh) setSelectedRequest(fresh);
       }
     } finally {
@@ -176,21 +180,21 @@ export default function MyRequests() {
 
   const counts = useMemo(() => ({
     all: requests.length,
-    pending: requests.filter(r => r.status === 'pending').length,
+    pending: requests.filter(r => ['pending', 'user_responded'].includes(r.status)).length,
     needs_info: requests.filter(r => r.status === 'needs_info').length,
     approved: requests.filter(r => r.status === 'approved').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
   }), [requests]);
 
   const filtered = requests.filter(r => {
-    if (filter !== 'all' && r.status !== filter) return false;
+    if (filter !== 'all' && !(filter === 'pending' ? ['pending', 'user_responded'].includes(r.status) : r.status === filter)) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return `${r.subdomain} ${r.root_domain} ${r.record_type} ${r.record_value || ''}`.toLowerCase().includes(q);
+    return `${r.subdomain} ${r.root_domain} ${r._records.map(record => `${record.record_type} ${record.record_value}`).join(' ')}`.toLowerCase().includes(q);
   });
 
   if (selectedRequest) {
-    return <RequestDetail request={selectedRequest} user={user} onBack={() => setSelectedRequest(null)} onAppeal={setAppealRequest} />;
+    return <RequestDetail request={selectedRequest} user={user} onBack={() => setSelectedRequest(null)} onAppeal={setAppealRequest} onStatusChange={status => { setSelectedRequest(previous => previous.status === status ? previous : { ...previous, status }); setRequests(previous => previous.map(row => row.id === selectedRequest.id && row.status !== status ? { ...row, status } : row)); }} />;
   }
 
   const stats = [
@@ -268,7 +272,7 @@ export default function MyRequests() {
                       <p className="truncate font-mono text-sm font-medium text-foreground">{fullName}</p>
                       {request.status === 'needs_info' && <span className="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">{t('myRequests.actionRequired')}</span>}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{request.record_type} · {request.record_value || t('myRequests.noTarget')} · {request.created_date ? formatDistanceToNow(new Date(request.created_date), { addSuffix: true }) : ''}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{request._records.map(r => `${r.record_type}: ${r.record_value}`).join(' · ')} · {request.created_date ? formatDistanceToNow(new Date(request.created_date), { addSuffix: true }) : ''}</p>
                     {request.rejection_reason && <p className="mt-1 truncate text-xs text-destructive/90">{request.rejection_reason}</p>}
                   </div>
                   <div className="hidden shrink-0 sm:block"><StatusBadge status={request.status} /></div>

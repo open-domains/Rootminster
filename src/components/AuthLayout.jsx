@@ -1,14 +1,18 @@
+import ThemeToggle from '@/components/ThemeToggle';
+import { useAppearance } from '@/lib/ThemeContext';
 import React from "react";
 import { Component as GradientShader } from "@/components/ui/stripe-like-gradient-shader";
 
 export default function AuthLayout({ icon: Icon, title, subtitle, footer, children }) {
+  const { style } = useAppearance();
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background px-3 py-6 sm:px-4 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <GradientShader />
+        {style === 'classic' && <GradientShader />}
         <div className="absolute inset-0 bg-background/75" />
       </div>
       <div className="relative z-10 w-full max-w-md">
+        <div className="mb-6 flex justify-end"><ThemeToggle /></div>
         <div className="text-center mb-6 sm:mb-10">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-4">
             <Icon className="w-7 h-7 text-primary-foreground" aria-hidden="true" />

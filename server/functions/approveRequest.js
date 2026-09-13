@@ -1,6 +1,11 @@
+import { provisionRequestBundle } from '../lib/request-approval.js';
+import { withRequestLock } from '../lib/request-bundles.js';
+import { requestHostname } from '../../shared/subdomain-requests.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
 function approvalEmailHtml(subdomain, domain, recordType, recordValue) {
+    const escape = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+    [subdomain, domain, recordType, recordValue] = [subdomain, domain, recordType, recordValue].map(escape);
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;margin:0;padding:0}
   .container{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,.08)}
@@ -44,83 +49,23 @@ export default async function (req) {
     const request = await platform.asServiceRole.entities.SubdomainRequest.filter({ id: request_id });
     if (!request.length)
         return Response.json({ error: 'Request not found' }, { status: 404 });
-    const r = request[0];
-    if (!['pending', 'needs_info', 'user_responded'].includes(r.status) || r.cloudflare_record_id || r.dns_record_id)
-        return Response.json({ error: `Request cannot be approved from status ${r.status || 'unknown'}` }, { status: 409 });
-    const domains = await platform.asServiceRole.entities.Domain.filter({ name: r.root_domain });
-    if (!domains.length)
-        return Response.json({ error: 'Domain not found' }, { status: 404 });
-    const domain = domains[0];
-    // Normalise content: strip trailing dots for hostname-based records
-    const hostnameTypes = ['NS', 'CNAME', 'MX'];
-    let cfContent = hostnameTypes.includes(r.record_type)
-        ? r.record_value.trim().replace(/\.$/, '')
-        : r.record_value.trim();
-    // MX: extract priority from "10 mail.example.com" or auto-assign 10
-    let mxPriority;
-    if (r.record_type === 'MX') {
-        const mxMatch = cfContent.match(/^(\d+)\s+(.+)$/);
-        if (mxMatch) {
-            mxPriority = parseInt(mxMatch[1]);
-            cfContent = mxMatch[2].trim();
-        }
-        else {
-            mxPriority = 10;
-        }
+    return withRequestLock(requestHostname(request[0]), async () => {
+    const r = await platform.asServiceRole.entities.SubdomainRequest.get(request_id);
+    let result;
+    try {
+        result = await provisionRequestBundle(platform.asServiceRole.entities, r, user, admin_notes, cfFetch);
+    } catch (error) {
+        return Response.json({ error: error.message }, { status: error.status || 500 });
     }
-    // NS and MX records cannot be proxied
-    const cfProxied = (r.record_type === 'NS' || r.record_type === 'MX') ? false : (r.proxied || false);
-    // Create DNS record in Cloudflare
-    const cfBody = { type: r.record_type, name: `${r.subdomain}.${r.root_domain}`, content: cfContent, ttl: r.ttl || 3600, proxied: cfProxied };
-    if (r.record_type === 'MX')
-        cfBody.priority = mxPriority;
-    const cfRes = await cfFetch('POST', `/zones/${domain.zone_id}/dns_records`, cfBody);
-    if (!cfRes.success) {
-        return Response.json({ error: cfRes.errors?.[0]?.message || 'Cloudflare error' }, { status: 500 });
-    }
-    const cfRecord = cfRes.result;
-    // Upsert DNS record in DB
-    const existing = await platform.asServiceRole.entities.DnsRecord.filter({ cloudflare_record_id: cfRecord.id });
-    let dnsRecord;
-    const dbPayload = {
-        zone_id: domain.zone_id, zone_name: r.root_domain,
-        cloudflare_record_id: cfRecord.id, record_type: r.record_type,
-        name: cfRecord.name, subdomain: r.subdomain, content: r.record_value,
-        proxied: r.proxied || false, ttl: r.ttl || 3600, managed: true,
-        owner_email: r.requester_email, owner_id: r.requester_id,
-        status: 'active', last_synced: new Date().toISOString()
-    };
-    if (existing.length) {
-        dnsRecord = await platform.asServiceRole.entities.DnsRecord.update(existing[0].id, dbPayload);
-    }
-    else {
-        dnsRecord = await platform.asServiceRole.entities.DnsRecord.create(dbPayload);
-    }
-    const fullName = `${r.subdomain}.${r.root_domain}`.toLowerCase();
-    const ownerships = await platform.asServiceRole.entities.SubdomainOwnership.filter({ owner_id: r.requester_id, full_name: fullName });
-    const ownershipPayload = {
-        full_name: fullName, subdomain: r.subdomain, root_domain: r.root_domain, zone_id: domain.zone_id,
-        owner_email: r.requester_email, owner_id: r.requester_id, status: 'active',
-        suspended_at: null, suspension_reason: '', last_record_added_at: new Date().toISOString()
-    };
-    if (ownerships.length)
-        await platform.asServiceRole.entities.SubdomainOwnership.update(ownerships[0].id, ownershipPayload);
-    else
-        await platform.asServiceRole.entities.SubdomainOwnership.create(ownershipPayload);
-    // Update request
-    await platform.asServiceRole.entities.SubdomainRequest.update(r.id, {
-        status: 'approved', reviewed_by: reviewerName,
-        reviewed_at: new Date().toISOString(),
-        cloudflare_record_id: cfRecord.id,
-        dns_record_id: dnsRecord.id,
-        admin_notes: admin_notes || ''
-    });
+    const { bundle, dnsRecords } = result;
+    const recordTypes = bundle._records.map(record => record.record_type).join(', ');
+    const recordValues = bundle._records.map(record => record.record_value).join('; ');
     // Send approval email
     try {
         await platform.asServiceRole.integrations.Core.SendEmail({
             to: r.requester_email,
             subject: `✅ Subdomain Approved: ${r.subdomain}.${r.root_domain}`,
-            body: approvalEmailHtml(r.subdomain, r.root_domain, r.record_type, r.record_value)
+            body: approvalEmailHtml(r.subdomain, r.root_domain, recordTypes, recordValues)
         });
         await platform.asServiceRole.entities.EmailLog.create({
             to: r.requester_email, subject: `✅ Subdomain Approved: ${r.subdomain}.${r.root_domain}`,
@@ -149,7 +94,7 @@ export default async function (req) {
                 color: 0x10b981,
                 fields: [
                     { name: 'Subdomain', value: String(r.subdomain + '.' + r.root_domain), inline: true },
-                    { name: 'Type', value: String(r.record_type), inline: true },
+                    { name: 'Type', value: recordTypes, inline: true },
                     { name: 'User', value: String(r.requester_email), inline: true },
                     { name: 'Approved By', value: String(reviewerName), inline: true }
                 ],
@@ -164,5 +109,6 @@ export default async function (req) {
         }
     }
     catch (_) { }
-    return Response.json({ success: true, dns_record: dnsRecord });
+    return Response.json({ success: true, dns_record: dnsRecords[0], dns_records: dnsRecords });
+    });
 }

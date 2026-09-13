@@ -18,11 +18,11 @@ const configs = {
 };
 
 const palette = {
-  amber:   'bg-amber-500/10 text-amber-400',
-  emerald: 'bg-emerald-500/10 text-emerald-400',
-  red:     'bg-red-500/10 text-red-400',
+  amber:   'bg-amber-500/10 text-amber-800 dark:text-amber-400',
+  emerald: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  red:     'bg-red-500/10 text-red-700 dark:text-red-400',
   blue:    'bg-primary/10 text-primary',
-  violet:  'bg-violet-500/10 text-violet-400',
+  violet:  'bg-violet-500/10 text-violet-700 dark:text-violet-400',
   slate:   'bg-muted text-muted-foreground',
 };
 

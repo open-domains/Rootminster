@@ -1,3 +1,4 @@
+import { groupSubdomainRequests } from '../../shared/subdomain-requests.js';
 import { useState, useEffect } from 'react';
 import { rootminster } from '@/api/rootminsterClient';
 import { useTranslation } from 'react-i18next';
@@ -184,7 +185,7 @@ export default function UserDashboard() {
         rootminster.entities.SubdomainRequest.filter({ requester_email: u.email })
       ]);
       setOwnedRecords(records.filter(r => r.status !== 'suspended'));
-      setRequests(reqs.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      setRequests(groupSubdomainRequests(reqs).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import { groupSubdomainRequests } from '../../shared/subdomain-requests.js';
 import { useState, useEffect } from 'react';
 import { rootminster } from '@/api/rootminsterClient';
 import StatusBadge from '@/components/StatusBadge';
@@ -128,33 +129,12 @@ export default function AdminRequests() {
     if (!assessmentByRequest.has(assessment.request_id)) assessmentByRequest.set(assessment.request_id, assessment);
   });
 
-  const groupRequests = (reqs) => {
-    const map = new Map();
-    reqs.forEach(r => {
-      const key = `${r.subdomain}.${r.root_domain}`;
-      const enriched = { ...r, _safety: assessmentByRequest.get(r.id) || null };
-      if (!map.has(key)) {
-        map.set(key, { ...enriched, _records: [enriched] });
-      } else {
-        const group = map.get(key);
-        group._records.push(enriched);
-        const priority = { pending: 4, needs_info: 3, approved: 2, rejected: 1 };
-        if ((priority[r.status] || 0) > (priority[group.status] || 0)) group.status = r.status;
-        if (Number(enriched._safety?.score || r.safety_score || 0) > Number(group._safety?.score || group.safety_score || 0)) {
-          group._safety = enriched._safety;
-          group.safety_score = r.safety_score;
-          group.safety_verdict = r.safety_verdict;
-          group.safety_overridden = r.safety_overridden;
-        }
-      }
-    });
-    return Array.from(map.values());
-  };
-
-  const filteredRaw = statusFilter === 'all' ? requests : statusFilter === 'pending'
-    ? requests.filter(r => r.status === 'pending' || r.status === 'user_responded')
-    : requests.filter(r => r.status === statusFilter);
-  const grouped = groupRequests(filteredRaw);
+  const groupRequests = (reqs) => groupSubdomainRequests(reqs.map(r => ({ ...r, _safety: assessmentByRequest.get(r.id) || null }))).map(group => {
+    const highest = [...group._requests].sort((a, b) => Number(b._safety?.score ?? b.safety_score ?? 0) - Number(a._safety?.score ?? a.safety_score ?? 0))[0];
+    return { ...group, _safety: highest._safety, safety_score: highest.safety_score, safety_verdict: highest.safety_verdict };
+  });
+  const allGroups = groupRequests(requests);
+  const grouped = allGroups.filter(r => statusFilter === 'all' || (statusFilter === 'pending' ? ['pending', 'user_responded'].includes(r.status) : r.status === statusFilter));
   const riskFiltered = riskFilter === 'all' ? grouped : grouped.filter((request) => {
     const assessment = request._safety;
     if (riskFilter === 'overridden') return assessment?.overridden || request.safety_overridden;
@@ -170,7 +150,7 @@ export default function AdminRequests() {
     : dnsIssues;
 
 
-  const pendingSubdomains = groupRequests(requests.filter(r => r.status === 'pending' || r.status === 'user_responded')).length;
+  const pendingSubdomains = allGroups.filter(r => ['pending', 'user_responded'].includes(r.status)).length;
   const dnsIssueCount = dnsIssues.length;
 
   const tabs = [

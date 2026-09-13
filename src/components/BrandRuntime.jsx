@@ -1,3 +1,4 @@
+import { useAppearance } from '@/lib/ThemeContext';
 import { useEffect } from 'react';
 import { usePublicConfig } from '@/lib/public-config';
 
@@ -22,17 +23,20 @@ function hexToHsl(hex) {
 }
 
 export default function BrandRuntime({ children }) {
+  const { style } = useAppearance();
   const { config } = usePublicConfig();
   useEffect(() => {
     const branding = config.branding;
     if (!branding) return;
     document.title = branding.platform_name;
     const hsl = hexToHsl(branding.primary_color);
-    if (hsl) {
+    if (style !== 'classic' || !hsl) {
+      ['--primary', '--ring', '--sidebar-primary'].forEach(key => document.documentElement.style.removeProperty(key));
+    } else {
       document.documentElement.style.setProperty('--primary', hsl);
       document.documentElement.style.setProperty('--ring', hsl);
       document.documentElement.style.setProperty('--sidebar-primary', hsl);
     }
-  }, [config.branding]);
+  }, [config.branding, style]);
   return children;
 }

@@ -1,3 +1,5 @@
+import { store } from '../store.js';
+import { requestRecords } from '../../shared/subdomain-requests.js';
 import { getModuleConfig } from '../module-settings.js';
 
 export const SAFETY_RULESET_VERSION = '2026-08-31.1';
@@ -191,6 +193,7 @@ async function checkProvider(request, safety) {
         root_domain: request.root_domain,
         record_type: request.record_type,
         record_value: request.record_value,
+        records: requestRecords(request),
         reason: request.reason,
         preview_link: request.preview_link,
       }),
@@ -211,7 +214,7 @@ async function screeningContext(platform, request, user) {
   const [settings, byUser, targetMatches, safety, phishing] = await Promise.all([
     platform.asServiceRole.entities.PlatformSettings.filter({ key: { $in: ['safety_screening_enabled', 'safety_protected_brands'] } }),
     platform.asServiceRole.entities.SubdomainRequest.filter({ requester_id: request.requester_id }, '-created_date', 500),
-    platform.asServiceRole.entities.SubdomainRequest.filter({ record_value: request.record_value }, '-created_date', 500),
+    store.requestsWithTargets(requestRecords(request).map(record => record.record_value)),
     getModuleConfig('safety'),
     getModuleConfig('phishing'),
   ]);

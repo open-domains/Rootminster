@@ -1,3 +1,4 @@
+import { recordSetError } from '../../shared/subdomain-requests';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -119,7 +120,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
           rootminster.functions.invoke('checkAvailability', { subdomain: sub, root_domain: domain }),
           rootminster.entities.SubdomainRequest.filter({ subdomain: sub, root_domain: domain })
         ]);
-        const activeDupe = existing.find(r => ['pending', 'needs_info'].includes(r.status));
+        const activeDupe = existing.find(r => ['pending', 'needs_info', 'user_responded'].includes(r.status));
         if (activeDupe) {
           setAvailability({ status: 'pending', message: t('requestModal.alreadyPending', { status: activeDupe.status }) });
         } else {
@@ -145,15 +146,16 @@ export default function RequestModal({ open, onClose, onSuccess }) {
   };
 
   const setRow = (i, k, v) => setRows(rs => rs.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const addRow = () => setRows(rs => [...rs, DEFAULT_ROW()]);
+  const addRow = () => setRows(rs => rs.length < 20 ? [...rs, DEFAULT_ROW()] : rs);
   const removeRow = i => setRows(rs => rs.filter((_, idx) => idx !== i));
   const getRowError = row => validateRecordValue(row.record_type, row.record_value);
 
   const hasCname = rows.some(r => r.record_type === 'CNAME');
+  const compatibilityError = recordSetError(rows);
   const hasOtherWithCname = hasCname && rows.length > 1;
   const verificationRequired = Boolean(siteKey);
   const verificationComplete = !verificationLoading && (!verificationRequired || !!recaptchaToken);
-  const canSubmit = !hasOtherWithCname && availability?.status === 'available' && subdomain && rootDomain &&
+  const canSubmit = !compatibilityError && !hasOtherWithCname && availability?.status === 'available' && subdomain && rootDomain &&
     rows.every(r => !getRowError(r)) && reason.trim().length > 0 && previewLink.trim().length > 0 && verificationComplete;
 
   const handleSubmit = async e => {
@@ -162,7 +164,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
     setLoading(true);
     try {
       const existing = await rootminster.entities.SubdomainRequest.filter({ subdomain, root_domain: rootDomain });
-      const duplicate = existing.find(r => ['pending', 'needs_info'].includes(r.status));
+      const duplicate = existing.find(r => ['pending', 'needs_info', 'user_responded'].includes(r.status));
       if (duplicate) {
         toast.error(t('requestModal.duplicateError', { subdomain, rootDomain, status: duplicate.status }));
         setLoading(false);
@@ -264,9 +266,9 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                     )}
                   </div>
 
-                  {hasOtherWithCname && (
+                  {compatibilityError && rows.every(row => row.record_value.trim()) && (
                     <div className="mb-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                      <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {t('requestModal.cnameWarning')}
+                      <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {compatibilityError}
                     </div>
                   )}
 

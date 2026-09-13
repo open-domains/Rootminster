@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -17,18 +17,25 @@ export default function DnsRecordRow({
   editing, onEnterEdit, onExitEdit, saving, onSaveChange,
   onToggleProxy, onCopy, onDuplicate, onDelete,
 }) {
+  const errorId = useId();
   const [draft, setDraft] = useState(null);
   const contentRef = useRef(null);
+  const editButtonRef = useRef(null);
+  const wasEditing = useRef(false);
   const isNested = record.name !== subdomainName;
   const canProxy = PROXYABLE_TYPES.includes(record.record_type);
 
   useEffect(() => {
+    let timer;
     if (editing) {
       setDraft({ content: record.content || '', proxied: !!record.proxied, ttl: record.ttl || 3600 });
-      setTimeout(() => contentRef.current?.focus(), 30);
+      timer = setTimeout(() => contentRef.current?.focus(), 30);
     } else {
       setDraft(null);
+      if (wasEditing.current) editButtonRef.current?.focus();
     }
+    wasEditing.current = editing;
+    return () => clearTimeout(timer);
   }, [editing]);  
 
   const validation = draft ? validateContent(record.record_type, draft.content) : null;
@@ -62,6 +69,7 @@ export default function DnsRecordRow({
       {/* Checkbox (sticky) */}
       <td className="sticky left-0 z-10 bg-card w-11 px-2 text-center">
         <input
+          aria-label={`Select ${record.record_type} record for ${record.name}`}
           type="checkbox"
           checked={selected}
           onChange={onToggleSelect}
@@ -74,10 +82,10 @@ export default function DnsRecordRow({
         {isNested ? (
           <span className="flex items-center gap-1.5 min-w-0">
             <span className="text-muted-foreground/50 text-xs">↳</span>
-            <span className="font-mono text-xs text-foreground truncate">{record.name}</span>
+            <span className="font-mono text-xs text-foreground truncate" title={record.name}>{record.name}</span>
           </span>
         ) : (
-          <span className="font-mono text-xs text-foreground truncate block">{record.name}</span>
+          <span className="font-mono text-xs text-foreground truncate block" title={record.name}>{record.name}</span>
         )}
       </td>
 
@@ -94,17 +102,20 @@ export default function DnsRecordRow({
           {editing && draft ? (
             <div className="min-w-[180px]">
               <Input
+                aria-label={`Content for ${record.record_type} record ${record.name}`}
+                aria-invalid={!canSave}
+                aria-describedby={!canSave ? errorId : undefined}
                 ref={contentRef}
                 value={draft.content}
                 onChange={e => setDraft(d => ({ ...d, content: e.target.value }))}
                 onKeyDown={onKeyDown}
                 className={cn('h-8 text-xs font-mono', validation && !validation.valid && 'border-destructive focus-visible:ring-destructive')}
               />
-              {validation && !validation.valid && <p className="text-[10px] text-destructive mt-0.5">{validation.error}</p>}
-              {conflict.conflict && <p className="text-[10px] text-accent mt-0.5">{conflict.message}</p>}
+              {validation && !validation.valid && <p id={errorId} className="text-[10px] text-destructive mt-0.5">{validation.error}</p>}
+              {conflict.conflict && <p id={errorId} className="text-[10px] text-destructive mt-0.5">{conflict.message}</p>}
             </div>
           ) : (
-            <span className="font-mono text-xs text-foreground truncate block max-w-[280px]">{record.content}</span>
+            <span className="font-mono text-xs text-foreground truncate block max-w-[280px]" title={record.content}>{record.content}</span>
           )}
         </td>
       )}
@@ -127,7 +138,7 @@ export default function DnsRecordRow({
         <td className="px-3">
           {editing && draft ? (
             <Select value={String(draft.ttl)} onValueChange={v => setDraft(d => ({ ...d, ttl: Number(v) }))}>
-              <SelectTrigger className="h-8 w-[100px] text-xs"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label={`TTL for ${record.name}`} className="h-8 w-[100px] text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {TTL_OPTIONS.map(o => <SelectItem key={o.v} value={String(o.v)} className="text-xs">{o.l}</SelectItem>)}
               </SelectContent>
@@ -147,21 +158,21 @@ export default function DnsRecordRow({
       <td className="px-3 text-right whitespace-nowrap">
         {editing ? (
           <div className="inline-flex items-center gap-1">
-            <Button size="icon" className="h-7 w-7" onClick={handleSave} disabled={saving || !canSave}>
+            <Button aria-label="Save DNS record" size="icon" className="h-7 w-7" onClick={handleSave} disabled={saving || !canSave}>
               {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
             </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onExitEdit}>
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onExitEdit} aria-label="Cancel DNS edit">
               <X size={13} />
             </Button>
           </div>
         ) : (
-          <div className="inline-flex items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100">
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => onEnterEdit(record.id)} title="Edit">
+          <div className="inline-flex items-center gap-0.5 opacity-100 transition-opacity ">
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" ref={editButtonRef} onClick={() => onEnterEdit(record.id)} title="Edit" aria-label={`Edit ${record.record_type} record for ${record.name}`}>
               <Pencil size={13} />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="More">
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="More" aria-label={`More actions for ${record.record_type} record ${record.name}`}>
                   <MoreHorizontal size={14} />
                 </Button>
               </DropdownMenuTrigger>

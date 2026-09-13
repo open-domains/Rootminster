@@ -1,3 +1,5 @@
+import { OPEN_REQUEST_STATUSES } from '../shared/subdomain-requests.js';
+import { requestBundle, bundleComments } from './lib/request-bundles.js';
 import crypto from 'node:crypto';
 import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
@@ -107,6 +109,11 @@ async function authenticateMcp(request) {
   return serializeUser(result.rows[0]);
 }
 
+const requestSearchProperties = {
+  limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
+  offset: { type: 'integer', minimum: 0, default: 0 },
+  hostname: { type: 'string', description: 'Exact full hostname, for example askfowzan.localplayer.dev' },
+};
 const userTools = [
   {
     name: 'get_my_account',
@@ -125,8 +132,8 @@ const userTools = [
   {
     name: 'list_my_requests',
     title: 'List my requests',
-    description: 'List subdomain requests submitted by the signed-in Rootminster account.',
-    inputSchema: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 } }, additionalProperties: false },
+    description: 'Search your requests by exact hostname, or follow next_offset to browse all requests. Records are bundled into one request.',
+    inputSchema: { type: 'object', properties: requestSearchProperties, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   },
 ];
@@ -135,21 +142,21 @@ const staffTools = [
   {
     name: 'list_pending_reviews',
     title: 'List pending reviews',
-    description: 'List pending subdomain requests for staff review.',
-    inputSchema: { type: 'object', properties: { limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 } }, additionalProperties: false },
+    description: 'Search open requests including needs_info and user_responded. Filter by hostname to find older requests; follow next_offset until null. Each item includes all records and conversation messages.',
+    inputSchema: { type: 'object', properties: requestSearchProperties, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   },
   {
     name: 'get_review_request',
     title: 'Get a review request',
-    description: 'Return one subdomain request by its Rootminster request ID.',
-    inputSchema: { type: 'object', required: ['request_id'], properties: { request_id: { type: 'string', format: 'uuid' } }, additionalProperties: false },
+    description: 'Return a complete request and conversation by request ID, or search all statuses by exact hostname. Multiple matches are returned as requests with pagination.',
+    inputSchema: { type: 'object', anyOf: [{ required: ['request_id'] }, { required: ['hostname'] }], properties: { request_id: { type: 'string', format: 'uuid' }, ...requestSearchProperties }, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
   },
   {
     name: 'approve_review',
     title: 'Approve a subdomain request',
-    description: 'Approve a pending subdomain request and create its DNS record. This changes external DNS.',
+    description: 'Approve a pending subdomain request and create all its compatible DNS records. This changes external DNS.',
     inputSchema: { type: 'object', required: ['request_id'], properties: { request_id: { type: 'string', format: 'uuid' }, admin_notes: { type: 'string', maxLength: 2000 } }, additionalProperties: false },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
   },
@@ -178,21 +185,43 @@ async function ownedRecords(entity, user, limit) {
   return [...new Map([...byId, ...byEmail].map((item) => [item.id, item])).values()].slice(0, limit);
 }
 
-async function reviewWithSafety(request) {
-  const rows = await store.filter('SafetyAssessment', { request_id: request.id }, '-created_date', 1);
-  return { ...request, safety_assessment: rows[0] || null };
+const requestEntities = Object.fromEntries(['SubdomainRequest', 'RequestComment'].map(entity => [entity, {
+  filter: (...args) => store.filter(entity, ...args),
+}]));
+async function reviewWithSafety(request, elevated = true) {
+  const bundle = await requestBundle(requestEntities, request);
+  const comments = await bundleComments(requestEntities, bundle, elevated);
+  const assessments = elevated ? await store.filter('SafetyAssessment', { request_id: { $in: bundle._request_ids } }, '-created_date', 100) : [];
+  return { ...bundle, records: bundle._records, comments, ...(elevated ? { safety_assessments: assessments, safety_assessment: assessments[0] || null } : {}) };
+}
+function searchOptions(args) {
+  const limit = args.limit ?? 25;
+  const offset = args.offset ?? 0;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) throw new Error('limit must be 1–100 and offset a nonnegative integer');
+  const hostname = args.hostname === undefined ? undefined : String(args.hostname).trim().toLowerCase().replace(/\.$/, '');
+  if (hostname !== undefined && (!hostname.includes('.') || hostname.length > 253 || !/^[a-z0-9_.~-]+$/.test(hostname))) throw new Error('Provide a full hostname, without a URL path');
+  return { limit, offset, hostname };
+}
+async function searchRequestResults(args, user, statuses, own = false) {
+  const options = searchOptions(args);
+  const rows = await store.searchRequests({ ...options, limit: options.limit + 1, statuses, ...(own ? { owner: user } : {}) });
+  const bundles = await Promise.all(rows.slice(0, options.limit).map(row => reviewWithSafety(row, !own && STAFF_ROLES.has(user.role))));
+  return { requests: [...new Map(bundles.map(bundle => [bundle.id, bundle])).values()], next_offset: rows.length > options.limit ? options.offset + options.limit : null };
 }
 
-async function callTool(name, args, user) {
+export async function callTool(name, args, user) {
   if (name === 'get_my_account') return toolResult({ account: { id: user.id, email: user.email, full_name: user.full_name, role: user.role } });
   if (name === 'list_my_subdomains') return toolResult({ subdomains: await ownedRecords('DnsRecord', user, limitValue(args.limit)) });
-  if (name === 'list_my_requests') return toolResult({ requests: await ownedRecords('SubdomainRequest', user, limitValue(args.limit)) });
+  if (name === 'list_my_requests') return toolResult(await searchRequestResults(args, user, undefined, true));
   if (!STAFF_ROLES.has(user.role)) throw Object.assign(new Error('This tool requires a staff or admin role'), { status: 403 });
   if (name === 'list_pending_reviews') {
-    const requests = await store.filter('SubdomainRequest', { status: { $in: ['pending', 'user_responded', 'needs_info'] } }, 'created_date', limitValue(args.limit));
-    return toolResult({ requests: await Promise.all(requests.map(reviewWithSafety)) });
+    return toolResult(await searchRequestResults(args, user, OPEN_REQUEST_STATUSES));
   }
   if (name === 'get_review_request') {
+    if (!args.request_id) {
+      if (!args.hostname) throw new Error('request_id or hostname is required');
+      return toolResult(await searchRequestResults(args, user));
+    }
     const request = await store.get('SubdomainRequest', args.request_id);
     if (!request) throw Object.assign(new Error('Request not found'), { status: 404 });
     return toolResult({ request: await reviewWithSafety(request) });
@@ -201,7 +230,7 @@ async function callTool(name, args, user) {
     if (!args.request_id) throw Object.assign(new Error('request_id is required'), { status: 400 });
     const review = await store.get('SubdomainRequest', args.request_id);
     if (!review) throw Object.assign(new Error('Request not found'), { status: 404 });
-    if (review.status !== 'pending') throw Object.assign(new Error(`Request is already ${review.status || 'not pending'}`), { status: 409 });
+    if (!OPEN_REQUEST_STATUSES.includes(review.status)) throw Object.assign(new Error(`Request is already ${review.status || 'not pending'}`), { status: 409 });
   }
   if (name === 'approve_review') return toolResult(await invokeInternal('approveRequest', { request_id: args.request_id, admin_notes: args.admin_notes || '' }, user));
   if (name === 'reject_review') {

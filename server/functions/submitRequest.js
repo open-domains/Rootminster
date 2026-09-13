@@ -1,3 +1,5 @@
+import { recordSetError, OPEN_REQUEST_STATUSES } from '../../shared/subdomain-requests.js';
+import { withRequestLock } from '../lib/request-bundles.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
@@ -98,6 +100,7 @@ async function sendDiscord(platform, fields, title, color) {
     catch (_) { }
 }
 export default async function (req) {
+    if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
     const [turnstile, donations] = await Promise.all([getModuleConfig('turnstile'), getModuleConfig('donations')]);
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
@@ -105,7 +108,9 @@ export default async function (req) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     const trustedClient = ['api', 'discord'].includes(user.trusted_source);
-    const { subdomain, root_domain, reason, preview_link, recaptcha_token } = body;
+    const { reason, preview_link, recaptcha_token } = body;
+    const subdomain = typeof body.subdomain === 'string' ? body.subdomain.trim().toLowerCase() : '';
+    const root_domain = typeof body.root_domain === 'string' ? body.root_domain.trim().toLowerCase().replace(/\.$/, '') : '';
     const requestPolicy = await getRequestPolicy(platform);
     if (requestPolicy.locked && !['staff', 'admin'].includes(user.role)) {
         return Response.json({ error: requestPolicy.message }, { status: 423 });
@@ -115,27 +120,29 @@ export default async function (req) {
     let recordList;
     if (Array.isArray(body.records) && body.records.length > 0) {
         recordList = body.records.map(r => ({
-            record_type: r.record_type,
-            record_value: r.record_value,
-            ttl: r.ttl || 3600,
-            proxied: r.proxied || false,
+            record_type: String(r?.record_type || '').toUpperCase(),
+            record_value: r?.record_value,
+            ttl: r?.ttl || 3600,
+            proxied: r?.proxied || false,
         }));
     }
     else {
         recordList = [{
-                record_type: body.record_type,
+                record_type: String(body.record_type || '').toUpperCase(),
                 record_value: body.record_value,
                 ttl: body.ttl || 3600,
                 proxied: body.proxied || false,
             }];
     }
+    const compatibilityError = recordSetError(recordList);
+    if (compatibilityError) return Response.json({ error: compatibilityError }, { status: 400 });
     if (!subdomain || !root_domain) {
         return Response.json({ error: 'Missing required fields' }, { status: 400 });
     }
     if (!recordList.every(r => r.record_type && r.record_value)) {
         return Response.json({ error: 'Missing record type or value' }, { status: 400 });
     }
-    if (!preview_link || !preview_link.trim()) {
+    if (typeof preview_link !== 'string' || !preview_link.trim()) {
         return Response.json({ error: 'A preview link is required' }, { status: 400 });
     }
     // Turnstile — verified ONCE for the whole batch (tokens are single-use)
@@ -215,9 +222,11 @@ export default async function (req) {
     if (isReservedName(subdomain, reserved)) {
         return Response.json({ error: 'This subdomain name is reserved' }, { status: 409 });
     }
+    return withRequestLock(`${subdomain}.${root_domain}`, async () => {
     // Existing DNS records for this hostname
     const existing = await platform.asServiceRole.entities.DnsRecord.filter({ name: `${subdomain}.${root_domain}` });
     const existingTypes = existing.map(r => r.record_type);
+    if ([...existingTypes, ...recordList.map(r => r.record_type)].includes('NS') && [...existingTypes, ...recordList.map(r => r.record_type)].some(type => type !== 'NS')) return Response.json({ error: 'NS delegation cannot coexist with other record types.' }, { status: 409 });
     // CNAME cannot coexist with any other record (existing or in the batch)
     const batchHasCname = recordList.some(r => r.record_type === 'CNAME');
     if (batchHasCname && (existing.length > 0 || recordList.length > 1)) {
@@ -238,7 +247,7 @@ export default async function (req) {
     const seen = new Set();
     for (const r of recordList) {
         const norm = normaliseValue(r.record_type, r.record_value);
-        const key = `${r.record_type}|${norm.toLowerCase()}`;
+        const key = `${r.record_type}|${r.record_type === "TXT" ? norm : norm.toLowerCase()}`;
         if (seen.has(key)) {
             return Response.json({ error: 'Duplicate record in submission' }, { status: 409 });
         }
@@ -248,32 +257,19 @@ export default async function (req) {
             return Response.json({ error: 'This exact record already exists' }, { status: 409 });
         }
     }
-    // Pending requests check
+    // All unresolved statuses reserve the hostname, including replied requests.
     const pending = await platform.asServiceRole.entities.SubdomainRequest.filter({
-        subdomain, root_domain, status: 'pending'
+        subdomain, root_domain, status: { $in: OPEN_REQUEST_STATUSES }
     });
-    if (pending.length > 0) {
-        for (const r of recordList) {
-            const norm = normaliseValue(r.record_type, r.record_value);
-            const isDup = pending.find(p => p.record_type === r.record_type && p.record_value === norm);
-            if (isDup) {
-                return Response.json({ error: 'A pending request for this exact record already exists' }, { status: 409 });
-            }
-        }
-    }
-    // Create all SubdomainRequest records
-    const created = [];
-    for (const r of recordList) {
-        const normalisedValue = normaliseValue(r.record_type, r.record_value);
-        const request = await platform.asServiceRole.entities.SubdomainRequest.create({
-            requester_email: user.email, requester_id: user.id,
-            subdomain, root_domain, full_name: `${subdomain}.${root_domain}`,
-            record_type: r.record_type, record_value: normalisedValue, ttl: r.ttl || 3600,
-            proxied: r.record_type === 'NS' ? false : (r.proxied || false),
-            reason: reason || '', preview_link: preview_link.trim(), status: 'pending', zone_id: d.zone_id
-        });
-        created.push(request);
-    }
+    if (pending.length) return Response.json({ error: 'An open request already exists for this hostname. Continue its conversation instead of creating another request.' }, { status: 409 });
+    const records = recordList.map(r => ({ ...r, record_value: normaliseValue(r.record_type, r.record_value), proxied: ['A', 'AAAA', 'CNAME'].includes(r.record_type) && !!r.proxied }));
+    const request = await platform.asServiceRole.entities.SubdomainRequest.create({
+        requester_email: user.email, requester_id: user.id,
+        subdomain, root_domain, full_name: `${subdomain}.${root_domain}`,
+        ...records[0], records,
+        reason: reason || '', preview_link: preview_link.trim(), status: 'pending', zone_id: d.zone_id
+    });
+    const created = [request];
     const typeList = recordList.map(r => r.record_type);
     const valueList = recordList.map(r => r.record_value);
     const screened = [];
@@ -314,5 +310,6 @@ export default async function (req) {
         action: 'request_submitted', entity_type: 'SubdomainRequest', entity_id: created[0].id,
         description: `New subdomain request: ${subdomain}.${root_domain} (${typeList.join(', ')})`
     });
-    return Response.json({ success: true, requests: created });
+    return Response.json({ success: true, request: created[0], requests: created });
+    });
 }

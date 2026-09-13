@@ -1,0 +1,172 @@
+/* A separate visual identity; color mode remains an independent preference. */
+:root[data-theme="fieldwork"] {
+  --font-body: 'DM Sans', sans-serif;
+  --font-heading: 'DM Sans', sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --background: 42 30% 96%;
+  --foreground: 150 16% 16%;
+  --card: 42 35% 99%;
+  --card-foreground: 150 16% 16%;
+  --popover: 42 35% 99%;
+  --popover-foreground: 150 16% 16%;
+  --primary: 155 37% 28%;
+  --primary-foreground: 42 35% 99%;
+  --secondary: 42 20% 90%;
+  --secondary-foreground: 150 16% 16%;
+  --muted: 42 20% 92%;
+  --muted-foreground: 150 8% 38%;
+  --accent: 145 18% 89%;
+  --accent-foreground: 150 25% 21%;
+  --border: 42 14% 81%;
+  --input: 42 14% 70%;
+  --ring: 155 37% 28%;
+  --radius: 0.75rem;
+  --chart-1: 155 37% 28%;
+  --chart-2: 29 55% 42%;
+  --chart-3: 192 35% 38%;
+  --chart-4: 80 30% 37%;
+  --chart-5: 340 28% 43%;
+  --sidebar-background: 42 24% 93%;
+  --sidebar-foreground: 150 8% 38%;
+  --sidebar-primary: 155 37% 28%;
+  --sidebar-primary-foreground: 42 35% 99%;
+  --sidebar-accent: 145 18% 87%;
+  --sidebar-accent-foreground: 150 25% 21%;
+  --sidebar-border: 42 14% 81%;
+  --sidebar-ring: 155 37% 28%;
+}
+:root[data-theme="fieldwork"].dark {
+  --background: 155 15% 9%;
+  --foreground: 42 24% 91%;
+  --card: 155 13% 12%;
+  --card-foreground: 42 24% 91%;
+  --popover: 155 13% 14%;
+  --popover-foreground: 42 24% 91%;
+  --primary: 144 30% 70%;
+  --primary-foreground: 155 25% 12%;
+  --secondary: 155 11% 18%;
+  --secondary-foreground: 42 24% 91%;
+  --muted: 155 11% 17%;
+  --muted-foreground: 140 10% 67%;
+  --accent: 155 15% 22%;
+  --accent-foreground: 42 24% 91%;
+  --border: 155 10% 26%;
+  --input: 155 10% 36%;
+  --ring: 144 30% 70%;
+  --chart-1: 144 30% 70%;
+  --chart-2: 29 55% 65%;
+  --chart-3: 192 35% 65%;
+  --chart-4: 80 30% 64%;
+  --chart-5: 340 28% 69%;
+  --sidebar-background: 155 15% 11%;
+  --sidebar-foreground: 140 10% 67%;
+  --sidebar-primary: 144 30% 70%;
+  --sidebar-primary-foreground: 155 25% 12%;
+  --sidebar-accent: 155 15% 22%;
+  --sidebar-accent-foreground: 42 24% 91%;
+  --sidebar-border: 155 10% 26%;
+  --sidebar-ring: 144 30% 70%;
+}
+:root[data-theme="fieldwork"] body { background-image: none; }
+[data-theme="fieldwork"] :is(input, textarea) { caret-color: hsl(var(--primary)); }
+[data-theme="fieldwork"] :is(table, .font-mono) { font-variant-numeric: tabular-nums; }
+[data-theme="fieldwork"] :is(h1, h2) { text-wrap: balance; }
+[data-theme="fieldwork"] h1 { letter-spacing: -0.03em; }
+[data-theme="fieldwork"] p { text-wrap: pretty; }
+[data-theme="fieldwork"] .review-modal-scroll { scrollbar-color: hsl(var(--muted-foreground)) transparent; }
+[data-theme="fieldwork"] .landing-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 5.7vw, 5.4rem);
+  line-height: 1.02;
+  font-weight: 400;
+  letter-spacing: -0.025em;
+}
+[data-theme="fieldwork"] .landing-hero h1 br { display: none; }
+[data-theme="fieldwork"] .landing-hero-grid { column-gap: 4rem; }
+[data-theme="fieldwork"] .landing-hero-grid > div:first-child > div:first-child {
+  border: 0;
+  border-radius: 0;
+  padding-left: 0;
+  background: transparent;
+}
+[data-theme="fieldwork"] .product-preview {
+  box-shadow: none;
+  border-radius: 12px;
+  border-top: 3px solid hsl(var(--primary));
+}
+[data-theme="fieldwork"] .product-preview .grid-cols-3 > div {
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid hsl(var(--border));
+  background: transparent;
+}
+.preview-caption { display: none; }
+[data-theme="fieldwork"] .preview-caption {
+  display: block;
+  margin-bottom: 1rem;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+[data-theme="fieldwork"] .landing-page main > section:not(.landing-hero) h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.75rem;
+  line-height: 1.15;
+}
+[data-theme="fieldwork"] .landing-page main > section { scroll-margin-top: 5rem; }
+[data-theme="fieldwork"] .ui-button {
+  box-shadow: none;
+  border-radius: 6px;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms ease-out;
+}
+[data-theme="fieldwork"] .ui-button:active:not(:disabled) { transform: scale(0.97); }
+.theme-swatch {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 42px;
+  border: 1px solid #b8bdbb;
+  border-radius: 5px;
+  font-size: 20px;
+}
+.theme-swatch--classic { background: #f8fafc; color: #2563eb; font-family: sans-serif; }
+.theme-swatch--fieldwork { background: #f8f5ee; color: #2d624c; font-family: 'Instrument Serif', Georgia, serif; }
+.appearance-menu { transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
+@media (min-width: 1024px) {
+  [data-theme="fieldwork"] .landing-hero-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding-top: 6rem; padding-bottom: 6.5rem; }
+  [data-theme="fieldwork"] .landing-preview { padding-top: 3rem; }
+}
+@media (max-width: 639px) {
+  [data-theme="fieldwork"] .landing-hero-grid { padding-top: 3rem; padding-bottom: 3rem; gap: 2.5rem; }
+  [data-theme="fieldwork"] .product-preview > div:first-child { flex-wrap: wrap; gap: 0.75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .appearance-menu { animation: none !important; }
+  [data-theme="fieldwork"] .ui-button { transition: none; }
+  [data-theme="fieldwork"] .ui-button:active:not(:disabled) { transform: none; }
+}
+
+.landing-hero-grid > *, .landing-preview, .product-preview, .product-preview > .grid > * { min-width: 0; }
+/* Compatibility for older public articles and modal components while they
+   migrate from fixed Tailwind colors to the shared semantic tokens. */
+:root[data-theme="fieldwork"] :is(.bg-slate-950, .bg-slate-950\/80) { background-color: hsl(var(--background)); }
+:root[data-theme="fieldwork"] :is(.bg-slate-900, .bg-slate-900\/50, .bg-slate-900\/80) { background-color: hsl(var(--card)); }
+:root[data-theme="fieldwork"] :is(.bg-slate-800, .bg-slate-800\/50, .bg-slate-800\/80) { background-color: hsl(var(--muted)); }
+:root[data-theme="fieldwork"] :is(.border-slate-800, .border-slate-700, .border-slate-800\/50) { border-color: hsl(var(--border)); }
+:root[data-theme="fieldwork"] :is(.text-slate-100, .text-slate-200) { color: hsl(var(--foreground)); }
+:root[data-theme="fieldwork"] :is(.text-slate-300, .text-slate-400, .text-slate-500) { color: hsl(var(--muted-foreground)); }
+:root[data-theme="fieldwork"] :is(.text-indigo-400, .text-indigo-300, .text-indigo-500) { color: hsl(var(--primary)); }
+:root[data-theme="fieldwork"] :is(.bg-indigo-600, .bg-indigo-500) { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+:root[data-theme="fieldwork"] :is(.bg-indigo-500\/10, .bg-indigo-500\/20, .bg-indigo-600\/20) { background-color: hsl(var(--accent)); }
+:root[data-theme="fieldwork"] .prose-invert { color: hsl(var(--foreground)); }
+@media (hover: hover) {
+  :root[data-theme="fieldwork"] .hover\:bg-indigo-700:hover { background-color: hsl(var(--primary) / .9); }
+  :root[data-theme="fieldwork"] .hover\:text-white:hover { color: hsl(var(--foreground)); }
+  :root[data-theme="fieldwork"] .hover\:bg-slate-800:hover { background-color: hsl(var(--accent)); }
+}
+
+/* Preserve white labels on fixed semantic action colors. Legacy neutral
+   content gets the theme foreground; primary controls use their paired token. */
+:root[data-theme="fieldwork"] .text-white:not([class*="bg-red-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-green-"]):not([class*="bg-blue-"]):not([class*="bg-orange-"]):not([class*="bg-indigo-"]):not([class*="bg-primary"]) { color: hsl(var(--foreground)); }
+:root[data-theme="fieldwork"] .bg-primary.text-white { color: hsl(var(--primary-foreground)); }

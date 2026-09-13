@@ -8,7 +8,7 @@ export default async function (req) {
             return Response.json({ error: 'Forbidden' }, { status: 403 });
         // Find all approved requests with no cloudflare_record_id
         const approved = await platform.asServiceRole.entities.SubdomainRequest.filter({ status: 'approved' }, '-created_date', 500);
-        const broken = approved.filter(r => !r.cloudflare_record_id && !r.dns_record_id);
+        const broken = approved.filter(r => !Array.isArray(r.records) && !r.cloudflare_record_id && !r.dns_record_id);
         const results = { fixed: [], failed: [] };
         for (const r of broken) {
             try {

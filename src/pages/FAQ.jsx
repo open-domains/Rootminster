@@ -1,21 +1,10 @@
+import { PublicNav } from '@/components/PublicPageLayout';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Layers, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-function PublicNav() {
-  return (
-    <nav className="border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center"><Layers size={16} className="text-white" /></div>
-          <span className="font-bold text-white">Open Domains</span>
-        </Link>
-        <Link to="/dashboard"><Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">Get Started</Button></Link>
-      </div>
-    </nav>
-  );
-}
+
 
 const faqs = [
   { q: 'Is Open Domains really free?', a: 'Yes. Open Domains is completely free to use. We do not charge for subdomain registration, DNS management, or reviews. Our platform is funded through advertising and is provided as a public good for developers and students.' },

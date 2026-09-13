@@ -30,7 +30,7 @@ export function PublicNav() {
           </a>
         </div>
         <div className="flex items-center gap-2">
-          <ThemeToggle compact className="hidden sm:inline-flex" />
+          <ThemeToggle compact />
           <LanguageSwitcher className="hidden md:flex" />
           <Link to="/dashboard" className="hidden sm:block">
             <Button variant="ghost" size="sm">{t('nav.signIn')}</Button>
@@ -38,7 +38,7 @@ export function PublicNav() {
           <Link to="/dashboard">
             <Button size="sm">{t('nav.getStarted')}</Button>
           </Link>
-          <button onClick={() => setMenuOpen(o => !o)} className="md:hidden text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-muted transition-colors ml-1">
+          <button aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)} className="md:hidden text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-muted transition-colors ml-1">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               {menuOpen ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></> : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>}
             </svg>

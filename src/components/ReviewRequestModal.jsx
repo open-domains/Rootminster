@@ -1,3 +1,4 @@
+import { groupSubdomainRequests, recordSetError } from '../../shared/subdomain-requests.js';
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -30,6 +31,7 @@ const normalizeUrl = (url) => {
 
 export default function ReviewRequestModal({ open, onClose, request, onSuccess }) {
   const { t } = useTranslation();
+  const [conversationStatus, setConversationStatus] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [requesterName, setRequesterName] = useState(null);
   const [action, setAction] = useState(null);
@@ -67,6 +69,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
         if (scrollRef.current) scrollRef.current.scrollTop = 0;
       });
     }
+    setConversationStatus(null);
     setAction(null);
     setAdminNotes('');
     setRejectionReason('');
@@ -76,7 +79,9 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
 
   if (!request) return null;
 
-  const records = request._records || [request];
+  const records = request._records || groupSubdomainRequests([request])[0]._records;
+  const requestRows = request._requests || [request];
+  const compatibilityError = recordSetError(records);
   const pendingRecords = records.filter(r => ['pending', 'needs_info', 'user_responded'].includes(r.status));
 
   const previewUrl = normalizeUrl(request.preview_link);
@@ -99,9 +104,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const handleApprove = async () => {
     setLoading(true);
     try {
-      await Promise.all(pendingRecords.map(r =>
-        rootminster.functions.invoke('approveRequest', { request_id: r.id, admin_notes: adminNotes })
-      ));
+      await rootminster.functions.invoke('approveRequest', { request_id: request.id, admin_notes: adminNotes });
       toast.success(t('reviewRequest.approvedToast', { count: pendingRecords.length }));
       onSuccess?.();
       onClose();
@@ -115,9 +118,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const handleReject = async () => {
     setLoading(true);
     try {
-      await Promise.all(pendingRecords.map(r =>
-        rootminster.functions.invoke('rejectRequest', { request_id: r.id, rejection_reason: rejectionReason, admin_notes: adminNotes })
-      ));
+      await rootminster.functions.invoke('rejectRequest', { request_id: request.id, rejection_reason: rejectionReason, admin_notes: adminNotes });
       toast.success(t('reviewRequest.rejectedToast'));
       onSuccess?.();
       onClose();
@@ -135,7 +136,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     }
     setSafetyLoading(true);
     try {
-      await Promise.all(records.map((record) => rootminster.functions.invoke('manageSafetyAssessment', {
+      await Promise.all(requestRows.map((record) => rootminster.functions.invoke('manageSafetyAssessment', {
         action: kind,
         request_id: record.id,
         ...(kind === 'override' ? { verdict: overrideVerdict, reason: overrideReason.trim() } : {}),
@@ -170,7 +171,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
               <div className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-xs">{t('reviewRequest.status')}</span>
-                  <StatusBadge status={request.status} />
+                  <StatusBadge status={conversationStatus || request.status} />
                 </div>
                 <div className="space-y-1">
                   <span className="text-muted-foreground text-xs">{t('reviewRequest.requestedBy')}</span>
@@ -313,18 +314,20 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
             </div>
 
             <ConversationThread
-              requestId={records[0].id}
+              requestId={request.id}
               requestType="subdomain"
               currentUser={currentUser}
+              onStatusChange={setConversationStatus}
             />
 
+            {compatibilityError && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{compatibilityError} Ask the requester to submit a corrected request after this one is rejected.</p>}
             {pendingRecords.length === 0 ? null : !action ? (
               <div className="flex gap-3 pt-2">
                 <Button onClick={() => setAction('reject')} variant="outline"
                   className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10">
                   <XCircle size={16} className="mr-2" /> {t('reviewRequest.reject')}
                 </Button>
-                <Button onClick={() => setAction('approve')}
+                <Button disabled={!!compatibilityError} onClick={() => setAction('approve')}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
                   <CheckCircle size={16} className="mr-2" /> {pendingRecords.length > 1 ? t('reviewRequest.approveAll', { count: pendingRecords.length }) : t('reviewRequest.approve')}
                 </Button>
@@ -336,7 +339,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
                 </Button>
                 <Button
                   onClick={action === 'approve' ? handleApprove : handleReject}
-                  disabled={loading || (action === 'reject' && !rejectionReason)}
+                  disabled={loading || (action === 'approve' && !!compatibilityError) || (action === 'reject' && !rejectionReason)}
                   variant={action === 'approve' ? 'default' : 'destructive'}
                   className={action === 'approve' ? 'flex-1 bg-emerald-600 hover:bg-emerald-500 text-white' : 'flex-1'}
                 >

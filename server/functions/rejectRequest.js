@@ -1,3 +1,5 @@
+import { requestBundle, ensureRequestGroup, withRequestLock } from '../lib/request-bundles.js';
+import { requestHostname, requestRecords } from '../../shared/subdomain-requests.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 function rejectionEmailHtml(subdomain, domain, reason, reviewerName) {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -38,11 +40,15 @@ export default async function (req) {
     const requests = await platform.asServiceRole.entities.SubdomainRequest.filter({ id: request_id });
     if (!requests.length)
         return Response.json({ error: 'Request not found' }, { status: 404 });
-    const r = requests[0];
+    return withRequestLock(requestHostname(requests[0]), async () => {
+    const r = await platform.asServiceRole.entities.SubdomainRequest.get(request_id);
+    const bundle = await requestBundle(platform.asServiceRole.entities, r);
+    if (bundle._requests.some(row => requestRecords(row).some(record => record.cloudflare_record_id))) return Response.json({ error: 'DNS creation has already started. Resume approval or remove the created records before rejecting.' }, { status: 409 });
+    await ensureRequestGroup(platform.asServiceRole.entities, bundle);
     if (!['pending', 'needs_info', 'user_responded'].includes(r.status))
         return Response.json({ error: `Request cannot be rejected from status ${r.status || 'unknown'}` }, { status: 409 });
     const reviewerName = user.full_name || user.email;
-    await platform.asServiceRole.entities.SubdomainRequest.update(r.id, {
+    for (const row of bundle._requests) await platform.asServiceRole.entities.SubdomainRequest.update(row.id, {
         status: 'rejected', reviewed_by: reviewerName,
         reviewed_at: new Date().toISOString(),
         rejection_reason: rejection_reason || '',
@@ -97,4 +103,5 @@ export default async function (req) {
     }
     catch (_) { }
     return Response.json({ success: true });
+    });
 }

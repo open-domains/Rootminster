@@ -44,7 +44,7 @@ export default function DnsAddRow({ form, setForm, availableTypes, baseName, exi
       {/* Name (sticky) with domain suffix hint */}
       <td className="sticky left-11 z-10 bg-card pl-1 pr-3 py-2.5 min-w-[180px]">
         <div className="flex items-center gap-0.5">
-          <Input
+          <Input aria-label="New record name"
             value={form.name}
             onChange={e => set('name', sanitizeNameInput(e.target.value))}
             onKeyDown={onKey}
@@ -60,7 +60,7 @@ export default function DnsAddRow({ form, setForm, availableTypes, baseName, exi
       {cols.type && (
         <td className="px-3 py-2.5">
           <Select value={form.record_type} onValueChange={v => set('record_type', v)}>
-            <SelectTrigger className="h-8 text-xs w-20"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="New record type" className="h-8 text-xs w-20"><SelectValue /></SelectTrigger>
             <SelectContent>
               {availableTypes.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
             </SelectContent>
@@ -70,7 +70,7 @@ export default function DnsAddRow({ form, setForm, availableTypes, baseName, exi
 
       {cols.content && (
         <td className="px-3 py-2.5">
-          <Input
+          <Input aria-label="New record content"
             value={form.record_value}
             onChange={e => set('record_value', e.target.value)}
             onKeyDown={onKey}
@@ -92,7 +92,7 @@ export default function DnsAddRow({ form, setForm, availableTypes, baseName, exi
       {cols.ttl && (
         <td className="px-3 py-2.5">
           <Select value={String(form.ttl)} onValueChange={v => set('ttl', Number(v))}>
-            <SelectTrigger className="h-8 text-xs w-[100px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger aria-label="New record TTL" className="h-8 text-xs w-[100px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {TTL_OPTIONS.map(o => <SelectItem key={o.v} value={String(o.v)} className="text-xs">{o.l}</SelectItem>)}
             </SelectContent>
@@ -107,7 +107,7 @@ export default function DnsAddRow({ form, setForm, availableTypes, baseName, exi
           <Button size="sm" onClick={submit} disabled={!canSave || saving} className="h-8 px-3 gap-1.5 text-xs">
             {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />} Save
           </Button>
-          <Button size="sm" variant="ghost" onClick={onCancel} className="h-8 px-2 text-muted-foreground hover:text-foreground"><X size={14} /></Button>
+          <Button size="sm" variant="ghost" aria-label="Cancel new record" onClick={onCancel} className="h-8 px-2 text-muted-foreground hover:text-foreground"><X size={14} /></Button>
         </div>
         {conflict.conflict && <p className="text-[10px] text-accent mt-0.5 whitespace-nowrap">{conflict.message}</p>}
       </td>

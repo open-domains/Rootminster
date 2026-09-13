@@ -122,6 +122,24 @@ async function listUsers(filter, sort, limit, skip, executor = pool) {
 }
 
 export const store = {
+  async requestsWithTargets(targets, limit = 500, executor = pool) {
+    const result = await executor.query(`SELECT * FROM entity_records WHERE entity_type = 'SubdomainRequest'
+      AND (data->>'record_value' = ANY($1::text[]) OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(data->'records') = 'array' THEN data->'records' ELSE '[]'::jsonb END) record
+        WHERE record->>'record_value' = ANY($1::text[])
+      )) ORDER BY created_at DESC LIMIT $2`, [targets, limit]);
+    return result.rows.map(serializeRecord);
+  },
+  async searchRequests({ hostname, statuses, owner, limit = 25, offset = 0 }, executor = pool) {
+    const values = [];
+    const bind = value => { values.push(value); return `$${values.length}`; };
+    const clauses = ["entity_type = 'SubdomainRequest'"];
+    if (hostname) clauses.push(`lower(coalesce(nullif(data->>'full_name', ''), (data->>'subdomain') || '.' || (data->>'root_domain'))) = ${bind(hostname)}`);
+    if (statuses) clauses.push(`data->>'status' = ANY(${bind(statuses)}::text[])`);
+    if (owner) clauses.push(`(data->>'requester_id' = ${bind(owner.id)} OR (nullif(data->>'requester_id', '') IS NULL AND lower(data->>'requester_email') = ${bind(owner.email.toLowerCase())}))`);
+    const result = await executor.query(`SELECT * FROM entity_records WHERE ${clauses.join(' AND ')} ORDER BY created_at DESC, id DESC LIMIT ${bind(limit)} OFFSET ${bind(offset)}`, values);
+    return result.rows.map(serializeRecord);
+  },
   async list(entity, sort, limit = 1000, skip = 0, executor = pool) {
     return this.filter(entity, {}, sort, limit, skip, executor);
   },

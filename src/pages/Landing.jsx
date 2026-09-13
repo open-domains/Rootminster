@@ -39,7 +39,7 @@ function MarketingNav() {
           <ThemeToggle compact />
           <Link to="/login" className="hidden sm:block"><Button variant="ghost" size="sm">Log in</Button></Link>
           <Link to="/dashboard"><Button size="sm">Get started</Button></Link>
-          <button className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden" onClick={() => setOpen(v => !v)} aria-label="Toggle navigation">
+          <button className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:hidden" onClick={() => setOpen(v => !v)} aria-label="Toggle navigation" aria-expanded={open}>
             {open ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
@@ -58,7 +58,7 @@ function MarketingNav() {
 
 function ProductPreview() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_-32px_rgba(15,23,42,.28)] dark:shadow-[0_24px_80px_-32px_rgba(0,0,0,.65)]">
+    <div className="product-preview overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_80px_-32px_rgba(15,23,42,.28)] dark:shadow-[0_24px_80px_-32px_rgba(0,0,0,.65)]">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ function ProductPreview() {
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">Cloudflare connected · DNSSEC enabled</p>
         </div>
-        <Button variant="outline" size="sm">Manage domain</Button>
+        <Link to="/dashboard"><Button variant="outline" size="sm">Manage domain</Button></Link>
       </div>
       <div className="grid min-h-[310px] md:grid-cols-[150px_1fr]">
         <aside className="hidden border-r border-border bg-muted/20 p-3 md:block">
@@ -119,19 +119,20 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="landing-page min-h-screen bg-background text-foreground">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <MarketingNav />
 
-      <main>
-        <section className="border-b border-border">
-          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:px-8 lg:py-28">
+      <main id="main-content" tabIndex={-1}>
+        <section className="landing-hero border-b border-border">
+          <div className="landing-hero-grid mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:px-8 lg:py-28">
             <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Free forever. No ads. No tracking.
               </div>
               <h1 className="max-w-xl text-4xl font-semibold tracking-[-0.035em] text-foreground sm:text-5xl lg:text-[58px] lg:leading-[1.05]">
-                Free subdomains.<br />Powerful DNS management.
+                Free subdomains.<br />{' '}Powerful DNS management.
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Create a free subdomain and manage DNS with fast, reliable infrastructure and a dashboard built for real projects.
@@ -153,7 +154,7 @@ export default function Landing() {
                 ))}
               </div>
             </div>
-            <ProductPreview />
+            <div className="landing-preview"><p className="preview-caption">A look inside your workspace · illustrative data</p><ProductPreview /></div>
           </div>
         </section>
 

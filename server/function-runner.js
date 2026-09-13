@@ -7,12 +7,12 @@ import { captureServerMessage } from './glitchtip.js';
 
 const FUNCTION_NAMES = new Set([
   'adminDirectCfOp', 'adminListUsers', 'adminMigrateDomains', 'analyticsManager',
-  'appealRequest', 'approveRequest', 'checkAvailability', 'cleanupPendingDonations',
+  'appealRequest', 'approveRequest', 'checkAvailability', 'checkDomainHealth', 'cleanupPendingDonations',
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
   'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
   'getRecaptchaSiteKey', 'getTurnstileSiteKey', 'githubMigrate',
   'githubMigrateVerify', 'manageDnsRecord', 'postComment', 'publicApi',
-  'manageSafetyAssessment',
+  'manageSafetyAssessment', 'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
   'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest',
   'syncCloudflare', 'twoFactorAuth', 'updateDnsRecord', 'verifyDnsRecords',

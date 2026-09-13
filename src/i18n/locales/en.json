@@ -881,5 +881,24 @@
       "content_4f9be0": "Content",
       "status_bae7d5": "Status"
     }
+  },
+  "health": {
+    "title": "Domain health",
+    "description": "Compare your saved records with public DNS and check DNSSEC responses. Checks never change your records.",
+    "run": "Run health check",
+    "runAgain": "Check again",
+    "checking": "Checking public DNS…",
+    "failed": "Could not run the health check.",
+    "retry": "Use the check button to retry.",
+    "completed": "Health check complete: {{status}}.",
+    "checkedAt": "Checked at {{time}}",
+    "nextStep": "Next step:",
+    "scope": "{{count}} of {{total}} saved records checked using Cloudflare 1.1.1.1. One resolver is a snapshot, not proof of worldwide propagation. Website uptime and TLS certificates are not tested. Checks are limited to once every 30 seconds.",
+    "status": {
+      "pass": "Passed",
+      "warning": "Needs attention",
+      "unknown": "Incomplete",
+      "info": "Review details"
+    }
   }
 }

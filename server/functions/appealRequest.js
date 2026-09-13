@@ -1,3 +1,5 @@
+import { requestBundle, withRequestLock } from '../lib/request-bundles.js';
+import { OPEN_REQUEST_STATUSES, recordSetError, requestHostname } from '../../shared/subdomain-requests.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
@@ -16,8 +18,15 @@ export default async function (req) {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
     if (r.status !== 'rejected')
         return Response.json({ error: 'Can only appeal rejected requests' }, { status: 400 });
-    // Re-open the request as pending
-    await platform.entities.SubdomainRequest.update(request_id, {
+    return withRequestLock(requestHostname(r), async () => {
+    const bundle = await requestBundle(platform.asServiceRole.entities, await platform.entities.SubdomainRequest.get(request_id));
+    if (bundle._requests.some(row => row.status !== 'rejected')) return Response.json({ error: 'Can only appeal rejected requests' }, { status: 409 });
+    const conflict = recordSetError(bundle._records);
+    if (conflict) return Response.json({ error: `${conflict} Submit a corrected request instead.` }, { status: 409 });
+    const existing = await platform.entities.SubdomainRequest.filter({ subdomain: r.subdomain, root_domain: r.root_domain, status: { $in: OPEN_REQUEST_STATUSES } });
+    if (existing.length) return Response.json({ error: 'An open request already exists for this hostname.' }, { status: 409 });
+    // Re-open the whole request as pending
+    for (const row of bundle._requests) await platform.entities.SubdomainRequest.update(row.id, {
         status: 'pending',
         rejection_reason: null,
     });
@@ -37,4 +46,5 @@ export default async function (req) {
         description: `Appeal submitted for ${r.subdomain}.${r.root_domain}`
     });
     return Response.json({ success: true });
+    });
 }

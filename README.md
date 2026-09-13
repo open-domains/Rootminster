@@ -31,6 +31,7 @@ It gives operators one place to manage the full lifecycle of a domain service:
 | 👥 | **Users & roles** | Local accounts, OAuth login, sessions, email verification, staff roles and administrator controls. |
 | 🛡️ | **Safety screening** | Explainable request risk scoring, protected-brand signals, velocity checks and staff overrides. |
 | 🔑 | **Scoped API tokens** | Restrict tokens by permission, hostname, DNS type and expiry. |
+| 🩺 | **Domain health** | Compare saved records with public DNS and get actionable DNSSEC and propagation guidance from the DNS manager. See [domain health checks](docs/domain-health.md). |
 | 📡 | **Dynamic DNS** | Dedicated DDNS endpoints for controlled A and AAAA record updates. |
 | ⚙️ | **Background automation** | DNS checks, synchronisation, cleanup and scheduled platform maintenance. |
 | 📊 | **Analytics** | Optional per-subdomain analytics through Umami. |
@@ -158,7 +159,7 @@ Rootminster currently exposes modules for:
 - GitHub OAuth
 - Discord
 - automated safety screening
-- MCP server
+- MCP server — see [bundled requests, conversations, and hostname lookup](docs/request-bundles.md)
 - Umami analytics
 
 Secrets stored through Module Settings are encrypted with AES-256-GCM and are never returned to the browser.

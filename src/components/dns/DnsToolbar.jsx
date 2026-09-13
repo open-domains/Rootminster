@@ -2,7 +2,7 @@ import { Search, RotateCcw, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { BASE_RECORD_TYPES } from './dnsConfig';
 
@@ -18,6 +18,7 @@ export default function DnsToolbar({
       <div className="relative flex-1 min-w-0 max-w-xs">
         <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
+          aria-label="Search DNS records"
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search DNS records…"
@@ -28,7 +29,7 @@ export default function DnsToolbar({
       <div className="flex items-center gap-2 flex-wrap">
         {/* Type filter */}
         <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by record type" className="h-8 w-[110px] text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All types</SelectItem>
             {BASE_RECORD_TYPES.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
@@ -37,7 +38,7 @@ export default function DnsToolbar({
 
         {/* Proxy filter */}
         <Select value={proxyFilter} onValueChange={setProxyFilter}>
-          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Proxy" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by proxy status" className="h-8 w-[130px] text-xs"><SelectValue placeholder="Proxy" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All</SelectItem>
             <SelectItem value="proxied" className="text-xs">Proxied</SelectItem>
@@ -63,10 +64,9 @@ export default function DnsToolbar({
               { key: 'ttl', label: 'TTL' },
               { key: 'status', label: 'Status' },
             ].map(c => (
-              <DropdownMenuItem key={c.key} onClick={(e) => { e.preventDefault(); toggleCol(c.key); }} className="text-xs cursor-pointer gap-2">
-                <span className={cnCheck(cols[c.key])}>{cols[c.key] ? '☑' : '☐'}</span>
+              <DropdownMenuCheckboxItem key={c.key} checked={cols[c.key]} onCheckedChange={() => toggleCol(c.key)} onSelect={e => e.preventDefault()} className="text-xs cursor-pointer gap-2">
                 {c.label}
-              </DropdownMenuItem>
+              </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -78,10 +78,8 @@ export default function DnsToolbar({
           <RotateCcw size={13} /> Reset
         </button>
 
-        <span className="text-xs text-muted-foreground ml-auto lg:ml-1 tabular-nums shrink-0">{recordCount} records</span>
+        <span className="text-xs text-muted-foreground ml-auto lg:ml-1 tabular-nums shrink-0">{recordCount} {recordCount === 1 ? 'record' : 'records'}</span>
       </div>
     </div>
   );
 }
-
-function cnCheck(v) { return v ? 'text-primary' : 'text-muted-foreground'; }

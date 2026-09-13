@@ -1,3 +1,4 @@
+import { useAppearance } from '@/lib/ThemeContext';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -216,6 +217,7 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  const { resolvedMode } = useAppearance();
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
@@ -232,7 +234,7 @@ function App() {
           </AppErrorBoundary>
         </Router>
         <Toaster />
-        <SonnerToaster theme="dark" position="top-right" richColors />
+        <SonnerToaster theme={resolvedMode} position="top-right" richColors />
       </QueryClientProvider>
     </AuthProvider>
   );

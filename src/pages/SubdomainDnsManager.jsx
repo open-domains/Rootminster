@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import DomainHealthPanel from '@/components/dns/DomainHealthPanel';
 import DnsToolbar from '@/components/dns/DnsToolbar';
 import DnsRecordRow from '@/components/dns/DnsRecordRow';
 import DnsAddRow from '@/components/dns/DnsAddRow';
@@ -35,6 +36,7 @@ export default function SubdomainDnsManager() {
 
   const [records, setRecords] = useState([]);
   const [ownership, setOwnership] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [me, setMe] = useState(null);
   const [nsUnlocked, setNsUnlocked] = useState(false);
@@ -59,6 +61,7 @@ export default function SubdomainDnsManager() {
   const [importFileName, setImportFileName] = useState('');
   const [importApplying, setImportApplying] = useState(false);
   const importInputRef = useRef(null);
+  const loadGeneration = useRef(0);
 
   useEffect(() => {
     if (!subdomainName) navigate('/my-subdomains');
@@ -66,15 +69,19 @@ export default function SubdomainDnsManager() {
 
   const load = async () => {
     if (!subdomainName) return;
+    const generation = ++loadGeneration.current;
     setLoading(true);
+    setLoadError('');
     try {
       const user = await rootminster.auth.me();
+      if (generation !== loadGeneration.current) return;
       setMe(user);
       setNsUnlocked(!config.features.nsRequiresDonation || !!user?.ns_unlocked);
       const [allRecs, owned] = await Promise.all([
         rootminster.entities.DnsRecord.filter({ owner_id: user.id, managed: true }),
         rootminster.entities.SubdomainOwnership.filter({ owner_id: user.id }),
       ]);
+      if (generation !== loadGeneration.current) return;
       const currentOwnership = owned.find(item => item.full_name?.toLowerCase() === subdomainName.toLowerCase()) || null;
       const recs = allRecs.filter(r => r.name === subdomainName || r.name?.endsWith('.' + subdomainName));
       setRecords(recs);
@@ -84,12 +91,20 @@ export default function SubdomainDnsManager() {
         ...allRecs.map(subRootOf),
       ].filter(Boolean)));
       setAllNames(roots);
+    } catch (error) {
+      if (generation === loadGeneration.current) setLoadError(error.message || 'Could not load DNS records.');
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   };
 
-  useEffect(() => { if (subdomainName) load(); }, [subdomainName, config.features.nsRequiresDonation]);  
+  useEffect(() => {
+    setSelected(new Set());
+    setEditingId(null);
+    setShowAddRow(false);
+    if (subdomainName) load();
+    return () => { loadGeneration.current += 1; };
+  }, [subdomainName, config.features.nsRequiresDonation]);
 
   const availableTypes = nsUnlocked ? [...BASE_RECORD_TYPES, 'NS'] : BASE_RECORD_TYPES;
   const rootDomain = ownership?.root_domain || records[0]?.zone_name || (subdomainName ? subdomainName.split('.').slice(1).join('.') : '');
@@ -145,9 +160,13 @@ export default function SubdomainDnsManager() {
     }
   };
 
-  const handleCopy = (record) => {
-    navigator.clipboard?.writeText(record.content || '');
-    toast.success(t('dnsManager.copied'));
+  const handleCopy = async (record) => {
+    try {
+      await navigator.clipboard.writeText(record.content || '');
+      toast.success(t('dnsManager.copied'));
+    } catch {
+      toast.error('Could not copy. Select the record content and copy it manually.');
+    }
   };
 
   const handleDuplicate = (record) => {
@@ -337,7 +356,7 @@ export default function SubdomainDnsManager() {
   const colSpan = 2 + (cols.type ? 1 : 0) + (cols.content ? 1 : 0) + (cols.proxy ? 1 : 0) + (cols.ttl ? 1 : 0) + (cols.status ? 1 : 0) + 1;
 
   return (
-    <div className="space-y-6">
+    <div className="dns-manager space-y-6">
       {/* ── DNS page header ── */}
       <div className="border-b border-border pb-5">
         <button
@@ -352,23 +371,23 @@ export default function SubdomainDnsManager() {
             <div className="mb-2 flex items-center gap-2">
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('dnsManager.title')}</h1>
               {isSuspended ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-400">
                   Suspended
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
                   <ShieldCheck size={11} /> {t('dnsManager.managed')}
                 </span>
               )}
             </div>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              {t('dnsManager.subtitlePre')}<span className="font-mono text-foreground">{subdomainName}</span>{t('dnsManager.subtitlePost')}
+              {t('dnsManager.subtitlePre')}<span className="font-mono text-foreground break-all">{subdomainName}</span>{t('dnsManager.subtitlePost')}
             </p>
           </div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <Select value={subdomainName} onValueChange={(v) => navigate(`/subdomain-dns-manager?subdomain=${encodeURIComponent(v)}`)}>
-              <SelectTrigger className="h-9 w-full bg-background font-mono text-sm font-medium sm:min-w-[220px] sm:w-auto"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Select subdomain" className="h-9 w-full bg-background font-mono text-sm font-medium sm:min-w-[220px] sm:w-auto"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {(allNames.length ? allNames : [subdomainName]).map(n => <SelectItem key={n} value={n} className="font-mono text-sm">{n}</SelectItem>)}
               </SelectContent>
@@ -381,7 +400,7 @@ export default function SubdomainDnsManager() {
 
         <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
           <span><strong className="font-medium text-foreground tabular-nums">{records.length}</strong> {t('dnsManager.recordsLabel')}</span>
-          <span>{t('dnsManager.zone')} <strong className="font-mono font-medium text-foreground">{rootDomain}</strong></span>
+          <span>{t('dnsManager.zone')} <strong className="font-mono font-medium text-foreground break-all">{rootDomain}</strong></span>
           <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {t('dnsManager.cloudflareSync')}</span>
         </div>
       </div>
@@ -397,6 +416,9 @@ export default function SubdomainDnsManager() {
           </Button>
         </div>
       )}
+
+      {loadError && <div role="alert" className="rounded-lg border border-destructive p-4"><p>{loadError}</p><Button variant="outline" onClick={load} className="mt-3">Retry loading records</Button></div>}
+      {!loading && !loadError && <DomainHealthPanel key={subdomainName} name={subdomainName} revision={records} />}
 
       {/* ── Secondary actions ── */}
       <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3 sm:flex sm:flex-wrap sm:items-center">
@@ -447,7 +469,7 @@ export default function SubdomainDnsManager() {
           {bulkOpen && (
             <div className="flex items-center gap-1.5">
               <Select value={String(bulkTtl)} onValueChange={v => setBulkTtl(Number(v))}>
-                <SelectTrigger className="h-8 w-[100px] text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Bulk record TTL" className="h-8 w-[100px] text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {TTL_OPTIONS.map(o => <SelectItem key={o.v} value={String(o.v)} className="text-xs">{o.l}</SelectItem>)}
                 </SelectContent>
@@ -472,20 +494,21 @@ export default function SubdomainDnsManager() {
           recordCount={filtered.length}
         />
 
-        <div className="overflow-x-auto review-modal-scroll" style={{ maxHeight: 'calc(100dvh - 230px)' }}>
-          <table className="w-full text-sm min-w-[640px] border-collapse">
+        <p id="dns-scroll-hint" className="px-3 py-2 text-xs text-muted-foreground">Scroll horizontally to see every record field and action.</p>
+        <div role="region" aria-label="DNS records" aria-describedby="dns-scroll-hint" tabIndex={0} className="dns-record-scroll overflow-x-auto review-modal-scroll" style={{ maxHeight: 'calc(100dvh - 230px)' }}>
+          <table aria-label="Managed DNS records" className="w-full text-sm min-w-[640px] border-collapse">
             <thead className="sticky top-0 z-20">
               <tr className="bg-card text-muted-foreground text-[10px] uppercase tracking-wide border-b border-border/60">
-                <th className="sticky left-0 z-20 bg-card w-11 px-2 text-center font-medium py-2.5">
-                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="rounded border-input accent-primary cursor-pointer" />
+                <th scope="col" className="sticky left-0 z-20 bg-card w-11 px-2 text-center font-medium py-2.5">
+                  <input aria-label="Select all visible records" type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="rounded border-input accent-primary cursor-pointer" />
                 </th>
-                <th className="sticky left-11 z-20 min-w-[130px] bg-card px-3 py-2.5 pl-1 text-left font-medium sm:min-w-[160px]">{t('dnsManager.colName')}</th>
-                {cols.type && <th className="text-left px-3 font-medium py-2.5">{t('dnsManager.colType')}</th>}
-                {cols.content && <th className="text-left px-3 font-medium py-2.5">{t('dnsManager.colContent')}</th>}
-                {cols.proxy && <th className="text-left px-3 font-medium py-2.5">{t('dnsManager.colProxy')}</th>}
-                {cols.ttl && <th className="text-left px-3 font-medium py-2.5">{t('dnsManager.colTtl')}</th>}
-                {cols.status && <th className="text-left px-3 font-medium py-2.5">{t('dnsManager.colStatus')}</th>}
-                <th className="text-right px-3 font-medium py-2.5 w-24">{t('dnsManager.colActions')}</th>
+                <th scope="col" className="sticky left-11 z-20 min-w-[130px] bg-card px-3 py-2.5 pl-1 text-left font-medium sm:min-w-[160px]">{t('dnsManager.colName')}</th>
+                {cols.type && <th scope="col" className="text-left px-3 font-medium py-2.5">{t('dnsManager.colType')}</th>}
+                {cols.content && <th scope="col" className="text-left px-3 font-medium py-2.5">{t('dnsManager.colContent')}</th>}
+                {cols.proxy && <th scope="col" className="text-left px-3 font-medium py-2.5">{t('dnsManager.colProxy')}</th>}
+                {cols.ttl && <th scope="col" className="text-left px-3 font-medium py-2.5">{t('dnsManager.colTtl')}</th>}
+                {cols.status && <th scope="col" className="text-left px-3 font-medium py-2.5">{t('dnsManager.colStatus')}</th>}
+                <th scope="col" className="text-right px-3 font-medium py-2.5 w-24">{t('dnsManager.colActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -504,7 +527,7 @@ export default function SubdomainDnsManager() {
               )}
 
               {loading ? (
-                <tr><td colSpan={colSpan} className="text-center py-16"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
+                <tr><td colSpan={colSpan} className="text-center py-16"><div role="status" aria-label="Loading DNS records" className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" /></td></tr>
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={colSpan} className="text-center py-16 text-muted-foreground">
@@ -524,7 +547,7 @@ export default function SubdomainDnsManager() {
                     onToggleSelect={() => toggleSelect(record.id)}
                     editing={editingId === record.id}
                     saving={savingId === record.id}
-                    onEnterEdit={setEditingId}
+                    onEnterEdit={id => { setCols(current => ({ ...current, content: true })); setEditingId(id); }}
                     onExitEdit={() => setEditingId(null)}
                     onSaveChange={handleSaveChange}
                     onToggleProxy={handleToggleProxy}

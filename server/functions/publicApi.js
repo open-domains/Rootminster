@@ -8,9 +8,7 @@
  * POST / { action: "update", dns_record_id, new_content?, new_proxied?, new_ttl? }
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
-import { screenRequest } from '../lib/safety-screening.js';
 import { invokeInternal } from '../function-runner.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
 async function sha256hex(str) {
@@ -29,40 +27,6 @@ async function resolveToken(platform, req) {
         return null;
     await platform.asServiceRole.entities.ApiToken.update(token.id, { last_used: new Date().toISOString() });
     return token;
-}
-function validateRecordValue(type, value) {
-    if (!value || !value.trim())
-        return 'Record value is required';
-    const v = value.trim();
-    switch (type) {
-        case 'A':
-            if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(v))
-                return 'A record requires a valid IPv4 address';
-            if (v.split('.').map(Number).some(p => p > 255))
-                return 'IPv4 octets must be 0–255';
-            return null;
-        case 'AAAA':
-            if (!/^[0-9a-fA-F:]+$/.test(v) || !v.includes(':'))
-                return 'AAAA requires a valid IPv6 address';
-            return null;
-        case 'CNAME':
-            if (v.includes(' ') || !/^[a-zA-Z0-9._-]+$/.test(v))
-                return 'Invalid CNAME target';
-            return null;
-        case 'MX':
-            if (!/^(\d+)\s+(.+)$/.test(v))
-                return 'MX format: <priority> <hostname>';
-            return null;
-        case 'TXT':
-            if (v.length > 2048)
-                return 'TXT value too long';
-            return null;
-        case 'NS':
-            if (!/^[a-zA-Z0-9._-]+$/.test(v) || !v.includes('.'))
-                return 'NS must be a valid FQDN';
-            return null;
-        default: return null;
-    }
 }
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
@@ -222,59 +186,13 @@ export default async function (req) {
             return respond({ error: 'User not found' }, 401);
         // POST action=submit
         if (action === 'submit') {
-            const { subdomain, root_domain, record_type, record_value, ttl, proxied, reason } = body;
-            if (!subdomain || !root_domain || !record_type || !record_value) {
-                return respond({ error: 'Missing required fields: subdomain, root_domain, record_type, record_value' }, 400);
-            }
-            const requestPolicy = await getRequestPolicy(platform);
-            if (requestPolicy.locked && !['staff', 'admin'].includes(user.role))
-                return respond({ error: requestPolicy.message }, 423);
-            if (subdomain.length > 63 || !SUBDOMAIN_REGEX.test(subdomain)) {
-                return respond({ error: 'Invalid subdomain format' }, 400);
-            }
-            if ((await getModuleConfig('donations')).enabled && record_type === 'NS' && !user.ns_unlocked) {
-                return respond({ error: 'NS records require a £2+ donation to unlock.' }, 403);
-            }
-            const valErr = validateRecordValue(record_type, record_value);
-            if (valErr)
-                return respond({ error: valErr }, 400);
-            const domains = await platform.asServiceRole.entities.Domain.filter({ name: root_domain });
-            if (!domains.length)
-                return respond({ error: 'Domain not found' }, 404);
-            const d = domains[0];
-            if (!d.allow_new_requests)
-                return respond({ error: 'New requests are disabled for this domain' }, 403);
-            const reserved = d.reserved_names || [];
-            if (isReservedName(subdomain, reserved))
-                return respond({ error: 'Subdomain is reserved' }, 409);
-            const existing = await platform.asServiceRole.entities.DnsRecord.filter({ name: `${subdomain}.${root_domain}` });
-            if (record_type === 'CNAME' && existing.length > 0)
-                return respond({ error: 'Cannot add CNAME: records already exist' }, 409);
-            if (existing.some(r => r.record_type === 'CNAME'))
-                return respond({ error: 'A CNAME already exists for this hostname' }, 409);
-            if (existing.find(r => r.record_type === record_type && r.content === record_value.trim())) {
-                return respond({ error: 'This exact record already exists' }, 409);
-            }
-            const hostnameTypes = ['NS', 'CNAME', 'MX'];
-            const normalisedValue = hostnameTypes.includes(record_type)
-                ? record_value.trim().replace(/\.$/, '') : record_value.trim();
-            const request = await platform.asServiceRole.entities.SubdomainRequest.create({
-                requester_email: user.email, requester_id: user.id,
-                subdomain, root_domain, full_name: `${subdomain}.${root_domain}`,
-                record_type, record_value: normalisedValue, ttl: ttl || 3600,
-                proxied: record_type === 'NS' ? false : (proxied || false),
-                reason: reason || '', preview_link: body.preview_link || '', status: 'pending', zone_id: d.zone_id
-            });
-            let assessment;
             try {
-                assessment = await screenRequest(platform, request, user, 'legacy_api');
+                const result = await invokeInternal('submitRequest', body, { ...user, trusted_source: 'api' });
+                const request = result.request || result.requests[0];
+                return respond({ ...result, request_id: request.id, status: request.status, safety: { score: request.safety_score ?? 0, verdict: request.safety_verdict || 'incomplete' } });
+            } catch (error) {
+                return respond({ error: error.message }, error.status || 500);
             }
-            catch (_) {
-                await platform.asServiceRole.entities.SubdomainRequest.update(request.id, {
-                    safety_score: 0, safety_verdict: 'incomplete', safety_screened_at: new Date().toISOString()
-                }).catch(() => {});
-            }
-            return respond({ success: true, request_id: request.id, status: 'pending', safety: assessment ? { score: assessment.score, verdict: assessment.verdict } : { score: 0, verdict: 'incomplete' } });
         }
         // POST action=update — direct DNS mutation.
         if (action === 'update') {

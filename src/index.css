@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@import './themes/fieldwork.css';
 
 @tailwind base;
 @tailwind components;
@@ -24,7 +26,7 @@
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
     --muted: 220 14% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 16% 44%;
     --accent: 220 14% 96%;
     --accent-foreground: 222 47% 11%;
 
@@ -203,3 +205,29 @@ main, main > *, [role="dialog"] > * {
     opacity: 1;
   }
 }
+
+/* Shared keyboard and touch affordances. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+.skip-link { position: fixed; top: 0.5rem; left: 0.5rem; z-index: 100; padding: 0.75rem 1rem; background: hsl(var(--popover)); color: hsl(var(--popover-foreground)); border: 2px solid hsl(var(--ring)); transform: translateY(-200%); }
+.skip-link:focus { transform: translateY(0); }
+.dns-manager { overflow-wrap: anywhere; }
+.dns-manager table { overflow-wrap: normal; }
+.dns-manager th { white-space: nowrap; }
+.dns-manager input[type="checkbox"] { width: 1.125rem; height: 1.125rem; }
+@media (max-width: 639px) {
+  .ui-button, .dns-manager button, header button, nav button, .dns-manager [role="combobox"] { min-height: 44px; }
+  header button, nav button, .dns-manager button { min-width: 44px; }
+  .dns-manager input:not([type="checkbox"]) { min-height: 44px; }
+  .dns-record-scroll { max-height: none !important; }
+  .dns-record-scroll :is(td, th).sticky { position: static; }
+  [role="dialog"].mobile-navigation { height: 100dvh; max-height: none; max-width: 86vw; border-radius: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Error text needs a lighter red on dark surfaces than filled danger buttons. */
+.dark .text-destructive { color: hsl(0 85% 75%); }

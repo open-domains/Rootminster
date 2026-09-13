@@ -1,3 +1,4 @@
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { rootminster } from '@/api/rootminsterClient';
@@ -238,33 +239,33 @@ export default function Layout() {
   };
 
   return (
+    <Sheet open={mobileNav} onOpenChange={setMobileNav}>
     <div className="min-h-screen bg-background text-foreground">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <TosModal open={showTos} isUpdate={tosIsUpdate} terms={currentTerms} onAccepted={(updatedUser) => { setUser(updatedUser); setShowTos(false); }} />
 
       <div className="flex min-h-screen">
         <ProductSidebar user={user} />
 
-        {mobileNav && (
-          <div className="fixed inset-0 z-50 flex lg:hidden">
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileNav(false)} />
-            <div className="relative"><ProductSidebar user={user} mobile onClose={() => setMobileNav(false)} /></div>
-          </div>
-        )}
+        <SheetContent side="left" aria-describedby={undefined} className="mobile-navigation w-[min(86vw,280px)] p-0 [&>button]:hidden">
+          <SheetTitle className="sr-only">Main navigation</SheetTitle>
+          <ProductSidebar user={user} mobile onClose={() => setMobileNav(false)} />
+        </SheetContent>
 
         <div className="min-w-0 flex-1">
           <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-background/92 px-3 backdrop-blur-xl sm:h-16 sm:gap-3 sm:px-6 lg:px-7">
-            <button onClick={() => setMobileNav(true)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden" aria-label="Open navigation"><Menu size={18} /></button>
+            <SheetTrigger asChild><button onClick={() => setMobileNav(true)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden" aria-label="Open navigation"><Menu size={18} /></button></SheetTrigger>
 
-            <button onClick={() => setCmdOpen(true)} className="flex h-9 w-9 min-w-0 flex-none items-center justify-center gap-2.5 rounded-md border border-border bg-card px-0 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted/30 min-[480px]:w-auto min-[480px]:flex-1 min-[480px]:justify-start min-[480px]:px-3 sm:max-w-md">
+            <button aria-label="Search domains" onClick={() => setCmdOpen(true)} className="flex h-9 w-9 min-w-0 flex-none items-center justify-center gap-2.5 rounded-md border border-border bg-card px-0 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted/30 min-[480px]:w-auto min-[480px]:flex-1 min-[480px]:justify-start min-[480px]:px-3 sm:max-w-md">
               <Search size={15} className="shrink-0" /><span className="hidden truncate min-[480px]:inline">Search domains...</span><kbd className="ml-auto hidden rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] sm:inline">⌘K</kbd>
             </button>
 
             <div className="ml-auto flex items-center gap-1.5">
-              <ThemeToggle compact className="hidden min-[390px]:inline-flex" />
+              <ThemeToggle compact />
               <div className="hidden xl:block"><LanguageSwitcher /></div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
+                  <button aria-label="Notifications" className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
                     <Bell size={17} />
                     {bannerEnabled && bannerText && !bannerDismissed && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />}
                   </button>
@@ -277,7 +278,7 @@ export default function Layout() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="ml-0 flex items-center gap-2 rounded-md p-0.5 hover:bg-muted sm:ml-1 sm:p-1 sm:pr-2">
+                  <button aria-label="Account menu" className="ml-0 flex items-center gap-2 rounded-md p-0.5 hover:bg-muted sm:ml-1 sm:p-1 sm:pr-2">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">{initials}</span>
                     <span className="hidden text-left sm:block"><span className="block max-w-[120px] truncate text-xs font-medium text-foreground">{fullName}</span><span className="block text-[10px] capitalize text-muted-foreground">{user?.role || 'user'}</span></span>
                     <ChevronDown size={13} className="hidden text-muted-foreground sm:block" />
@@ -312,7 +313,7 @@ export default function Layout() {
             </div>
           )}
 
-          <main className="mx-auto w-full max-w-[1500px] px-3 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
+          <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1500px] px-3 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
             <Outlet />
           </main>
         </div>
@@ -320,5 +321,6 @@ export default function Layout() {
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} items={cmdItems} />
     </div>
+    </Sheet>
   );
 }

@@ -1,23 +1,11 @@
+import { PublicNav } from '@/components/PublicPageLayout';
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useSearchParams } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { rootminster } from '@/api/rootminsterClient';
 import TermsContent from '@/components/TermsContent';
 
-function PublicNav() {
-  return (
-    <nav className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600"><Layers size={16} className="text-white" /></div>
-          <span className="font-bold text-white">Open Domains</span>
-        </Link>
-        <Link to="/dashboard"><Button size="sm" className="bg-indigo-600 text-white hover:bg-indigo-700">Get Started</Button></Link>
-      </div>
-    </nav>
-  );
-}
+
 
 function displayDate(value) {
   if (!value) return '';
