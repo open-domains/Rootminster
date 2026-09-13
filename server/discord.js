@@ -1,3 +1,4 @@
+import { createDiscordRequests, discordMessage, discordModal } from './lib/discord-requests.js';
 import crypto from 'node:crypto';
 import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
@@ -10,9 +11,10 @@ import { store } from './store.js';
 const DISCORD_API = 'https://discord.com/api/v10';
 const EPHEMERAL = 64;
 const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS'];
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const requestUi = createDiscordRequests();
 
 const commands = [
+  { name: 'panel', description: 'Open your request controls and staff review queue' },
   { name: 'link', description: 'Link your Discord user to your Rootminster account' },
   {
     name: 'request', description: 'Submit a subdomain request using your linked account', options: [
@@ -35,7 +37,7 @@ const commands = [
   {
     name: 'request-manage', description: 'Staff: approve, reject, or ask about a request', options: [
       { name: 'id', description: 'Request ID', type: 3, required: true },
-      { name: 'action', description: 'Review action', type: 3, required: true, choices: [{ name: 'Merge / approve', value: 'approve' }, { name: 'Reject', value: 'reject' }, { name: 'Ask for information', value: 'question' }] },
+      { name: 'action', description: 'Review action', type: 3, required: true, choices: [{ name: 'Approve (with confirmation)', value: 'approve' }, { name: 'Reject', value: 'reject' }, { name: 'Ask for information', value: 'question' }, { name: 'Internal note', value: 'note' }] },
       { name: 'message', description: 'Rejection reason, question, or review note', type: 3, required: false },
     ],
   },
@@ -84,12 +86,6 @@ async function linkedUser(discordUserId) {
   return store.get('User', result.rows[0].id);
 }
 
-function formatRequest(record, includeSafety = false) {
-  const name = `${record.subdomain}.${record.root_domain}`;
-  const safety = includeSafety ? `\nSafety: **${record.safety_verdict || 'incomplete'}** (${Number(record.safety_score) || 0}/100)${record.safety_overridden ? ' · staff override' : ''}` : '';
-  return `**${name}** · ${record.record_type} · ${record.status}${safety}\n\`${record.id}\``;
-}
-
 async function makeLink(interaction) {
   const identity = discordIdentity(interaction);
   const token = randomToken(32);
@@ -99,7 +95,9 @@ async function makeLink(interaction) {
      VALUES ($1, $2, $3, now() + interval '15 minutes')`,
     [sha256(token), identity.id, identity.username],
   );
-  return `Open this private link to connect **${identity.username}** to your Rootminster account:\n${config.appUrl}/discord-link?token=${encodeURIComponent(token)}\n\nThe link expires in 15 minutes and can only be used once.`;
+  return discordMessage('Connect your Discord account to Rootminster. This private link expires in 15 minutes and can only be used once.', [
+    { type: 1, components: [{ type: 2, style: 5, label: 'Link Rootminster account', url: `${config.appUrl}/discord-link?token=${encodeURIComponent(token)}` }] },
+  ]);
 }
 
 async function requireLinked(interaction) {
@@ -117,72 +115,33 @@ async function submitRequest(interaction, actor) {
     records: [{ record_type: options.type, record_value: options.value, ttl: options.ttl || 3600, proxied: Boolean(options.proxied) }],
   }, actor);
   const request = result.requests?.[0];
-  return `Request submitted for **${options.name}.${options.domain}** (${options.type}).\nStatus: **pending**${request?.id ? `\nID: \`${request.id}\`` : ''}`;
-}
-
-async function listRequests(interaction, actor) {
-  const scope = optionsMap(interaction).scope || 'mine';
-  const elevated = ['staff', 'admin'].includes(actor.role);
-  if (scope === 'pending' && !elevated) throw Object.assign(new Error('The review queue is available to staff only.'), { userMessage: true });
-  const rows = scope === 'pending'
-    ? await store.filter('SubdomainRequest', { status: { $in: ['pending', 'user_responded', 'needs_info'] } }, '-created_date', 10)
-    : await store.filter('SubdomainRequest', { requester_id: actor.id }, '-created_date', 10);
-  if (!rows.length) return scope === 'pending' ? 'The review queue is empty.' : 'You have no requests yet.';
-  return `${scope === 'pending' ? '**Pending review queue**' : '**Your recent requests**'}\n\n${rows.map((record) => formatRequest(record, scope === 'pending')).join('\n\n')}`;
-}
-
-async function viewRequest(interaction, actor) {
-  const id = String(optionsMap(interaction).id || '');
-  if (!UUID_PATTERN.test(id)) throw Object.assign(new Error('Enter a valid request ID.'), { userMessage: true });
-  const record = await store.get('SubdomainRequest', id);
-  if (!record) throw Object.assign(new Error('Request not found.'), { userMessage: true });
-  const elevated = ['staff', 'admin'].includes(actor.role);
-  if (!elevated && record.requester_id !== actor.id && record.requester_email !== actor.email) {
-    throw Object.assign(new Error('You do not have access to that request.'), { userMessage: true });
-  }
-  const assessmentRows = elevated ? await store.filter('SafetyAssessment', { request_id: record.id }, '-created_date', 1) : [];
-  const assessment = assessmentRows[0];
-  const signalSummary = assessment?.signals?.length ? `\nSignals: ${assessment.signals.map((item) => item.label).join('; ')}` : '';
-  return `${formatRequest(record, elevated)}${signalSummary}\nValue: \`${record.record_value}\`\nRequested by: ${record.requester_email}\nReason: ${record.reason || '—'}\nPreview: ${record.preview_link || '—'}${record.rejection_reason ? `\nDecision: ${record.rejection_reason}` : ''}`;
+  return request?.id ? requestUi.view(actor, request.id, false, 'Request submitted. Your records share one conversation.') : discordMessage('Request submitted. Run /requests to view it.');
 }
 
 async function manageRequest(interaction, actor) {
-  if (!['staff', 'admin'].includes(actor.role)) throw Object.assign(new Error('This command is available to staff only.'), { userMessage: true });
+  if (!['staff', 'admin'].includes(actor.role)) throw Object.assign(new Error('Staff access required.'), { userMessage: true });
   const options = optionsMap(interaction);
-  const id = String(options.id || '');
-  if (!UUID_PATTERN.test(id)) throw Object.assign(new Error('Enter a valid request ID.'), { userMessage: true });
-  const request = await store.get('SubdomainRequest', id);
-  if (!request) throw Object.assign(new Error('Request not found.'), { userMessage: true });
-  if (!['pending', 'needs_info', 'user_responded'].includes(request.status)) {
-    throw Object.assign(new Error(`This request is already ${request.status}.`), { userMessage: true });
-  }
-  if (options.action === 'approve') {
-    await invokeInternal('approveRequest', { request_id: request.id, admin_notes: options.message || 'Merged from Discord' }, actor);
-    return `Merged and approved **${request.subdomain}.${request.root_domain}**.`;
-  }
-  if (!String(options.message || '').trim()) throw Object.assign(new Error('A message is required for rejection or questions.'), { userMessage: true });
-  if (options.action === 'reject') {
-    await invokeInternal('rejectRequest', { request_id: request.id, rejection_reason: options.message, admin_notes: 'Reviewed from Discord' }, actor);
-    return `Rejected **${request.subdomain}.${request.root_domain}** and notified the requester.`;
-  }
-  await invokeInternal('postComment', { request_id: request.id, request_type: 'subdomain', message: options.message, message_type: 'question', notify_user: true }, actor);
-  return `Asked the requester for more information about **${request.subdomain}.${request.root_domain}**.`;
+  if (options.action === 'approve') return requestUi.view(actor, String(options.id || ''), true);
+  if (!['reject', 'question', 'note'].includes(options.action)) throw Object.assign(new Error('Unknown review action.'), { userMessage: true });
+  return requestUi.act(actor, String(options.id || ''), `send-${options.action}`, options.message);
 }
 
 async function commandResponse(interaction) {
   if (interaction.data?.name === 'link') return makeLink(interaction);
   const actor = await requireLinked(interaction);
+  if ([3, 5].includes(interaction.type)) return requestUi.component(interaction, actor);
+  if (interaction.data?.name === 'panel') return requestUi.list(actor, ['staff', 'admin'].includes(actor.role) ? 'pending' : 'mine');
   if (interaction.data?.name === 'request') return submitRequest(interaction, actor);
-  if (interaction.data?.name === 'requests') return listRequests(interaction, actor);
-  if (interaction.data?.name === 'request-view') return viewRequest(interaction, actor);
+  if (interaction.data?.name === 'requests') return requestUi.list(actor, optionsMap(interaction).scope || 'mine');
+  if (interaction.data?.name === 'request-view') return requestUi.view(actor, String(optionsMap(interaction).id || ''));
   if (interaction.data?.name === 'request-manage') return manageRequest(interaction, actor);
   throw Object.assign(new Error('Unknown command.'), { userMessage: true });
 }
 
 async function editInteraction(interaction, content, bot) {
-  const safeContent = String(content || 'Done.').slice(0, 1950);
+  const payload = typeof content === 'string' ? discordMessage(content) : content;
   const response = await fetch(`${DISCORD_API}/webhooks/${bot.application_id}/${interaction.token}/messages/@original`, {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: safeContent }),
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error(`Discord interaction update failed (${response.status})`);
 }
@@ -244,16 +203,18 @@ export async function registerDiscordRoutes(app) {
     if (!verifyDiscordSignature(request.rawBody, timestamp, signature, bot.public_key)) return reply.code(401).send({ error: 'Invalid Discord signature' });
     const interaction = request.body;
     if (interaction?.type === 1) return { type: 1 };
-    if (interaction?.type !== 2) return { type: 4, data: { content: 'Unsupported interaction.', flags: EPHEMERAL } };
+    if (![2, 3, 5].includes(interaction?.type)) return { type: 4, data: { content: 'Unsupported interaction.', flags: EPHEMERAL } };
     await pool.query("DELETE FROM discord_interactions WHERE received_at < now() - interval '1 day'");
     const claimed = await pool.query('INSERT INTO discord_interactions(interaction_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING interaction_id', [String(interaction.id || '')]);
     if (!claimed.rowCount) return { type: 4, data: { content: 'This command has already been processed.', flags: EPHEMERAL } };
+    const modal = discordModal(interaction);
+    if (modal) return modal;
     reply.send({ type: 5, data: { flags: EPHEMERAL } });
     void commandResponse(interaction)
       .then((content) => editInteraction(interaction, content, bot))
       .catch((error) => {
         request.log.error(error, 'Discord command failed');
-        return editInteraction(interaction, error.userMessage ? error.message : 'The command failed. Please try again or use the web dashboard.', bot);
+        return editInteraction(interaction, error.userMessage || (error.status >= 400 && error.status < 500) ? error.message : 'The action could not finish. Refresh the request before retrying, or use the web dashboard.', bot);
       })
       .catch((error) => request.log.error(error, 'Discord response update failed'));
     return reply;

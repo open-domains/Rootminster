@@ -35,7 +35,7 @@ It gives operators one place to manage the full lifecycle of a domain service:
 | 📡 | **Dynamic DNS** | Dedicated DDNS endpoints for controlled A and AAAA record updates. |
 | ⚙️ | **Background automation** | DNS checks, synchronisation, cleanup and scheduled platform maintenance. |
 | 📊 | **Analytics** | Optional per-subdomain analytics through Umami. |
-| 💬 | **Discord tooling** | Signed slash commands for user and staff workflows. |
+| 💬 | **Discord tooling** | Private request panels, buttons, conversation forms, and staff review controls. See [Discord bot](docs/discord-bot.md). |
 | 💳 | **Donations** | Optional Stripe-backed donations and donation-gated features. |
 | 🔍 | **Audit trail** | Keep an operational record of sensitive platform actions. |
 | 💾 | **Encrypted backups** | Schedule verified PostgreSQL backups to Cloudflare R2 with hard free-tier safety budgets. |
