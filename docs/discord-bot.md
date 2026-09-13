@@ -32,6 +32,8 @@ The slash submission form currently accepts one DNS record. Use **New request on
 
 ## Verification
 
+If every command fails, check the API logs. `Discord command failed` identifies a failure while loading account data or running the action. `Discord response update failed` means the reply could not be delivered; the action may already have completed. These entries include the command or control and interaction ID. Response failures also include Discord's error code and field validation errors when available. For rejected link buttons, check that `APP_URL` is the public HTTPS address of the site and restart the API after correcting it. Check the dashboard before repeating a write action.
+
 Run `node server/discord.test.js` and `node server/discord-requests.test.js`. These exercise signatures, replay handling, response types, components, authorization, modal submissions, pagination, and request grouping with mocked Discord and database calls.
 
 The implementation follows Discord's [interaction responses](https://docs.discord.com/developers/interactions/receiving-and-responding) and [component reference](https://docs.discord.com/developers/components/reference). No gateway connection or privileged message-content intent is needed for these interaction flows.

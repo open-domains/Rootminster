@@ -143,7 +143,13 @@ async function editInteraction(interaction, content, bot) {
   const response = await fetch(`${DISCORD_API}/webhooks/${bot.application_id}/${interaction.token}/messages/@original`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
   });
-  if (!response.ok) throw new Error(`Discord interaction update failed (${response.status})`);
+  if (!response.ok) {
+    const details = await response.json().catch(() => ({}));
+    // Do not include the webhook URL: it contains the interaction token.
+    throw Object.assign(new Error(`Discord interaction update failed (${response.status})`), {
+      status: response.status, discordCode: details.code, discordErrors: details.errors,
+    });
+  }
 }
 
 async function registerCommands(logger) {
@@ -210,13 +216,18 @@ export async function registerDiscordRoutes(app) {
     const modal = discordModal(interaction);
     if (modal) return modal;
     reply.send({ type: 5, data: { flags: EPHEMERAL } });
+    const context = { interactionId: interaction.id, command: interaction.data?.name, control: interaction.data?.custom_id };
     void commandResponse(interaction)
-      .then((content) => editInteraction(interaction, content, bot))
       .catch((error) => {
-        request.log.error(error, 'Discord command failed');
-        return editInteraction(interaction, error.userMessage || (error.status >= 400 && error.status < 500) ? error.message : 'The action could not finish. Refresh the request before retrying, or use the web dashboard.', bot);
+        request.log.error({ err: error, ...context }, 'Discord command failed');
+        return discordMessage(error.userMessage || (error.status >= 400 && error.status < 500) ? error.message : 'The action could not finish. Refresh the request before retrying, or use the web dashboard.');
       })
-      .catch((error) => request.log.error(error, 'Discord response update failed'));
+      .then((content) => editInteraction(interaction, content, bot))
+      .catch(async (error) => {
+        request.log.error({ err: error, ...context, discordCode: error.discordCode, discordErrors: error.discordErrors }, 'Discord response update failed');
+        await editInteraction(interaction, 'Discord could not display the response. Your action may have completed. Check the web dashboard before retrying.', bot)
+          .catch((fallbackError) => request.log.error({ err: fallbackError, ...context }, 'Discord fallback response failed'));
+      });
     return reply;
   });
 

@@ -29,6 +29,8 @@ test('signed buttons open modals immediately, defer data views privately, and de
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const publicHex = publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('hex');
   const sent = [];
+  const errors = [];
+  let rejectRichResponse = false;
   t.mock.method(store, 'filter', async () => [{ value: JSON.stringify({ enabled: true, application_id: '123', public_key: publicHex, bot_token: 'fake', guild_id: '456' }) }]);
   await getModuleConfig('discord', { fresh: true });
   const claimed = new Set();
@@ -36,8 +38,16 @@ test('signed buttons open modals immediately, defer data views privately, and de
     if (sql.includes('INSERT INTO discord_interactions')) { if (claimed.has(args[0])) return { rowCount: 0 }; claimed.add(args[0]); return { rowCount: 1 }; }
     return { rowCount: 0, rows: [] };
   });
-  t.mock.method(globalThis, 'fetch', async (url, options) => { sent.push({ url, body: JSON.parse(options.body) }); return { ok: true }; });
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const body = JSON.parse(options.body);
+    sent.push({ url, body });
+    if (rejectRichResponse && url.includes('/webhooks/') && body.components?.length) {
+      return { ok: false, status: 400, json: async () => ({ code: 50035, errors: { components: { _errors: [{ code: 'INVALID_URL', message: 'Invalid URL' }] } } }) };
+    }
+    return { ok: true };
+  });
   const app = Fastify();
+  app.addHook('onRequest', async request => { request.log.error = (details, message) => errors.push({ details, message }); });
   await app.register(rawBody, { field: 'rawBody', global: false, encoding: 'utf8', runFirst: true });
   await registerDiscordRoutes(app);
   t.after(() => app.close());
@@ -57,4 +67,20 @@ test('signed buttons open modals immediately, defer data views privately, and de
   assert.deepEqual(edited.body.allowed_mentions, { parse: [] });
   const bad = await app.inject({ method: 'POST', url: '/api/discord/interactions', payload: modal });
   assert.equal(bad.statusCode, 401);
+
+  // A rejected rich response must not be reported as a failed command or
+  // repeat the action. Keep Discord validation details out of the reply.
+  rejectRichResponse = true;
+  const linkResponse = (await inject({ id: '3', type: 2, token: 'private-token', user: { id: '123456789012345678' }, data: { name: 'link' } })).json();
+  assert.equal(linkResponse.type, 5);
+  await new Promise(resolve => setImmediate(resolve));
+  const deliveryError = errors.find(entry => entry.message === 'Discord response update failed');
+  assert.equal(deliveryError.details.discordCode, 50035);
+  assert.equal(deliveryError.details.discordErrors.components._errors[0].code, 'INVALID_URL');
+  assert.equal(deliveryError.details.command, 'link');
+  assert.equal(deliveryError.details.interactionId, '3');
+  assert.equal(errors.some(entry => entry.message === 'Discord command failed' && entry.details.interactionId === '3'), false);
+  assert.equal(JSON.stringify(errors).includes('private-token'), false);
+  assert.match(sent.at(-1).body.content, /action may have completed/);
+  assert.deepEqual(sent.at(-1).body.components, []);
 });
