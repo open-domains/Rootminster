@@ -106,6 +106,7 @@ const AdminSettings = lazy(() => import('@/pages/AdminSettings'));
 const AdminAbuseReports = lazy(() => import('@/pages/AdminAbuseReports'));
 const AdminModules = lazy(() => import('@/pages/AdminModules'));
 const AdminAccountDeletionRequests = lazy(() => import('@/pages/AdminAccountDeletionRequests'));
+const AdminReports = lazy(() => import('@/pages/AdminReports'));
 
 const AuthenticatedApp = () => {
   return (
@@ -201,6 +202,7 @@ const AuthenticatedApp = () => {
         <Route element={<RoleProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin-domains" element={<AdminDomains />} />
           <Route path="/admin-users" element={<AdminUsers />} />
+          <Route path="/admin-reports" element={<AdminReports />} />
           <Route path="/admin-audit-logs" element={<AdminAuditLogs />} />
           <Route path="/admin-email-logs" element={<AdminEmailLogs />} />
           <Route path="/admin-donations" element={<AdminDonations />} />
