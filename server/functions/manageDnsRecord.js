@@ -100,8 +100,6 @@ async function getOwnedNamespaces(platform, user) {
         if (full)
             names.add(full);
     }
-    // Migrated/legacy ownership may not have a SubdomainOwnership row yet. In that case use
-    // the shallowest owned DNS names as conservative namespace anchors.
     const recordNames = Array.from(new Set(ownedRecords.map((r) => normalizeName(r.name)).filter(Boolean)));
     for (const name of recordNames) {
         const hasOwnedParent = recordNames.some(other => other !== name && hostnameWithin(name, other));
@@ -112,8 +110,6 @@ async function getOwnedNamespaces(platform, user) {
 }
 async function assertUserCanManageName(platform, user, hostname, baseName) {
     const requestedBase = baseName ? normalizeName(baseName) : null;
-    // Even admins/staff must respect an explicitly supplied editor boundary. This
-    // prevents a crafted request from escaping the domain currently open in UI.
     if (requestedBase && !hostnameWithin(hostname, requestedBase)) {
         throw new Error('The DNS name must stay inside the domain you are managing');
     }
@@ -156,7 +152,11 @@ async function upsertSubdomainOwnership(platform, owner, fullName, zone, status 
         payload.suspension_reason = 'No DNS records remain';
     }
     if (existing.length) {
-        await platform.asServiceRole.entities.SubdomainOwnership.update(existing[0].id, payload);
+        // Legacy migrations may have produced duplicate ownership rows. Keep every matching row
+        // in sync so the UI cannot pick up a stale suspended duplicate after a DNS record is added.
+        for (const row of existing) {
+            await platform.asServiceRole.entities.SubdomainOwnership.update(row.id, payload);
+        }
         return { ...existing[0], ...payload };
     }
     return platform.asServiceRole.entities.SubdomainOwnership.create(payload);
@@ -281,10 +281,8 @@ export default async function (req) {
             }
             const zone = { name: record.zone_name, zone_id: record.zone_id };
             const recordOwner = { id: record.owner_id, email: record.owner_email };
-            // Persist ownership before removing the last DNS row so an empty subdomain can be suspended cleanly.
             await upsertSubdomainOwnership(platform, recordOwner, managedBase, zone, 'active');
             const cf = await cfFetch('DELETE', `/zones/${record.zone_id}/dns_records/${record.cloudflare_record_id}`);
-            // Treat an already-missing Cloudflare record as deleted; the DB must not retain a ghost row.
             if (!cf.success && cf._httpStatus !== 404)
                 return Response.json({ error: `Cloudflare delete failed: ${cf.errors?.[0]?.message || 'unknown error'}` }, { status: 502 });
             await platform.asServiceRole.entities.DnsRecord.delete(record.id);
@@ -375,6 +373,9 @@ export default async function (req) {
                 dns_mismatch_reason: null,
             };
             await platform.asServiceRole.entities.DnsRecord.update(old.id, updates);
+            const ownershipBase = normalizeName(body.base_name || candidate.name);
+            const recordOwner = { id: old.owner_id, email: old.owner_email };
+            await upsertSubdomainOwnership(platform, recordOwner, ownershipBase, zone, 'active');
             await platform.asServiceRole.entities.AuditLog.create({
                 actor_email: user.email, actor_role: user.role || 'user', action: 'dns_record_updated',
                 entity_type: 'DnsRecord', entity_id: old.id,
