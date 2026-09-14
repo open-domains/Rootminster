@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp,
-  FileCode2, GitPullRequest, Globe2, LayoutDashboard,
+  FileBarChart, FileCode2, GitPullRequest, Globe2, LayoutDashboard,
   LogOut, Menu, Newspaper, Search, Settings, Shield, Users, UserX, Wrench,
   X,
 } from 'lucide-react';
@@ -42,6 +42,7 @@ const adminNav = [
   { to: '/admin-requests', icon: GitPullRequest, label: 'Requests' },
   { to: '/admin-subdomains', icon: Globe2, label: 'User Domains' },
   { to: '/admin-users', icon: Users, label: 'Users', adminOnly: true },
+  { to: '/admin-reports', icon: FileBarChart, label: 'Reports', adminOnly: true },
   { to: '/admin-account-deletions', icon: UserX, label: 'Account Deletions', adminOnly: true },
   { to: '/admin-abuse-reports', icon: AlertTriangle, label: 'Abuse Reports' },
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
