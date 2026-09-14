@@ -108,7 +108,7 @@ export default function SubdomainDnsManager() {
 
   const availableTypes = nsUnlocked ? [...BASE_RECORD_TYPES, 'NS'] : BASE_RECORD_TYPES;
   const rootDomain = ownership?.root_domain || records[0]?.zone_name || (subdomainName ? subdomainName.split('.').slice(1).join('.') : '');
-  const isSuspended = ownership?.status === 'suspended';
+  const isSuspended = ownership?.status === 'suspended' && records.length === 0;
 
   // All DNS changes are applied directly. Edit requests are no longer created.
   const mutateDns = async (payload) => {
