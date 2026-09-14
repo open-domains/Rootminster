@@ -37,7 +37,10 @@ export default function MySubdomains() {
     const name = ownership.full_name;
     const recs = records.filter(r => r.name === name || r.name?.endsWith('.' + name));
     const verified = recs.length > 0 && !recs.some(r => r.dns_verified === false);
-    return { name, zone: ownership.root_domain, recs, verified, suspended: ownership.status === 'suspended' };
+    // Treat ownership suspension as real only while the domain actually has no managed DNS rows.
+    // This keeps the summary page consistent with the DNS manager if stale legacy ownership state exists.
+    const suspended = ownership.status === 'suspended' && recs.length === 0;
+    return { name, zone: ownership.root_domain, recs, verified, suspended };
   }).sort((a, b) => a.name.localeCompare(b.name)), [ownerships, records]);
 
   const filtered = domains.filter(d => d.name.toLowerCase().includes(search.toLowerCase()));
