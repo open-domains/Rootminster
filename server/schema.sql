@@ -403,6 +403,13 @@ CREATE TABLE IF NOT EXISTS backup_usage_monthly (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS scheduled_notifications (
+  notification_key text PRIMARY KEY,
+  status text NOT NULL CHECK (status IN ('sending', 'sent')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  sent_at timestamptz
+);
+
 -- The retired Google Drive integration stored OAuth credentials in module
 -- settings. Remove those credentials and its short-lived authorization state
 -- when upgrading an installation that tested the previous backup provider.

@@ -23,3 +23,14 @@ test('filters only stackless browser network failures', () => {
   assert.equal(shouldIgnoreClientErrorEvent(event(message, [{}])), false);
   assert.equal(shouldIgnoreClientErrorEvent(event('API request failed with status 500')), false);
 });
+
+test('filters stackless Safari and Chromium fetch failures', () => {
+  assert.equal(shouldIgnoreClientErrorEvent(event('Load failed')), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event('Failed to fetch')), true);
+});
+
+test('filters errors whose stack is entirely browser-extension code', () => {
+  assert.equal(shouldIgnoreClientErrorEvent(event("Cannot read properties of undefined (reading 'M_ID')", [
+    { filename: 'chrome-extension://example/executors/200.js' },
+  ])), true);
+});

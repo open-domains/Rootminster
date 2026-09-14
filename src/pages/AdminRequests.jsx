@@ -98,6 +98,8 @@ export default function AdminRequests() {
         users.forEach(usr => { if (usr.email) map[usr.email] = usr.full_name || usr.email; });
         setUserNames(map);
       } catch (_) {}
+    } catch (error) {
+      toast.error(error?.message || t('adminRequests.loadFailed', { defaultValue: 'Requests could not be loaded.' }));
     } finally {
       setLoading(false);
     }

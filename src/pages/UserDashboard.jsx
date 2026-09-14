@@ -174,9 +174,11 @@ export default function UserDashboard() {
   const [showMigrateModal, setShowMigrateModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [tab, setTab] = useState('all');
 
   const load = async () => {
+    setLoadError('');
     try {
       const u = await rootminster.auth.me();
       setUser(u);
@@ -186,6 +188,8 @@ export default function UserDashboard() {
       ]);
       setOwnedRecords(records.filter(r => r.status !== 'suspended'));
       setRequests(groupSubdomainRequests(reqs).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+    } catch (error) {
+      setLoadError(error?.message || 'The dashboard could not be loaded.');
     } finally {
       setLoading(false);
     }
@@ -196,6 +200,15 @@ export default function UserDashboard() {
   if (loading) return (
     <div className="flex justify-center items-center py-32">
       <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="mx-auto max-w-md rounded-lg border border-destructive/30 bg-card p-6 text-center">
+      <AlertTriangle size={24} className="mx-auto mb-3 text-destructive" />
+      <h1 className="text-base font-semibold text-foreground">Dashboard unavailable</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+      <Button className="mt-4" onClick={load}>Try again</Button>
     </div>
   );
 
