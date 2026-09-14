@@ -34,3 +34,13 @@ test('filters errors whose stack is entirely browser-extension code', () => {
     { filename: 'chrome-extension://example/executors/200.js' },
   ])), true);
 });
+
+test('filters extension-intercepted third-party fetch errors with mixed stack frames', () => {
+  const frames = [
+    { filename: 'https://www.googletagmanager.com/gtag/js' },
+    { filename: 'https://open-domains.com/assets/index.js' },
+    { filename: 'chrome-extension://example/frame_ant.js' },
+  ];
+  assert.equal(shouldIgnoreClientErrorEvent(event('Failed to fetch (www.google-analytics.com)', frames)), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event('Failed to fetch', frames)), false);
+});
