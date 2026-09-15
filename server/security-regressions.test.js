@@ -36,6 +36,13 @@ test('module secrets use a separate authenticated-encryption key domain', () => 
   }
 });
 
+test('module settings retain legacy ENV credentials as a missing-key recovery path', async () => {
+  const modules = await source('./module-settings.js');
+  assert.match(modules, /const environment = definition\.env\(\)/);
+  assert.match(modules, /error\?\.status === 503 && environment\[field\.key\]/);
+  assert.match(modules, /else throw error/);
+});
+
 test('browser sessions carry server-side MFA assurance', async () => {
   const auth = await source('./auth.js');
   assert.match(auth, /s\.mfa_verified_at AS _session_mfa_verified_at/);
