@@ -38,7 +38,7 @@ function moduleEncryptionKey() {
 }
 
 function encryptWithKey(value, key) {
-  if (!key) throw Object.assign(new Error('Module encryption is not configured'), { status: 503 });
+  if (!key) throw Object.assign(new Error('Module encryption is not configured. Restore MODULE_ENCRYPTION_KEY (or the legacy TOTP_ENCRYPTION_KEY fallback) to decrypt saved module secrets.'), { status: 503 });
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const encrypted = Buffer.concat([cipher.update(String(value), 'utf8'), cipher.final()]);
@@ -46,7 +46,7 @@ function encryptWithKey(value, key) {
 }
 
 function decryptWithKey(value, key) {
-  if (!key) throw Object.assign(new Error('Module encryption is not configured'), { status: 503 });
+  if (!key) throw Object.assign(new Error('Module encryption is not configured. Restore MODULE_ENCRYPTION_KEY (or the legacy TOTP_ENCRYPTION_KEY fallback) to decrypt saved module secrets.'), { status: 503 });
   const [, , iv, tag, encrypted] = String(value).split(':');
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'));
   decipher.setAuthTag(Buffer.from(tag, 'base64url'));
