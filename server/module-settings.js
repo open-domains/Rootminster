@@ -180,12 +180,26 @@ export async function getModuleConfig(id, { fresh = false } = {}) {
   const cached = cache.get(id);
   if (!fresh && cached && Date.now() - cached.at < CACHE_MS) return cached.value;
   const stored = await storedModule(id);
-  const source = stored ? stored.value : definition.env();
+  const environment = definition.env();
+  const source = stored ? stored.value : environment;
   const secrets = secretKeys(definition);
   const value = { enabled: source.enabled ?? definition.defaultEnabled };
   for (const field of definition.fields) {
     const raw = source[field.key];
-    value[field.key] = secrets.has(field.key) && String(raw || '').startsWith('enc:v1:') ? decryptSettingSecret(raw) : normaliseField(field, raw);
+    if (secrets.has(field.key) && String(raw || '').startsWith('enc:v1:')) {
+      try {
+        value[field.key] = decryptSettingSecret(raw);
+      } catch (error) {
+        // During upgrades an encrypted database setting can outlive the bootstrap
+        // key in one process. Keep legacy ENV credentials usable as a recovery
+        // path, but only for the explicit "key missing" case. Authentication
+        // failures from a changed/wrong key must still surface.
+        if (error?.status === 503 && environment[field.key]) value[field.key] = normaliseField(field, environment[field.key]);
+        else throw error;
+      }
+    } else {
+      value[field.key] = normaliseField(field, raw);
+    }
   }
   cache.set(id, { at: Date.now(), value });
   return value;
