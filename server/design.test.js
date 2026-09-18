@@ -28,4 +28,8 @@ test('Design publishing verifies ownership before changing DNS', () => {
 test('Design uses a visible authorization page instead of automatic SSO', () => {
   assert.match(design, /Continue to Design\?/);
   assert.match(design, /app\.post\('\/api\/design-auth\/authorize'/);
+  assert.match(design, /no-store, no-transform/);
+  assert.match(design, /form-action \$\{rootOrigin\}/);
+  assert.match(design, /<!--email_off-->/);
+  assert.match(design, /action="\$\{escapeHtml\(rootOrigin\)\}\/api\/design-auth\/authorize"/);
 });
