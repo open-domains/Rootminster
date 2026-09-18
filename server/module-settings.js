@@ -148,6 +148,26 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: Boolean(process.env.UMAMI_URL || process.env.UMAMI_API_URL), base_url: process.env.UMAMI_URL || process.env.UMAMI_BASE_URL || config.umami.apiUrl, api_endpoint: process.env.UMAMI_API_CLIENT_ENDPOINT || '', user_id: process.env.UMAMI_API_CLIENT_USER_ID || process.env.UMAMI_USER_ID || config.umami.username, api_secret: process.env.UMAMI_API_CLIENT_SECRET || process.env.UMAMI_APP_SECRET || config.umami.password, website_id: process.env.UMAMI_WEBSITE_ID || config.umami.websiteId }),
   },
+  design: {
+    name: 'Design by Open-Domains', description: 'Rootminster authorization, GitHub publishing and Open-Domains DNS for the Design site builder.', defaultEnabled: false,
+    fields: [
+      { key: 'base_url', label: 'Design base URL', type: 'url', required: true, description: 'The public Design origin. Production should use https://design.open-domains.com.' },
+      { key: 'service_secret', label: 'Design service secret', type: 'secret', required: true, description: 'Use the same secret as ROOTMINSTER_DESIGN_SECRET in the Design service.' },
+      { key: 'admins_only', label: 'Only allow Rootminster administrators', type: 'boolean', description: 'Keep this enabled while Design is being tested.' },
+      { key: 'github_client_id', label: 'GitHub OAuth client ID', type: 'text', required: true },
+      { key: 'github_client_secret', label: 'GitHub OAuth client secret', type: 'secret', required: true },
+      { key: 'repository_visibility', label: 'Generated repository visibility', type: 'select', options: [{ value: 'public', label: 'Public' }, { value: 'private', label: 'Private' }] },
+    ],
+    env: () => ({
+      enabled: false,
+      base_url: 'https://design.open-domains.com',
+      service_secret: '',
+      admins_only: true,
+      github_client_id: '',
+      github_client_secret: '',
+      repository_visibility: 'public',
+    }),
+  },
 });
 
 function secretKeys(definition) {

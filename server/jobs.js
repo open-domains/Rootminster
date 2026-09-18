@@ -34,6 +34,8 @@ cron.schedule('0 4 * * *', async () => {
   await pool.query('DELETE FROM email_verifications WHERE expires_at <= now()');
   await pool.query('DELETE FROM password_resets WHERE expires_at <= now() OR used_at IS NOT NULL');
   await pool.query('DELETE FROM oauth_states WHERE expires_at <= now()');
+  await pool.query('DELETE FROM design_sso_codes WHERE expires_at <= now()');
+  await pool.query('DELETE FROM design_auth_requests WHERE expires_at <= now()');
 }, { timezone: 'UTC' });
 
 console.log('Rootminster job runner started.');
