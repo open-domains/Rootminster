@@ -152,7 +152,7 @@ export const MODULE_DEFINITIONS = Object.freeze({
     name: 'Design by Open-Domains', description: 'Rootminster authorization, GitHub publishing and Open-Domains DNS for the Design site builder.', defaultEnabled: false,
     fields: [
       { key: 'base_url', label: 'Design base URL', type: 'url', required: true, description: 'The public Design origin. Production should use https://design.open-domains.com.' },
-      { key: 'service_secret', label: 'Design service secret', type: 'secret', required: true, description: 'Use the same secret as ROOTMINSTER_DESIGN_SECRET in the Design service.' },
+      { key: 'service_secret', label: 'Design service secret', type: 'secret', required: true, description: 'Use the same secret as ROOTMINSTER_CLIENT_SECRET in the Design service.' },
       { key: 'admins_only', label: 'Only allow Rootminster administrators', type: 'boolean', description: 'Keep this enabled while Design is being tested.' },
       { key: 'github_client_id', label: 'GitHub OAuth client ID', type: 'text', required: true },
       { key: 'github_client_secret', label: 'GitHub OAuth client secret', type: 'secret', required: true },

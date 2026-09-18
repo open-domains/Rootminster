@@ -124,7 +124,7 @@ export async function registerDesignRoutes(app) {
       return reply.redirect(destination.href);
     }
     const code = randomToken(32);
-    await pool.query(`INSERT INTO design_sso_codes(code_hash,user_id,session_id,challenge,redirect_uri,expires_at) VALUES($1,$2,$3,$4,$5,now() + interval '60 seconds')`, [sha256(code), user.id, user._session_id, grant.challenge, grant.redirect_uri]);
+    await pool.query(`INSERT INTO design_auth_codes(code_hash,user_id,session_id,challenge,redirect_uri,expires_at) VALUES($1,$2,$3,$4,$5,now() + interval '60 seconds')`, [sha256(code), user.id, user._session_id, grant.challenge, grant.redirect_uri]);
     destination.search = new URLSearchParams({ code, state: grant.state }).toString();
     return reply.redirect(destination.href);
   });
@@ -136,7 +136,7 @@ export async function registerDesignRoutes(app) {
       const body = request.body || {};
       reply.header('Cache-Control', 'no-store');
       if (body.client_id !== 'design' || body.redirect_uri !== redirectUri || !TOKEN.test(body.code || '') || !TOKEN.test(body.code_verifier || '')) return reply.code(400).send({ error: 'Invalid exchange' });
-      const result = await pool.query(`DELETE FROM design_sso_codes WHERE code_hash=$1 AND challenge=$2 AND redirect_uri=$3 AND expires_at > now() RETURNING user_id,session_id`, [sha256(body.code), pkce(body.code_verifier), redirectUri]);
+      const result = await pool.query(`DELETE FROM design_auth_codes WHERE code_hash=$1 AND challenge=$2 AND redirect_uri=$3 AND expires_at > now() RETURNING user_id,session_id`, [sha256(body.code), pkce(body.code_verifier), redirectUri]);
       const grant = result.rows[0];
       const user = grant && await profile(grant.user_id, grant.session_id, module);
       if (!user) return reply.code(401).send({ error: 'Expired or invalid code' });

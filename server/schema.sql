@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS oauth_states (
 ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'google';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted_version text;
 
-CREATE TABLE IF NOT EXISTS design_sso_codes (
+CREATE TABLE IF NOT EXISTS design_auth_codes (
   code_hash text PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   session_id uuid NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS design_sso_codes (
   expires_at timestamptz NOT NULL,
 );
 
-CREATE INDEX IF NOT EXISTS design_sso_codes_expiry_idx ON design_sso_codes(expires_at);
+CREATE INDEX IF NOT EXISTS design_auth_codes_expiry_idx ON design_auth_codes(expires_at);
 
 CREATE TABLE IF NOT EXISTS design_auth_requests (
   request_hash text PRIMARY KEY,

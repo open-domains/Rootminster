@@ -12,9 +12,9 @@ test('Design integration is disabled by default and starts admin-only', () => {
   assert.match(modules, /admins_only: true/);
 });
 
-test('Design SSO codes use PKCE and are single-use and short-lived', () => {
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS design_sso_codes/);
-  assert.match(design, /DELETE FROM design_sso_codes/);
+test('Design authorization codes use PKCE and are single-use and short-lived', () => {
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS design_auth_codes/);
+  assert.match(design, /DELETE FROM design_auth_codes/);
   assert.match(design, /pkce\(body\.code_verifier\)/);
   assert.match(design, /interval '60 seconds'/);
 });
