@@ -78,7 +78,7 @@ app.addHook('preHandler', async (request, reply) => {
   if (!request.cookies?.[config.cookieName]) return;
   if (request.url === '/api/webhooks/stripe') return;
   if (request.method === 'POST' && request.url.split('?')[0] === '/api/auth/logout') return;
-  if (request.method === 'POST' && request.url.split('?')[0] === '/oauth/authorize') return;
+  if (request.method === 'POST' && ['/oauth/authorize', '/api/design-auth/authorize'].includes(request.url.split('?')[0])) return;
   const origin = request.headers.origin;
   if (!origin || origin !== applicationOrigin) {
     return reply.code(403).send({ error: 'Cross-origin request rejected' });
