@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   token_hash text NOT NULL UNIQUE,
   user_agent text,
   ip inet,
-  expires_at timestamptz NOT NULL
+  expires_at timestamptz NOT NULL,
   last_used_at timestamptz NOT NULL DEFAULT now(),
   mfa_verified_at timestamptz,
   impersonator_user_id uuid REFERENCES users(id) ON DELETE CASCADE,
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS design_auth_codes (
   session_id uuid NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
   challenge text NOT NULL,
   redirect_uri text NOT NULL,
-  expires_at timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS design_auth_codes_expiry_idx ON design_auth_codes(expires_at);
