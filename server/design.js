@@ -10,6 +10,10 @@ import { store } from './store.js';
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const REPO_PART = /^[A-Za-z0-9_.-]{1,100}$/;
+const GITHUB_PAGES_RECORDS = [
+  ...['185.199.108.153', '185.199.109.153', '185.199.110.153', '185.199.111.153'].map(content => ({ type: 'A', content })),
+  ...['2606:50c0:8000::153', '2606:50c0:8001::153', '2606:50c0:8002::153', '2606:50c0:8003::153'].map(content => ({ type: 'AAAA', content })),
+];
 
 const pkce = (value) => crypto.createHash('sha256').update(value).digest('base64url');
 
@@ -66,13 +70,38 @@ async function serviceProfile(request, module) {
   return user;
 }
 
-async function ownedRecord(userId, hostname) {
+async function inspectHostname(userId, hostname) {
   const name = String(hostname || '').trim().toLowerCase().replace(/\.$/, '');
   if (!HOSTNAME.test(name)) throw Object.assign(new Error('Invalid hostname'), { status: 400 });
   const rows = await store.filter('DnsRecord', { owner_id: userId, name, status: 'active' }, '-created_date', 20);
-  const record = rows.find((item) => item.managed !== false && item.zone_id && item.cloudflare_record_id);
-  if (!record) throw Object.assign(new Error('This hostname is not an active managed subdomain owned by the signed-in user'), { status: 403 });
-  return record;
+  const anchor = rows.find((item) => item.managed !== false && item.zone_id && item.cloudflare_record_id);
+  if (!anchor) throw Object.assign(new Error('This hostname is not an active managed subdomain owned by the signed-in user'), { status: 403 });
+  const listed = cfResult(await cloudflareFetch('GET', `/zones/${anchor.zone_id}/dns_records?name=${encodeURIComponent(name)}&per_page=100`), 'DNS inspection failed');
+  const records = Array.isArray(listed) ? listed : [];
+  const desired = new Set(GITHUB_PAGES_RECORDS.map(record => `${record.type}:${record.content.toLowerCase()}`));
+  const summary = record => ({ type: record.type, content: record.content, proxied: !!record.proxied });
+  const conflicts = records.filter(record => record.type === 'CNAME' || (['A', 'AAAA'].includes(record.type) && (!desired.has(`${record.type}:${String(record.content).toLowerCase()}`) || record.proxied))).map(summary);
+  const blocking = records.filter(record => record.type === 'NS').map(summary);
+  const preserved = records.filter(record => !['A', 'AAAA', 'CNAME', 'NS'].includes(record.type)).map(summary);
+  const satisfied = records.filter(record => desired.has(`${record.type}:${String(record.content).toLowerCase()}`) && !record.proxied).map(summary);
+  const revision = sha256(JSON.stringify(records.map(record => [record.id, record.type, record.content, !!record.proxied]).sort((a, b) => String(a[0]).localeCompare(String(b[0])))));
+  return { anchor, records, preview: { hostname: name, conflicts, blocking, preserved, satisfied, proposed: GITHUB_PAGES_RECORDS, revision } };
+}
+
+async function removeDnsRecord(zoneId, record) {
+  cfResult(await cloudflareFetch('DELETE', `/zones/${zoneId}/dns_records/${record.id}`), `Could not remove existing ${record.type} record`);
+  const stored = await store.filter('DnsRecord', { cloudflare_record_id: record.id }, '-created_date', 20);
+  await Promise.all(stored.map(item => store.delete('DnsRecord', item.id)));
+}
+
+async function createPagesRecord(anchor, hostname, record, user) {
+  const created = cfResult(await cloudflareFetch('POST', `/zones/${anchor.zone_id}/dns_records`, { type: record.type, name: hostname, content: record.content, ttl: 1, proxied: false }), `Could not create GitHub Pages ${record.type} record`);
+  return store.create('DnsRecord', {
+    zone_id: anchor.zone_id, zone_name: anchor.zone_name, cloudflare_record_id: created.id,
+    record_type: record.type, name: hostname, subdomain: anchor.subdomain, content: record.content,
+    proxied: false, ttl: created.ttl || 1, managed: true, owner_email: user.email,
+    owner_id: user.subject, status: 'active', last_synced: new Date().toISOString(), dns_verified: null,
+  }, { id: user.subject, email: user.email, role: 'user' });
 }
 
 function cfResult(response, fallback) {
@@ -91,10 +120,9 @@ export async function registerDesignRoutes(app) {
   app.get('/api/design-auth/authorize', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request, reply) => {
     try {
       const module = await designModule();
-      const designBase = designOrigin(module);
-      const redirectUri = `${designBase}/api/auth/rootminster/callback`;
+      const redirectUri = `${designOrigin(module)}/api/auth/rootminster/callback`;
       const query = request.query || {};
-      reply.header('Cache-Control', 'no-store, no-transform').header('Referrer-Policy', 'no-referrer');
+      reply.header('Cache-Control', 'no-store').header('Referrer-Policy', 'no-referrer');
       if (query.client_id !== 'design' || query.redirect_uri !== redirectUri || query.response_type !== 'code' || query.code_challenge_method !== 'S256' || !TOKEN.test(query.state || '') || !TOKEN.test(query.code_challenge || '')) return reply.code(400).send({ error: 'Invalid authorization request' });
       const user = await authenticateRequest(request, { allowMfaPending: true });
       if (!user) return reply.redirect(`/login?return_to=${encodeURIComponent(request.url)}`);
@@ -106,9 +134,8 @@ export async function registerDesignRoutes(app) {
       await pool.query('DELETE FROM design_auth_requests WHERE expires_at < now()');
       await pool.query(`INSERT INTO design_auth_requests(request_hash,user_id,session_id,state,challenge,redirect_uri,expires_at)
         VALUES($1,$2,$3,$4,$5,$6,now() + interval '10 minutes')`, [sha256(consent), user.id, user._session_id, query.state, query.code_challenge, redirectUri]);
-      const rootOrigin = new URL(config.appUrl).origin;
-      reply.header('Content-Security-Policy', `default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; form-action ${rootOrigin} ${designBase}; frame-ancestors 'none'; base-uri 'none'`);
-      return reply.type('text/html; charset=utf-8').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Authorize Design</title><style>body{font-family:system-ui;background:#071a2d;color:#f8fbff;display:grid;min-height:100vh;place-items:center;margin:0}.card{width:min(520px,calc(100% - 48px));padding:32px;border:1px solid #244764;border-radius:18px;background:#0d263c}p{color:#b8cad8;line-height:1.6}form{display:flex;gap:12px;margin-top:24px}button{padding:12px 18px;border:0;border-radius:10px;font-weight:700;cursor:pointer}.allow{background:#0c5da1;color:white}.deny{background:#263f53;color:white}</style></head><body><main class="card"><h1>Continue to Design?</h1><p>Design by Open-Domains will receive your verified account ID and email address. It will not receive your password or Rootminster session token.</p><p>Signed in as <!--email_off--><strong>${escapeHtml(user.email)}</strong><!--/email_off--></p><form method="post" action="${escapeHtml(rootOrigin)}/api/design-auth/authorize"><input type="hidden" name="consent" value="${escapeHtml(consent)}"><button class="allow" name="decision" value="allow">Continue</button><button class="deny" name="decision" value="deny">Cancel</button></form></main></body></html>`);
+      reply.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+      return reply.type('text/html; charset=utf-8').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Authorize Design</title><style>body{font-family:system-ui;background:#071a2d;color:#f8fbff;display:grid;min-height:100vh;place-items:center;margin:0}.card{width:min(520px,calc(100% - 48px));padding:32px;border:1px solid #244764;border-radius:18px;background:#0d263c}p{color:#b8cad8;line-height:1.6}form{display:flex;gap:12px;margin-top:24px}button{padding:12px 18px;border:0;border-radius:10px;font-weight:700;cursor:pointer}.allow{background:#0c5da1;color:white}.deny{background:#263f53;color:white}</style></head><body><main class="card"><h1>Continue to Design?</h1><p>Design by Open-Domains will receive your verified account ID and email address. It will not receive your password or Rootminster session token.</p><p>Signed in as <strong>${escapeHtml(user.email)}</strong></p><form method="post" action="/api/design-auth/authorize"><input type="hidden" name="consent" value="${escapeHtml(consent)}"><button class="allow" name="decision" value="allow">Continue</button><button class="deny" name="decision" value="deny">Cancel</button></form></main></body></html>`);
     } catch (error) {
       return reply.code(error.status || 400).send({ error: error.message });
     }
@@ -179,6 +206,17 @@ export async function registerDesignRoutes(app) {
     }
   });
 
+  app.post('/api/design-auth/dns-preview', { config: { rateLimit: { max: 60, timeWindow: '10 minutes' } } }, async (request, reply) => {
+    try {
+      const module = await serviceModule(request);
+      const user = await serviceProfile(request, module);
+      const { preview } = await inspectHostname(user.subject, request.body?.hostname);
+      return preview;
+    } catch (error) {
+      return reply.code(error.status || 400).send({ error: error.message });
+    }
+  });
+
   app.post('/api/design-auth/dns', { config: { rateLimit: { max: 20, timeWindow: '10 minutes' } } }, async (request, reply) => {
     try {
       const module = await serviceModule(request);
@@ -187,12 +225,22 @@ export async function registerDesignRoutes(app) {
       const owner = String(request.body?.github_owner || '').trim();
       const repo = String(request.body?.github_repo || '').trim();
       if (!REPO_PART.test(owner) || !REPO_PART.test(repo)) return reply.code(400).send({ error: 'Invalid GitHub repository name' });
-      const record = await ownedRecord(user.subject, hostname);
+      const { anchor, records, preview } = await inspectHostname(user.subject, hostname);
+      if (preview.blocking.length) return reply.code(409).send({ error: 'This hostname has delegated NS records. Remove the delegation before publishing.', confirmation_required: false, dns_preview: preview });
+      if (preview.conflicts.length && (!request.body?.confirm_overwrite || request.body?.dns_revision !== preview.revision)) {
+        return reply.code(409).send({ error: 'Confirm the existing web records that will be replaced.', confirmation_required: true, dns_preview: preview });
+      }
       const pagesHostname = `${owner.toLowerCase()}.github.io`;
-      const dns = cfResult(await cloudflareFetch('PUT', `/zones/${record.zone_id}/dns_records/${record.cloudflare_record_id}`, { type: 'CNAME', name: hostname, content: pagesHostname, ttl: 1, proxied: false }), 'DNS update failed');
-      await store.update('DnsRecord', record.id, { type: 'CNAME', content: pagesHostname, value: pagesHostname, proxied: false, ttl: 1, cloudflare_record_id: dns.id || record.cloudflare_record_id });
-      await store.create('AuditLog', { actor_email: user.email, actor_role: 'user', action: 'design_site_published', entity_type: 'DnsRecord', entity_id: record.id, description: `Published ${owner}/${repo} to ${hostname} with GitHub Pages` }, { id: user.subject, email: user.email, role: 'user' });
-      return { github_pages_hostname: pagesHostname, hostname, deployment_url: `https://${hostname}` };
+      const desired = new Set(GITHUB_PAGES_RECORDS.map(record => `${record.type}:${record.content.toLowerCase()}`));
+      const conflicts = records.filter(record => record.type === 'CNAME' || (['A', 'AAAA'].includes(record.type) && (!desired.has(`${record.type}:${String(record.content).toLowerCase()}`) || record.proxied)));
+      for (const record of conflicts) await removeDnsRecord(anchor.zone_id, record);
+      const satisfied = new Set(records.filter(record => !conflicts.includes(record) && desired.has(`${record.type}:${String(record.content).toLowerCase()}`) && !record.proxied).map(record => `${record.type}:${String(record.content).toLowerCase()}`));
+      const created = [];
+      for (const record of GITHUB_PAGES_RECORDS) {
+        if (!satisfied.has(`${record.type}:${record.content.toLowerCase()}`)) created.push(await createPagesRecord(anchor, hostname, record, user));
+      }
+      await store.create('AuditLog', { actor_email: user.email, actor_role: 'user', action: 'design_site_published', entity_type: 'DnsRecord', entity_id: created[0]?.id || anchor.id, description: `Published ${owner}/${repo} to ${hostname} with GitHub Pages A and AAAA records; preserved ${preview.preserved.length} compatible record(s)` }, { id: user.subject, email: user.email, role: 'user' });
+      return { github_pages_hostname: pagesHostname, hostname, deployment_url: `https://${hostname}`, dns_records: GITHUB_PAGES_RECORDS, preserved_records: preview.preserved };
     } catch (error) {
       return reply.code(error.status || 400).send({ error: error.message });
     }

@@ -20,16 +20,21 @@ test('Design authorization codes use PKCE and are single-use and short-lived', (
 });
 
 test('Design publishing verifies ownership before changing DNS', () => {
-  const ownership = design.indexOf('const record = await ownedRecord');
-  const dns = design.indexOf('/dns_records/${record.cloudflare_record_id}`');
+  const ownership = design.indexOf('const { anchor, records, preview } = await inspectHostname');
+  const dns = design.indexOf('for (const record of conflicts) await removeDnsRecord');
   assert.ok(ownership > -1 && dns > ownership);
+});
+
+test('Design previews replacements and publishes with GitHub Pages A and AAAA records', () => {
+  assert.match(design, /api\/design-auth\/dns-preview/);
+  assert.match(design, /confirmation_required: true/);
+  assert.match(design, /185\.199\.108\.153/);
+  assert.match(design, /2606:50c0:8000::153/);
+  assert.match(design, /preserved/);
+  assert.doesNotMatch(design, /type: 'CNAME', name: hostname, content: pagesHostname/);
 });
 
 test('Design uses a visible authorization page instead of automatic SSO', () => {
   assert.match(design, /Continue to Design\?/);
   assert.match(design, /app\.post\('\/api\/design-auth\/authorize'/);
-  assert.match(design, /no-store, no-transform/);
-  assert.match(design, /form-action \$\{rootOrigin\} \$\{designBase\}/);
-  assert.match(design, /<!--email_off-->/);
-  assert.match(design, /action="\$\{escapeHtml\(rootOrigin\)\}\/api\/design-auth\/authorize"/);
 });
