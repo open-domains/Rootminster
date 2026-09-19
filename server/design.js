@@ -120,9 +120,14 @@ export async function registerDesignRoutes(app) {
   app.get('/api/design-auth/authorize', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request, reply) => {
     try {
       const module = await designModule();
-      const redirectUri = `${designOrigin(module)}/api/auth/rootminster/callback`;
+      const designBase = designOrigin(module);
+      const rootminsterBase = new URL(config.appUrl).origin;
+      const redirectUri = `${designBase}/api/auth/rootminster/callback`;
       const query = request.query || {};
-      reply.header('Cache-Control', 'no-store').header('Referrer-Policy', 'no-referrer');
+      reply
+        .header('Cache-Control', 'no-store, no-transform')
+        .header('Cloudflare-CDN-Cache-Control', 'no-store, no-transform')
+        .header('Referrer-Policy', 'no-referrer');
       if (query.client_id !== 'design' || query.redirect_uri !== redirectUri || query.response_type !== 'code' || query.code_challenge_method !== 'S256' || !TOKEN.test(query.state || '') || !TOKEN.test(query.code_challenge || '')) return reply.code(400).send({ error: 'Invalid authorization request' });
       const user = await authenticateRequest(request, { allowMfaPending: true });
       if (!user) return reply.redirect(`/login?return_to=${encodeURIComponent(request.url)}`);
@@ -134,8 +139,8 @@ export async function registerDesignRoutes(app) {
       await pool.query('DELETE FROM design_auth_requests WHERE expires_at < now()');
       await pool.query(`INSERT INTO design_auth_requests(request_hash,user_id,session_id,state,challenge,redirect_uri,expires_at)
         VALUES($1,$2,$3,$4,$5,$6,now() + interval '10 minutes')`, [sha256(consent), user.id, user._session_id, query.state, query.code_challenge, redirectUri]);
-      reply.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
-      return reply.type('text/html; charset=utf-8').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Authorize Design</title><style>body{font-family:system-ui;background:#071a2d;color:#f8fbff;display:grid;min-height:100vh;place-items:center;margin:0}.card{width:min(520px,calc(100% - 48px));padding:32px;border:1px solid #244764;border-radius:18px;background:#0d263c}p{color:#b8cad8;line-height:1.6}form{display:flex;gap:12px;margin-top:24px}button{padding:12px 18px;border:0;border-radius:10px;font-weight:700;cursor:pointer}.allow{background:#0c5da1;color:white}.deny{background:#263f53;color:white}</style></head><body><main class="card"><h1>Continue to Design?</h1><p>Design by Open-Domains will receive your verified account ID and email address. It will not receive your password or Rootminster session token.</p><p>Signed in as <strong>${escapeHtml(user.email)}</strong></p><form method="post" action="/api/design-auth/authorize"><input type="hidden" name="consent" value="${escapeHtml(consent)}"><button class="allow" name="decision" value="allow">Continue</button><button class="deny" name="decision" value="deny">Cancel</button></form></main></body></html>`);
+      reply.header('Content-Security-Policy', `default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; form-action ${rootminsterBase} ${designBase}; frame-ancestors 'none'; base-uri 'none'`);
+      return reply.type('text/html; charset=utf-8').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Authorize Design</title><style>body{font-family:system-ui;background:#071a2d;color:#f8fbff;display:grid;min-height:100vh;place-items:center;margin:0}.card{width:min(520px,calc(100% - 48px));padding:32px;border:1px solid #244764;border-radius:18px;background:#0d263c}p{color:#b8cad8;line-height:1.6}form{display:flex;gap:12px;margin-top:24px}button{padding:12px 18px;border:0;border-radius:10px;font-weight:700;cursor:pointer}.allow{background:#0c5da1;color:white}.deny{background:#263f53;color:white}</style></head><body><main class="card"><h1>Continue to Design?</h1><p>Design by Open-Domains will receive your verified account ID and email address. It will not receive your password or Rootminster session token.</p><p>Signed in as <strong><!--email_off-->${escapeHtml(user.email)}<!--/email_off--></strong></p><form method="post" action="${rootminsterBase}/api/design-auth/authorize"><input type="hidden" name="consent" value="${escapeHtml(consent)}"><button class="allow" name="decision" value="allow">Continue</button><button class="deny" name="decision" value="deny">Cancel</button></form></main></body></html>`);
     } catch (error) {
       return reply.code(error.status || 400).send({ error: error.message });
     }

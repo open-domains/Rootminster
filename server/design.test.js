@@ -38,3 +38,10 @@ test('Design uses a visible authorization page instead of automatic SSO', () => 
   assert.match(design, /Continue to Design\?/);
   assert.match(design, /app\.post\('\/api\/design-auth\/authorize'/);
 });
+
+test('Design authorization page prevents Cloudflare email script injection', () => {
+  assert.match(design, /<!--email_off-->/);
+  assert.match(design, /no-store, no-transform/);
+  assert.match(design, /script-src 'none'/);
+  assert.match(design, /form-action \$\{rootminsterBase\} \$\{designBase\}/);
+});
