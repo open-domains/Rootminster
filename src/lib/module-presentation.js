@@ -3,6 +3,7 @@ export const MODULE_CATEGORIES = {
   r2_backup: 'Storage', glitchtip: 'Monitoring', analytics: 'Monitoring', discord: 'Integrations',
   donations: 'Payments', branding: 'Appearance', mcp: 'Integrations', turnstile: 'Security',
   phishing: 'Security', safety: 'Security', disposable_email: 'Security',
+  docker_engine: 'Infrastructure', design: 'Integrations',
 };
 
 export function moduleCategory(module) {

@@ -150,6 +150,7 @@ Admin → Module Settings
 Rootminster currently exposes modules for:
 
 - Cloudflare R2 Backup
+- Docker Engine management through the Hostinger VPS API
 - GlitchTip error monitoring
 - Cloudflare DNS
 - SMTP email

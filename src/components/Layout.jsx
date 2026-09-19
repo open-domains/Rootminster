@@ -17,7 +17,7 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp,
+  Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp, Container,
   FileBarChart, FileCode2, GitPullRequest, Globe2, LayoutDashboard,
   LogOut, Menu, Newspaper, Search, Settings, Shield, Users, UserX, Wrench,
   X,
@@ -48,6 +48,7 @@ const adminNav = [
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
   { to: '/admin-settings', icon: Settings, label: 'Platform Settings', adminOnly: true },
   { to: '/admin-modules', icon: Boxes, label: 'Module Settings', adminOnly: true },
+  { to: '/docker-engine', icon: Container, label: 'Docker Engine', adminOnly: true },
 ];
 
 function NavItem({ item, active, onNavigate }) {

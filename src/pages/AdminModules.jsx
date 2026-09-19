@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BarChart3, Boxes, Bug, CheckCircle2, Cloud, CreditCard, Database, Eye, EyeOff, Github, KeyRound, Loader2, Mail, MessageSquare, Palette, RefreshCw, Save, Search, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, BarChart3, Boxes, Bug, CheckCircle2, Cloud, Container, CreditCard, Database, Eye, EyeOff, Github, KeyRound, Loader2, Mail, MessageSquare, Palette, RefreshCw, Save, Search, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import R2BackupPanel from '@/components/R2BackupPanel';
 import { moduleCategory, moduleStatus } from '@/lib/module-presentation';
 
-const icons = { DNS: Cloud, Email: Mail, Authentication: KeyRound, Storage: Database, Monitoring: BarChart3, Integrations: MessageSquare, Payments: CreditCard, Appearance: Palette, Security: ShieldCheck };
+const icons = { DNS: Cloud, Email: Mail, Authentication: KeyRound, Storage: Database, Monitoring: BarChart3, Integrations: MessageSquare, Payments: CreditCard, Appearance: Palette, Security: ShieldCheck, Infrastructure: Container };
 const statusStyles = {
   configured: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   attention: 'bg-amber-500/10 text-amber-800 dark:text-amber-300',
@@ -80,7 +80,7 @@ function ModuleSettings({ module, encryptionConfigured, onSaved, onBack }) {
       <div className="flex shrink-0 items-center gap-3"><label htmlFor="module-enabled" className="text-sm text-muted-foreground">Module enabled</label><Switch id="module-enabled" checked={enabled} disabled={saving || testing || !encryptionConfigured} onCheckedChange={setEnabled} /></div>
     </header>
     <Tabs defaultValue="settings">
-      <TabsList className="mb-6"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="settings">Settings</TabsTrigger>{module.id === 'r2_backup' && <TabsTrigger value="backups">Backups</TabsTrigger>}</TabsList>
+      <TabsList className="mb-6"><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="settings">Settings</TabsTrigger>{module.id === 'r2_backup' && <TabsTrigger value="backups">Backups</TabsTrigger>}{module.id === 'docker_engine' && <TabsTrigger value="projects">Projects</TabsTrigger>}</TabsList>
       <TabsContent value="overview" className="rounded-xl border border-border bg-card p-6">
         <h2 className="font-semibold">Module configuration</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{module.description}</p>
         <dl className="mt-6 grid gap-5 sm:grid-cols-3"><div><dt className="text-xs text-muted-foreground">Category</dt><dd className="mt-1 text-sm">{moduleCategory(module)}</dd></div><div><dt className="text-xs text-muted-foreground">Settings source</dt><dd className="mt-1 text-sm">{module.source === 'database' ? 'Saved settings' : 'Environment settings'}</dd></div><div><dt className="text-xs text-muted-foreground">Saved status</dt><dd className="mt-1"><StatusBadge module={module} /></dd></div></dl>
@@ -130,6 +130,7 @@ function ModuleSettings({ module, encryptionConfigured, onSaved, onBack }) {
         </div>
       </TabsContent>
       {module.id === 'r2_backup' && <TabsContent value="backups" className="rounded-xl border border-border bg-card p-5"><h2 className="font-semibold">Backup operations</h2><p className="mt-1 text-xs text-muted-foreground">Operations use your saved module settings.</p><R2BackupPanel moduleEnabled={module.enabled} /></TabsContent>}
+      {module.id === 'docker_engine' && <TabsContent value="projects" className="rounded-xl border border-border bg-card p-5"><h2 className="font-semibold">Docker projects</h2><p className="mt-1 text-sm text-muted-foreground">Open the live Hostinger project view after saving and enabling this module.</p><Button asChild disabled={!module.enabled || dirty} className="mt-4 gap-2"><Link to="/docker-engine"><Container size={15} />Open Docker Engine</Link></Button>{(!module.enabled || dirty) && <p className="mt-2 text-xs text-muted-foreground">Save an enabled configuration before opening project controls.</p>}</TabsContent>}
     </Tabs>
   </div>;
 }

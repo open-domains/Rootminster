@@ -7,6 +7,20 @@ const cache = new Map();
 const CACHE_MS = 15_000;
 
 export const MODULE_DEFINITIONS = Object.freeze({
+  docker_engine: {
+    name: 'Docker Engine', description: 'Monitor and control Docker Compose projects through the Hostinger VPS Docker Manager API.', defaultEnabled: false,
+    fields: [
+      { key: 'api_token', label: 'Hostinger API token', type: 'secret', required: true, description: 'Create a token in hPanel with access to the VPS containing these Docker projects.' },
+      { key: 'virtual_machine_id', label: 'Virtual machine ID', type: 'text', required: true },
+      { key: 'protected_projects', label: 'Additional protected projects', type: 'text', description: 'Comma-separated project names to hide and block. OpenDomains and Rootminster projects are always protected.' },
+    ],
+    env: () => ({
+      enabled: Boolean(process.env.HOSTINGER_API_KEY && process.env.HOSTINGER_VIRTUAL_MACHINE_ID),
+      api_token: process.env.HOSTINGER_API_KEY || '',
+      virtual_machine_id: process.env.HOSTINGER_VIRTUAL_MACHINE_ID || '',
+      protected_projects: process.env.HOSTINGER_PROTECTED_DOCKER_PROJECTS || '',
+    }),
+  },
   r2_backup: {
     name: 'Cloudflare R2 Backup', description: 'Encrypted PostgreSQL backups with strict free-tier storage and operation budgets.', defaultEnabled: false,
     fields: [

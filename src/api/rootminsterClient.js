@@ -169,6 +169,12 @@ export const rootminster = {
     async importEnvironment() { return request('/api/admin/modules/import-environment', { method: 'POST', body: {} }); },
     async testGlitchTip() { return request('/api/admin/modules/glitchtip/test', { method: 'POST', body: {} }); },
   },
+  docker: {
+    async projects() { return request('/api/admin/docker/projects'); },
+    async containers(projectName) { return request(`/api/admin/docker/projects/${encodeURIComponent(projectName)}/containers`); },
+    async logs(projectName) { return request(`/api/admin/docker/projects/${encodeURIComponent(projectName)}/logs`); },
+    async action(projectName, action) { return request(`/api/admin/docker/projects/${encodeURIComponent(projectName)}/${encodeURIComponent(action)}`, { method: 'POST', body: {} }); },
+  },
   backups: {
     async status() { return request('/api/admin/backups'); },
     async testR2() { return request('/api/admin/backups/r2/test', { method: 'POST', body: {} }); },

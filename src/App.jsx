@@ -107,6 +107,7 @@ const AdminAbuseReports = lazy(() => import('@/pages/AdminAbuseReports'));
 const AdminModules = lazy(() => import('@/pages/AdminModules'));
 const AdminAccountDeletionRequests = lazy(() => import('@/pages/AdminAccountDeletionRequests'));
 const AdminReports = lazy(() => import('@/pages/AdminReports'));
+const DockerEngine = lazy(() => import('@/pages/DockerEngine'));
 
 const AuthenticatedApp = () => {
   return (
@@ -208,6 +209,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin-donations" element={<AdminDonations />} />
           <Route path="/admin-settings" element={<AdminSettings />} />
           <Route path="/admin-modules" element={<AdminModules />} />
+          <Route path="/docker-engine" element={<DockerEngine />} />
           <Route path="/admin-account-deletions" element={<AdminAccountDeletionRequests />} />
         </Route>
       </Route>
