@@ -30,7 +30,20 @@ import { registerImpersonationRoutes } from './impersonation-routes.js';
 assertProductionConfiguration();
 
 const app = Fastify({
-  logger: { level: process.env.LOG_LEVEL || 'info' },
+  logger: {
+    level: process.env.LOG_LEVEL || 'info',
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: request.url,
+          host: request.host,
+          remoteAddress: request.ip,
+          remotePort: request.socket?.remotePort,
+        };
+      },
+    },
+  },
   trustProxy: config.trustProxy,
   bodyLimit: 1_048_576,
 });
