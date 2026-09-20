@@ -130,7 +130,7 @@ export default async function (req) {
                 return respond({ error: 'domain required' }, 400);
             const records = await platform.asServiceRole.entities.DnsRecord.filter({ zone_name: domain });
             return respond({
-                records: records.map(r => ({
+                records: records.filter(r => r.status !== 'suspended').map(r => ({
                     name: r.name,
                     type: r.record_type,
                     content: r.content,
@@ -161,7 +161,7 @@ export default async function (req) {
                 ns_unlocked: user.ns_unlocked || false,
                 joined: user.created_date,
                 stats: {
-                    active_records: ownedRecords.filter(r => r.status === 'active').length,
+                    active_records: ownedRecords.filter(r => r.status !== 'suspended').length,
                     total_records: ownedRecords.length,
                     total_requests: requests.length,
                     pending_requests: requests.filter(r => r.status === 'pending').length,
@@ -170,13 +170,11 @@ export default async function (req) {
             });
         }
         return respond({ error: 'Unknown action. Use ?action=check, ?action=whois, ?action=rdap, ?action=records, or ?action=me' }, 400);
-        // whois: GET ?action=whois&subdomain=foo&domain=example.com (staff/admin API key required)
     }
     // ── POST actions (require auth) ───────────────────────────────
     if (req.method === 'POST') {
         const body = await req.json().catch(() => ({}));
         const { action } = body;
-        // Auth required for all POST
         const tokenRec = await resolveToken(platform, req);
         if (!tokenRec)
             return respond({ error: 'Unauthorized. Provide a valid API key in Authorization: Bearer <key>' }, 401);
@@ -184,7 +182,6 @@ export default async function (req) {
         const user = userRecords[0];
         if (!user)
             return respond({ error: 'User not found' }, 401);
-        // POST action=submit
         if (action === 'submit') {
             try {
                 const result = await invokeInternal('submitRequest', body, { ...user, trusted_source: 'api' });
@@ -194,7 +191,6 @@ export default async function (req) {
                 return respond({ error: error.message }, error.status || 500);
             }
         }
-        // POST action=update — direct DNS mutation.
         if (action === 'update') {
             const { dns_record_id, new_content, new_proxied, new_ttl } = body;
             if (!dns_record_id)
@@ -218,7 +214,6 @@ export default async function (req) {
                 const result = await invokeInternal('manageDnsRecord', {
                     action: 'update',
                     record_id: dns_record_id,
-                    base_name: record.name,
                     ...changes,
                 }, user);
                 return respond({ success: true, message: 'DNS record updated', record: result?.record || result });

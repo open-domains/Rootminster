@@ -1,13 +1,13 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
+import { listAllEntities, syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
 export default async function (req) {
     try {
         const platform = createPlatformClientFromRequest(req);
         const user = await platform.auth.me();
         if (!user || user.role !== 'admin')
             return Response.json({ error: 'Forbidden' }, { status: 403 });
-        // Find all approved requests with no cloudflare_record_id
-        const approved = await platform.asServiceRole.entities.SubdomainRequest.filter({ status: 'approved' }, '-created_date', 500);
+        const approved = await listAllEntities(platform.asServiceRole.entities.SubdomainRequest, { status: 'approved' }, '-created_date');
         const broken = approved.filter(r => !Array.isArray(r.records) && !r.cloudflare_record_id && !r.dns_record_id);
         const results = { fixed: [], failed: [] };
         for (const r of broken) {
@@ -28,9 +28,10 @@ export default async function (req) {
                     }
                 }
                 const cfProxied = (r.record_type === 'NS' || r.record_type === 'MX') ? false : (r.proxied || false);
+                const fullName = r.full_name || `${r.subdomain}.${r.root_domain}`;
                 const cfBody = {
                     type: r.record_type,
-                    name: `${r.subdomain}.${r.root_domain}`,
+                    name: fullName,
                     content: cfContent,
                     ttl: r.ttl || 3600,
                     proxied: cfProxied
@@ -39,7 +40,7 @@ export default async function (req) {
                     cfBody.priority = mxPriority;
                 const cfRes = await cfFetch('POST', `/zones/${r.zone_id}/dns_records`, cfBody);
                 if (!cfRes.success) {
-                    results.failed.push({ full_name: r.full_name, error: cfRes.errors?.[0]?.message || 'CF error' });
+                    results.failed.push({ full_name: fullName, error: cfRes.errors?.[0]?.message || 'CF error' });
                     continue;
                 }
                 const cfRecord = cfRes.result;
@@ -55,12 +56,17 @@ export default async function (req) {
                     cloudflare_record_id: cfRecord.id,
                     dns_record_id: dnsRecord.id
                 });
+                await syncOwnershipForNamespace(platform, {
+                    owner: { id: r.requester_id, email: r.requester_email },
+                    fullName,
+                    zone: { name: r.root_domain, zone_id: r.zone_id },
+                });
                 await platform.asServiceRole.entities.AuditLog.create({
                     actor_email: user.email, actor_role: 'admin',
                     action: 'repair_missing_cf_record', entity_type: 'SubdomainRequest', entity_id: r.id,
-                    description: `Repaired missing CF record for ${r.full_name} (cf_id: ${cfRecord.id})`
+                    description: `Repaired missing CF record for ${fullName} (cf_id: ${cfRecord.id})`
                 });
-                results.fixed.push({ full_name: r.full_name, cf_id: cfRecord.id });
+                results.fixed.push({ full_name: fullName, cf_id: cfRecord.id });
             }
             catch (e) {
                 results.failed.push({ full_name: r.full_name, error: e.message });

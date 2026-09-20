@@ -1,4 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
 import { getModuleConfig } from '../module-settings.js';
 async function getAllDomainRecords() {
     const github = await getModuleConfig('github_oauth');
@@ -46,11 +47,8 @@ export default async function (req) {
     const user = await platform.auth.me();
     if (!user)
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    // Use the user's own account email — no manual email input required
     const normalizedEmail = user.email.toLowerCase().trim();
-    // 1. Fetch the flat index from GitHub
     const allRecords = await getAllDomainRecords();
-    // 2. Filter records belonging to this user's email (skip wildcards)
     const matched = allRecords
         .filter(data => {
         if (!data.subdomain || data.subdomain.startsWith('*.'))
@@ -61,7 +59,6 @@ export default async function (req) {
     if (matched.length === 0) {
         return Response.json({ found: 0, imported: 0, skipped: 0, details: [], message: 'No domains found for your email in the old system.' });
     }
-    // 3. Check upfront if any matched records have NS — grant Legacy Donor before importing
     const hasNSUpfront = matched.some(({ data }) => data.record?.NS);
     if (hasNSUpfront && !user.ns_unlocked) {
         await platform.asServiceRole.entities.User.update(user.id, { legacy_donor: true, ns_unlocked: true });
@@ -109,7 +106,6 @@ export default async function (req) {
 </html>`
         });
     }
-    // 4. Get available domains in our system
     const domains = await platform.asServiceRole.entities.Domain.filter({ status: 'active' });
     const domainMap = {};
     for (const d of domains)
@@ -133,18 +129,21 @@ export default async function (req) {
             skipped++;
             continue;
         }
+        let shouldSyncOwnership = false;
         for (const rec of records) {
             const existingRecs = await platform.asServiceRole.entities.DnsRecord.filter({
                 name: fullName,
                 record_type: rec.type,
                 zone_id: domain.zone_id
             });
-            // Find a record matching the exact content value
             const exactMatch = existingRecs.find(r => r.content === rec.value);
             const anyMatch = existingRecs.length > 0 ? existingRecs[0] : null;
             const dnsRecord = exactMatch || anyMatch;
             if (dnsRecord) {
                 if (dnsRecord.managed && dnsRecord.owner_email) {
+                    const sameOwner = dnsRecord.owner_id === user.id || dnsRecord.owner_email === user.email;
+                    if (sameOwner)
+                        shouldSyncOwnership = true;
                     details.push({ full_name: fullName, type: rec.type, status: 'skipped', reason: 'Already managed' });
                     skipped++;
                     continue;
@@ -155,6 +154,7 @@ export default async function (req) {
                     owner_id: user.id,
                     status: 'active'
                 });
+                shouldSyncOwnership = true;
             }
             else {
                 await platform.asServiceRole.entities.DnsRecord.create({
@@ -172,12 +172,19 @@ export default async function (req) {
                     status: 'active',
                     last_synced: new Date().toISOString()
                 });
+                shouldSyncOwnership = true;
             }
             details.push({ full_name: fullName, type: rec.type, value: rec.value, status: 'imported' });
             imported++;
         }
+        if (shouldSyncOwnership) {
+            await syncOwnershipForNamespace(platform, {
+                owner: user,
+                fullName,
+                zone: { name: rootDomain, zone_id: domain.zone_id },
+            });
+        }
     }
-    // Audit log
     await platform.asServiceRole.entities.AuditLog.create({
         actor_email: user.email, actor_role: user.role || 'user',
         action: 'github_migration', entity_type: 'DnsRecord',
@@ -199,7 +206,6 @@ export default async function (req) {
         <p>— The Open Domains Team</p>
       `
         });
-        // Use the configured platform webhook rather than embedding a Discord credential in source.
         const webhookSettings = await platform.asServiceRole.entities.PlatformSettings.filter({ key: 'discord_webhook_url' });
         const webhookUrl = webhookSettings?.[0]?.value;
         if (webhookUrl) {
