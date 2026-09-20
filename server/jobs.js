@@ -17,7 +17,9 @@ async function run(name, body = {}) {
 }
 
 cron.schedule('15 3 * * *', () => run('cleanupPendingDonations'), { timezone: 'UTC' });
-cron.schedule('30 3 * * 0', () => run('cleanupSuspendedRecords'), { timezone: 'UTC' });
+// Ownership integrity is important application state, not just UI state. Reconcile every day
+// rather than waiting a week, and also run once when the job process starts below.
+cron.schedule('30 3 * * *', () => run('cleanupSuspendedRecords'), { timezone: 'UTC' });
 cron.schedule('0 2 */6 * *', () => run('scheduledSync'), { timezone: 'UTC' });
 cron.schedule('0 3 1 */2 *', () => run('verifyDnsRecords'), { timezone: 'UTC' });
 cron.schedule('0 23 * * 0', () => run('weeklyStatsDiscord'), { timezone: 'UTC' });
@@ -39,6 +41,8 @@ cron.schedule('0 4 * * *', async () => {
 }, { timezone: 'UTC' });
 
 console.log('Rootminster job runner started.');
+// Fire-and-forget startup repair. Advisory locking prevents overlap with the scheduled run.
+void run('cleanupSuspendedRecords');
 
 const shutdown = async () => {
   await pool.end();
