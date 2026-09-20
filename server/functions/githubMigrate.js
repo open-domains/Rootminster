@@ -129,6 +129,7 @@ export default async function (req) {
             skipped++;
             continue;
         }
+        let shouldSyncOwnership = false;
         for (const rec of records) {
             const existingRecs = await platform.asServiceRole.entities.DnsRecord.filter({
                 name: fullName,
@@ -140,6 +141,9 @@ export default async function (req) {
             const dnsRecord = exactMatch || anyMatch;
             if (dnsRecord) {
                 if (dnsRecord.managed && dnsRecord.owner_email) {
+                    const sameOwner = dnsRecord.owner_id === user.id || dnsRecord.owner_email === user.email;
+                    if (sameOwner)
+                        shouldSyncOwnership = true;
                     details.push({ full_name: fullName, type: rec.type, status: 'skipped', reason: 'Already managed' });
                     skipped++;
                     continue;
@@ -150,6 +154,7 @@ export default async function (req) {
                     owner_id: user.id,
                     status: 'active'
                 });
+                shouldSyncOwnership = true;
             }
             else {
                 await platform.asServiceRole.entities.DnsRecord.create({
@@ -167,15 +172,18 @@ export default async function (req) {
                     status: 'active',
                     last_synced: new Date().toISOString()
                 });
+                shouldSyncOwnership = true;
             }
             details.push({ full_name: fullName, type: rec.type, value: rec.value, status: 'imported' });
             imported++;
         }
-        await syncOwnershipForNamespace(platform, {
-            owner: user,
-            fullName,
-            zone: { name: rootDomain, zone_id: domain.zone_id },
-        });
+        if (shouldSyncOwnership) {
+            await syncOwnershipForNamespace(platform, {
+                owner: user,
+                fullName,
+                zone: { name: rootDomain, zone_id: domain.zone_id },
+            });
+        }
     }
     await platform.asServiceRole.entities.AuditLog.create({
         actor_email: user.email, actor_role: user.role || 'user',
