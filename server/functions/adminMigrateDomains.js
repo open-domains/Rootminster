@@ -1,4 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
 const INDEX_URL = 'https://raw.githubusercontent.com/open-domains/raw/refs/heads/main/scripts/raw/index.json';
 async function getAllDomainRecords() {
     const res = await fetch(INDEX_URL, { headers: { 'User-Agent': 'OpenDomains-Platform' } });
@@ -51,13 +52,11 @@ export default async function (req) {
         return Response.json({ error: 'github_email is required' }, { status: 400 });
     if (!target_user_id)
         return Response.json({ error: 'target_user_id is required' }, { status: 400 });
-    // Fetch the target user
     const targetUsers = await platform.asServiceRole.entities.User.filter({ id: target_user_id });
     if (targetUsers.length === 0)
         return Response.json({ error: 'Target user not found' }, { status: 404 });
     const targetUser = targetUsers[0];
     const normalizedEmail = github_email.toLowerCase().trim();
-    // Fetch index and find matching records
     const allRecords = await getAllDomainRecords();
     const matched = allRecords
         .filter(data => {
@@ -69,7 +68,6 @@ export default async function (req) {
     if (matched.length === 0) {
         return Response.json({ found: 0, imported: 0, skipped: 0, details: [], message: 'No domains found for this email.' });
     }
-    // Check for NS records upfront — grant Legacy Donor before importing
     const hasNS = matched.some(({ data }) => data.record?.NS);
     if (hasNS && !targetUser.ns_unlocked) {
         await platform.asServiceRole.entities.User.update(targetUser.id, { legacy_donor: true, ns_unlocked: true });
@@ -101,7 +99,6 @@ export default async function (req) {
             const existing = await platform.asServiceRole.entities.DnsRecord.filter({
                 name: fullName, record_type: rec.type, zone_id: domain.zone_id
             });
-            // Match by exact content first, fall back to first result
             const exactMatch = existing.find(r => r.content === rec.value);
             const dnsRecord = exactMatch || (existing.length > 0 ? existing[0] : null);
             if (dnsRecord) {
@@ -125,8 +122,12 @@ export default async function (req) {
             details.push({ full_name: fullName, type: rec.type, status: 'imported' });
             imported++;
         }
+        await syncOwnershipForNamespace(platform, {
+            owner: targetUser,
+            fullName,
+            zone: { name: rootDomain, zone_id: domain.zone_id },
+        });
     }
-    // Audit log
     await platform.asServiceRole.entities.AuditLog.create({
         actor_email: actor.email, actor_role: actor.role,
         action: 'admin_migration', entity_type: 'DnsRecord',
