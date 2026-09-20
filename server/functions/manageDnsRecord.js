@@ -212,8 +212,8 @@ export default async function (req) {
 
       const zone = { name: record.zone_name, zone_id: record.zone_id };
       const recordOwner = { id: record.owner_id, email: record.owner_email };
-      const managedBase = await resolveOwnershipBase(platform, recordOwner, record.name, body.base_name, record.zone_name);
-      if (!hostnameWithin(record.name, managedBase)) return Response.json({ error: 'The DNS record is outside the domain you are managing' }, { status: 400 });
+      const requestedBase = body.base_name && hostnameWithin(record.name, body.base_name) ? body.base_name : null;
+      const managedBase = await resolveOwnershipBase(platform, recordOwner, record.name, requestedBase, record.zone_name, record);
 
       const cf = await cfFetch('DELETE', `/zones/${record.zone_id}/dns_records/${record.cloudflare_record_id}`);
       if (!cf.success && cf._httpStatus !== 404) return Response.json({ error: `Cloudflare delete failed: ${cf.errors?.[0]?.message || 'unknown error'}` }, { status: 502 });
@@ -276,7 +276,12 @@ export default async function (req) {
       if (flattenError) return Response.json({ error: flattenError }, { status: 400 });
 
       await assertNotBlocked(platform, candidate.record_type, candidate.content);
-      const permissionBase = await assertUserCanManageName(platform, user, candidate.name, body.base_name);
+      const recordOwner = { id: old.owner_id, email: old.owner_email };
+      const nameChanged = normalizeName(candidate.name) !== normalizeName(old.name);
+      const oldBase = await resolveOwnershipBase(platform, recordOwner, old.name, null, old.zone_name, old);
+      const permissionBase = nameChanged
+        ? await assertUserCanManageName(platform, user, candidate.name, body.base_name)
+        : oldBase;
       await assertNoConflict(platform, candidate, old.id);
       const zone = await findZone(platform, candidate.name);
       if (normalizeName(zone.name) !== normalizeName(old.zone_name) || zone.zone_id !== old.zone_id) {
@@ -287,9 +292,9 @@ export default async function (req) {
       }
       if (!old.cloudflare_record_id || !old.zone_id) return Response.json({ error: 'Record is missing Cloudflare linkage' }, { status: 422 });
 
-      const recordOwner = { id: old.owner_id, email: old.owner_email };
-      const oldBase = await resolveOwnershipBase(platform, recordOwner, old.name, body.base_name || permissionBase, old.zone_name);
-      const newBase = await resolveOwnershipBase(platform, recordOwner, candidate.name, body.base_name || permissionBase, zone.name);
+      const newBase = nameChanged
+        ? await resolveOwnershipBase(platform, recordOwner, candidate.name, permissionBase, zone.name)
+        : oldBase;
 
       const cf = await cfFetch('PUT', `/zones/${old.zone_id}/dns_records/${old.cloudflare_record_id}`, cloudflarePayload(candidate, zone));
       if (!cf.success) return Response.json({ error: `Cloudflare update failed: ${cf.errors?.[0]?.message || 'unknown error'}` }, { status: 502 });
@@ -388,7 +393,7 @@ export default async function (req) {
       dns_verified: null,
     });
 
-    const ownershipBase = await resolveOwnershipBase(platform, owner, finalName, body.base_name || permissionBase, zone.name);
+    const ownershipBase = await resolveOwnershipBase(platform, owner, finalName, body.base_name || permissionBase, zone.name, created);
     await syncOwnershipForNamespace(platform, { owner, fullName: ownershipBase, zone });
     await platform.asServiceRole.entities.AuditLog.create({
       actor_email: user.email,
