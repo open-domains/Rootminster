@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { hostnameWithin, normalizeName, reconcileSubdomainOwnerships, sameOwner } from '../lib/subdomain-ownership.js';
+import { normalizeName, reconcileSubdomainOwnerships, syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
 
 const GRACE_DAYS = 7;
 
@@ -11,7 +11,7 @@ export default async function (req) {
 
     const now = new Date();
     const cutoff = now.getTime() - GRACE_DAYS * 24 * 60 * 60 * 1000;
-    const { stats, ownerships, liveRecords } = await reconcileSubdomainOwnerships(platform, {
+    const { stats, ownerships } = await reconcileSubdomainOwnerships(platform, {
       now,
       auditActor: user.email || 'system',
     });
@@ -23,17 +23,23 @@ export default async function (req) {
       const fullName = normalizeName(ownership.full_name);
       if (!fullName) continue;
 
-      // Never remove ownership while a live managed DNS record exists. The reconciler already
-      // performs this check from a complete paginated scan; cleanup repeats it immediately
-      // before destructive deletion as a second safety barrier.
-      const stillHasRecords = liveRecords.some(record =>
-        sameOwner(record, ownership) && hostnameWithin(record.name, fullName));
-      if (stillHasRecords) {
+      // Re-derive state immediately before destructive deletion. This second check understands
+      // approved request-to-record links as well as normal hostname containment, so special
+      // records such as GitHub Pages verification TXT records also protect their ownership.
+      const safetyState = await syncOwnershipForNamespace(platform, {
+        owner: { id: ownership.owner_id, email: ownership.owner_email },
+        fullName,
+        zone: { name: ownership.root_domain, zone_id: ownership.zone_id },
+        now,
+      });
+      if (safetyState.status === 'active') {
         deletionSkippedSafety++;
         continue;
       }
 
-      const suspendedAt = ownership.suspended_at ? new Date(ownership.suspended_at).getTime() : now.getTime();
+      const suspendedAt = safetyState.ownership?.suspended_at
+        ? new Date(safetyState.ownership.suspended_at).getTime()
+        : now.getTime();
       if (!Number.isFinite(suspendedAt) || suspendedAt > cutoff) continue;
 
       await platform.asServiceRole.entities.SubdomainOwnership.delete(ownership.id);
