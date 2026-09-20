@@ -122,6 +122,42 @@ test('approved request boundary wins over an exact DNS hostname', async () => {
   assert.equal(base, 'project-pilot.is-local.org');
 });
 
+test('reconciliation claims strongly linked legacy DNS rows before status evaluation', async () => {
+  const { platform, entities } = makePlatform({
+    ownerships: [
+      {
+        id: 'parent-legacy', owner_id: 'u1', owner_email: 'u@example.com',
+        full_name: 'legacy.is-local.org', subdomain: 'legacy', root_domain: 'is-local.org',
+        status: 'suspended', suspended_at: '2026-09-01T00:00:00.000Z',
+      },
+    ],
+    records: [
+      {
+        id: 'legacy-dns', managed: false, name: 'legacy.is-local.org', zone_name: 'is-local.org',
+        zone_id: 'zone1', record_type: 'A', content: '203.0.113.10',
+      },
+    ],
+    requests: [
+      {
+        id: 'legacy-request', status: 'approved', requester_id: 'u1', requester_email: 'u@example.com',
+        subdomain: 'legacy', root_domain: 'is-local.org', dns_record_id: 'legacy-dns',
+      },
+    ],
+    domains: [{ id: 'domain1', name: 'is-local.org', zone_id: 'zone1' }],
+  });
+
+  const result = await reconcileSubdomainOwnerships(platform, {
+    now: new Date('2026-09-20T12:00:00.000Z'),
+    auditActor: null,
+  });
+
+  assert.equal(result.stats.dns_records_claimed, 1);
+  assert.equal(entities.DnsRecord.rows[0].managed, true);
+  assert.equal(entities.DnsRecord.rows[0].owner_id, 'u1');
+  assert.equal(entities.DnsRecord.rows[0].status, 'active');
+  assert.equal(entities.SubdomainOwnership.rows.find(row => row.id === 'parent-legacy').status, 'active');
+});
+
 test('reconciliation repairs false suspension and removes proven stray child ownership', async () => {
   const { platform, entities } = makePlatform({
     ownerships: [
