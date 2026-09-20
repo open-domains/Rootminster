@@ -203,6 +203,7 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
   const stats = {
     scanned_ownerships: ownershipRows.length,
     scanned_dns_records: allRecords.length,
+    dns_records_claimed: 0,
     normalized_dns_records: 0,
     legacy_dns_records_deleted: 0,
     ownerships_created: 0,
@@ -211,6 +212,38 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     activated: 0,
     suspended: 0,
   };
+
+  const requestByDnsId = new Map();
+  const requestByCloudflareId = new Map();
+  for (const request of approvedRequests) {
+    const links = [];
+    if (request.dns_record_id) links.push({ kind: 'dns', id: request.dns_record_id });
+    if (request.cloudflare_record_id) links.push({ kind: 'cf', id: request.cloudflare_record_id });
+    for (const item of Array.isArray(request.records) ? request.records : []) {
+      if (item?.dns_record_id) links.push({ kind: 'dns', id: item.dns_record_id });
+      if (item?.cloudflare_record_id) links.push({ kind: 'cf', id: item.cloudflare_record_id });
+    }
+    for (const link of links) {
+      if (link.kind === 'dns') requestByDnsId.set(link.id, request);
+      else requestByCloudflareId.set(link.id, request);
+    }
+  }
+
+  // Claim legacy DNS rows only when an approved request contains a strong database or
+  // Cloudflare record link. This restores ownership metadata without guessing from names.
+  for (const record of allRecords) {
+    if (record.owner_id && record.owner_email && record.managed) continue;
+    const request = requestByDnsId.get(record.id) ||
+      (record.cloudflare_record_id ? requestByCloudflareId.get(record.cloudflare_record_id) : null);
+    if (!request?.requester_id || !request?.requester_email) continue;
+    const updated = await entities.DnsRecord.update(record.id, {
+      owner_id: request.requester_id,
+      owner_email: request.requester_email,
+      managed: true,
+    });
+    Object.assign(record, updated);
+    stats.dns_records_claimed++;
+  }
 
   // Record-level suspension is legacy state. A managed DNS row that still exists is active
   // unless it is explicitly one of those legacy suspended rows, which are removed below.
@@ -231,22 +264,6 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
 
   const liveRecords = allRecords.filter(record => !record._removed && isLiveManagedRecord(record));
   const ownerships = ownershipRows.map(row => ({ ...row }));
-
-  const requestByDnsId = new Map();
-  const requestByCloudflareId = new Map();
-  for (const request of approvedRequests) {
-    const links = [];
-    if (request.dns_record_id) links.push({ kind: 'dns', id: request.dns_record_id });
-    if (request.cloudflare_record_id) links.push({ kind: 'cf', id: request.cloudflare_record_id });
-    for (const item of Array.isArray(request.records) ? request.records : []) {
-      if (item?.dns_record_id) links.push({ kind: 'dns', id: item.dns_record_id });
-      if (item?.cloudflare_record_id) links.push({ kind: 'cf', id: item.cloudflare_record_id });
-    }
-    for (const link of links) {
-      if (link.kind === 'dns') requestByDnsId.set(link.id, request);
-      else requestByCloudflareId.set(link.id, request);
-    }
-  }
   const linkedNamespaceByRecordId = new Map();
   for (const record of liveRecords) {
     const request = requestByDnsId.get(record.id) ||
