@@ -45,3 +45,15 @@ test('Design authorization page prevents Cloudflare email script injection', () 
   assert.match(design, /script-src 'none'/);
   assert.match(design, /form-action \$\{rootminsterBase\} \$\{designBase\}/);
 });
+
+test('Design analytics bypasses API-token scopes without bypassing service, session, or ownership checks', () => {
+  const route = design.indexOf("app.post('/api/design-auth/analytics'");
+  const service = design.indexOf('const module = await serviceModule(request)', route);
+  const session = design.indexOf('const user = await serviceProfile(request, module)', service);
+  const analytics = design.indexOf('return await designAnalytics(user, request.body)', session);
+  assert.ok(route > -1 && service > route && session > service && analytics > session);
+  assert.match(design, /invokeInternal\('analyticsManager'/);
+  assert.match(design, /actions = \{ create: 'enable', tracking_code: 'status', stats: 'stats' \}/);
+  assert.match(design, /trusted_source: 'design'/);
+  assert.match(design, /HOSTNAME\.test\(subdomain\)/);
+});

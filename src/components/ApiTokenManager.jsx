@@ -11,10 +11,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 const SCOPE_OPTIONS = [
   ['account:read', 'Read account'], ['requests:read', 'Read requests'], ['requests:write', 'Submit requests'],
   ['dns:read', 'Read DNS'], ['dns:write', 'Manage DNS'], ['dns:dynamic', 'Dynamic DNS updates'],
+  ['analytics:read', 'Read analytics'], ['analytics:write', 'Create analytics'],
 ];
 const PRESETS = {
-  full: ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write'],
-  read: ['account:read', 'requests:read', 'dns:read'],
+  full: ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'analytics:read', 'analytics:write'],
+  read: ['account:read', 'requests:read', 'dns:read', 'analytics:read'],
   dynamic: ['dns:read', 'dns:dynamic'],
 };
 

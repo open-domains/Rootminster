@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import Fastify from 'fastify';
 import rateLimit from '@fastify/rate-limit';
-import { apiRateKey, bearerToken, parsePagination, publicIp, registerPublicApiRoutes, tokenAllowsRecord } from './public-api.js';
+import { analyticsHostname, apiRateKey, bearerToken, parsePagination, publicIp, registerPublicApiRoutes, tokenAllowsHostname, tokenAllowsRecord } from './public-api.js';
 
 test('Bearer parsing is case-insensitive and rejects other schemes', () => {
   assert.equal(bearerToken('Bearer od_example'), 'od_example');
@@ -33,6 +33,14 @@ test('scoped tokens enforce exact hostnames and DNS record types', () => {
   assert.equal(tokenAllowsRecord({}, { name: 'anything.example.com', record_type: 'TXT' }), true);
 });
 
+test('analytics validates hostnames and honours token hostname restrictions', () => {
+  assert.equal(analyticsHostname('Stats.Example.com.'), 'stats.example.com');
+  for (const hostname of ['', 'localhost', 'https://stats.example.com', '*.example.com', 'space name.example.com']) assert.equal(analyticsHostname(hostname), null);
+  assert.equal(tokenAllowsHostname({ allowed_hostnames: ['stats.example.com'] }, 'stats.example.com'), true);
+  assert.equal(tokenAllowsHostname({ allowed_hostnames: ['stats.example.com'] }, 'other.example.com'), false);
+  assert.equal(tokenAllowsHostname({}, 'stats.example.com'), true);
+});
+
 test('dynamic DNS accepts public addresses and rejects local network addresses', () => {
   assert.deepEqual(publicIp('8.8.8.8'), { address: '8.8.8.8', family: 4 });
   assert.deepEqual(publicIp('2606:4700:4700::1111'), { address: '2606:4700:4700::1111', family: 6 });
@@ -46,9 +54,12 @@ test('v1 publishes a machine-readable OpenAPI document with CORS and version hea
   const response = await app.inject({ method: 'GET', url: '/api/v1/openapi.json' });
   assert.equal(response.statusCode, 200);
   assert.equal(response.headers['access-control-allow-origin'], '*');
-  assert.equal(response.headers['x-api-version'], '1.1.0');
+  assert.equal(response.headers['x-api-version'], '1.2.0');
   assert.equal(response.json().openapi, '3.1.0');
   assert.ok(response.json().paths['/dynamic-dns']);
+  assert.ok(response.json().paths['/analytics']);
+  assert.ok(response.json().paths['/analytics/{subdomain}/tracking-code']);
+  assert.ok(response.json().paths['/analytics/{subdomain}/stats']);
   await app.close();
 });
 

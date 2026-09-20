@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
 import { pool } from './database.js';
+import { invokeInternal } from './function-runner.js';
 import { cloudflareFetch } from './lib/cloudflare.js';
 import { getModuleConfig } from './module-settings.js';
 import { randomToken, sha256 } from './security.js';
@@ -116,6 +117,55 @@ function escapeHtml(value) {
   return String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 }
 
+async function designAnalytics(user, body = {}) {
+  const actions = { create: 'enable', tracking_code: 'status', stats: 'stats' };
+  const requestedAction = String(body.action || '');
+  const action = actions[requestedAction];
+  if (!action) throw Object.assign(new Error('Analytics action must be create, tracking_code, or stats'), { status: 400 });
+  const subdomain = String(body.subdomain || '').trim().toLowerCase().replace(/\.$/, '');
+  if (!HOSTNAME.test(subdomain)) throw Object.assign(new Error('Invalid hostname'), { status: 400 });
+
+  const input = { action, subdomain };
+  if (action === 'stats') {
+    const days = body.days === undefined ? 30 : Number(body.days);
+    if (!Number.isInteger(days) || days < 1 || days > 365) throw Object.assign(new Error('Days must be an integer from 1 to 365'), { status: 400 });
+    const timezone = String(body.timezone || 'UTC');
+    try {
+      Intl.DateTimeFormat('en', { timeZone: timezone });
+    } catch {
+      throw Object.assign(new Error('Timezone must be a valid IANA timezone name'), { status: 400 });
+    }
+    Object.assign(input, { days, timezone });
+  }
+
+  const result = await invokeInternal('analyticsManager', input, {
+    id: user.subject,
+    email: user.email,
+    role: 'user',
+    trusted_source: 'design',
+  });
+  if (requestedAction === 'tracking_code') {
+    if (!result.enabled || !result.tracking_snippet) throw Object.assign(new Error('Analytics is not enabled for this subdomain'), { status: 409 });
+    return {
+      subdomain: result.subdomain,
+      website_id: result.website_id,
+      tracker_url: result.tracker_url,
+      tracking_code: result.tracking_snippet,
+      enabled_at: result.enabled_at,
+    };
+  }
+  if (requestedAction === 'create') {
+    return {
+      subdomain,
+      enabled: Boolean(result.enabled),
+      website_id: result.website_id,
+      tracking_code: result.tracking_snippet,
+      enabled_at: result.enabled_at || null,
+    };
+  }
+  return result;
+}
+
 export async function registerDesignRoutes(app) {
   app.get('/api/design-auth/authorize', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request, reply) => {
     try {
@@ -206,6 +256,17 @@ export async function registerDesignRoutes(app) {
       const user = await serviceProfile(request, module);
       const records = await store.filter('DnsRecord', { owner_id: user.subject, status: 'active' }, 'name', 500);
       return { subdomains: [...new Set(records.filter((record) => record.managed !== false && record.zone_id && record.cloudflare_record_id).map((record) => String(record.name).toLowerCase()))] };
+    } catch (error) {
+      return reply.code(error.status || 400).send({ error: error.message });
+    }
+  });
+
+  app.post('/api/design-auth/analytics', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (request, reply) => {
+    try {
+      const module = await serviceModule(request);
+      const user = await serviceProfile(request, module);
+      reply.header('Cache-Control', 'no-store');
+      return await designAnalytics(user, request.body);
     } catch (error) {
       return reply.code(error.status || 400).send({ error: error.message });
     }

@@ -5,12 +5,12 @@ import { randomToken, sha256 } from './security.js';
 import { store } from './store.js';
 import { isIP } from 'node:net';
 
-const API_VERSION = '1.1.0';
+const API_VERSION = '1.2.0';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIVE_REQUEST_STATUSES = ['pending', 'needs_info', 'user_responded'];
-const USER_TOKEN_SCOPES = new Set(['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'dns:dynamic']);
+const USER_TOKEN_SCOPES = new Set(['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'dns:dynamic', 'analytics:read', 'analytics:write']);
 const DNS_RECORD_TYPES = new Set(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'PTR']);
-const DEFAULT_TOKEN_SCOPES = ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write'];
+const DEFAULT_TOKEN_SCOPES = ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'analytics:read', 'analytics:write'];
 
 const readLimit = { max: 120, timeWindow: '1 minute', keyGenerator: apiRateKey };
 const publicLimit = { max: 60, timeWindow: '1 minute' };
@@ -100,6 +100,22 @@ function tokenHasScope(identity, scope) {
 
 function normalHostname(value) {
   return String(value || '').trim().toLowerCase().replace(/\.+$/, '');
+}
+
+export function analyticsHostname(value) {
+  const hostname = normalHostname(value);
+  if (!hostname || hostname.length > 253 || !/^[a-z0-9_-]+(?:\.[a-z0-9_-]+)+$/.test(hostname)) return null;
+  return hostname;
+}
+
+export function tokenAllowsHostname(token, hostname) {
+  const hostnames = Array.isArray(token.allowed_hostnames) ? token.allowed_hostnames.map(normalHostname).filter(Boolean) : [];
+  return !hostnames.length || hostnames.includes(normalHostname(hostname));
+}
+
+function analyticsError(reply, cause, code) {
+  const status = cause.status || 500;
+  return error(reply, status, code, cause.message, cause.data);
 }
 
 export function tokenAllowsRecord(token, record) {
@@ -202,7 +218,7 @@ async function createBrowserToken(request, reply) {
 function openApiDocument() {
   return {
     openapi: '3.1.0',
-    info: { title: 'Rootminster User API', version: API_VERSION, description: 'Versioned API for Open Domains availability, requests, DNS records, and account data.' },
+    info: { title: 'Rootminster User API', version: API_VERSION, description: 'Versioned API for Open Domains availability, requests, DNS records, analytics, and account data.' },
     servers: [{ url: `${config.appUrl}/api/v1` }],
     components: {
       securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', description: 'API token created in Settings → API Tokens' } },
@@ -223,6 +239,31 @@ function openApiDocument() {
         delete: { summary: 'Delete an owned DNS record', tags: ['DNS'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Record deleted' } } },
       },
       '/dynamic-dns': { post: { summary: 'Update authorised A and AAAA records with a public IP address', tags: ['Dynamic DNS'], security: [{ bearerAuth: [] }], responses: { 200: { description: 'Dynamic DNS update result' }, 403: { description: 'Token scope or hostname restriction failed' } } } },
+      '/analytics': {
+        post: {
+          summary: 'Create analytics for an owned subdomain', tags: ['Analytics'], security: [{ bearerAuth: [] }],
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['subdomain'], properties: { subdomain: { type: 'string', format: 'hostname' } } } } } },
+          responses: { 201: { description: 'Analytics enabled and tracking code created' }, 401: { description: 'Invalid token' }, 403: { description: 'Token scope or subdomain ownership check failed' }, 409: { description: 'Analytics could not be enabled' } },
+        },
+      },
+      '/analytics/{subdomain}/tracking-code': {
+        get: {
+          summary: 'Get the tracking code for an owned subdomain', tags: ['Analytics'], security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'subdomain', in: 'path', required: true, schema: { type: 'string', format: 'hostname' } }],
+          responses: { 200: { description: 'Analytics tracker URL and HTML tracking snippet' }, 401: { description: 'Invalid token' }, 403: { description: 'Token scope or subdomain ownership check failed' }, 409: { description: 'Analytics is not enabled' } },
+        },
+      },
+      '/analytics/{subdomain}/stats': {
+        get: {
+          summary: 'Get analytics statistics for an owned subdomain', tags: ['Analytics'], security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'subdomain', in: 'path', required: true, schema: { type: 'string', format: 'hostname' } },
+            { name: 'days', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: 365, default: 30 } },
+            { name: 'timezone', in: 'query', required: false, schema: { type: 'string', default: 'UTC' } },
+          ],
+          responses: { 200: { description: 'Summary, traffic history, active visitors, pages, referrers, countries, and devices' }, 400: { description: 'Invalid date range or timezone' }, 401: { description: 'Invalid token' }, 403: { description: 'Token scope or subdomain ownership check failed' }, 409: { description: 'Analytics is not enabled' } },
+        },
+      },
       '/device/code': { post: { summary: 'Start device authorization', tags: ['Device authorization'], responses: { 200: { description: 'Device and user codes' } } } },
       '/device/token': { post: { summary: 'Poll device authorization', tags: ['Device authorization'], responses: { 200: { description: 'Authorization state or API token' } } } },
     },
@@ -412,6 +453,69 @@ export async function registerPublicApiRoutes(app) {
     }
     await store.update('ApiToken', identity.token.id, { last_used: new Date().toISOString(), last_used_ip: request.ip }).catch(() => {});
     return data(reply, { hostname, updated, unchanged, checked_at: new Date().toISOString() });
+  });
+
+  app.post('/api/v1/analytics', { config: { rateLimit: writeLimit } }, async (request, reply) => {
+    const identity = await requireApiIdentity(request, reply, null, 'analytics:write');
+    if (!identity) return;
+    const subdomain = analyticsHostname(request.body?.subdomain);
+    if (!subdomain) return error(reply, 400, 'invalid_subdomain', 'Provide a valid fully qualified subdomain');
+    if (!tokenAllowsHostname(identity.token, subdomain)) return error(reply, 403, 'token_restricted', 'This token is not permitted to access that hostname');
+    try {
+      const result = await invokeInternal('analyticsManager', { action: 'enable', subdomain }, identity.user);
+      return data(reply, {
+        subdomain,
+        enabled: Boolean(result.enabled),
+        website_id: result.website_id,
+        tracking_code: result.tracking_snippet,
+        enabled_at: result.enabled_at || null,
+      }, 201);
+    } catch (cause) {
+      return analyticsError(reply, cause, 'analytics_create_failed');
+    }
+  });
+
+  app.get('/api/v1/analytics/:subdomain/tracking-code', { config: { rateLimit: readLimit } }, async (request, reply) => {
+    const identity = await requireApiIdentity(request, reply, null, 'analytics:read');
+    if (!identity) return;
+    const subdomain = analyticsHostname(request.params.subdomain);
+    if (!subdomain) return error(reply, 400, 'invalid_subdomain', 'Provide a valid fully qualified subdomain');
+    if (!tokenAllowsHostname(identity.token, subdomain)) return error(reply, 403, 'token_restricted', 'This token is not permitted to access that hostname');
+    try {
+      const result = await invokeInternal('analyticsManager', { action: 'status', subdomain }, identity.user);
+      if (!result.enabled || !result.tracking_snippet) return error(reply, 409, 'analytics_not_enabled', 'Analytics is not enabled for this subdomain');
+      return data(reply, {
+        subdomain: result.subdomain,
+        website_id: result.website_id,
+        tracker_url: result.tracker_url,
+        tracking_code: result.tracking_snippet,
+        enabled_at: result.enabled_at,
+      });
+    } catch (cause) {
+      return analyticsError(reply, cause, 'analytics_tracking_code_failed');
+    }
+  });
+
+  app.get('/api/v1/analytics/:subdomain/stats', { config: { rateLimit: readLimit } }, async (request, reply) => {
+    const identity = await requireApiIdentity(request, reply, null, 'analytics:read');
+    if (!identity) return;
+    const subdomain = analyticsHostname(request.params.subdomain);
+    if (!subdomain) return error(reply, 400, 'invalid_subdomain', 'Provide a valid fully qualified subdomain');
+    if (!tokenAllowsHostname(identity.token, subdomain)) return error(reply, 403, 'token_restricted', 'This token is not permitted to access that hostname');
+    const days = request.query?.days === undefined ? 30 : Number(request.query.days);
+    if (!Number.isInteger(days) || days < 1 || days > 365) return error(reply, 400, 'invalid_days', 'Days must be an integer from 1 to 365');
+    const timezone = String(request.query?.timezone || 'UTC');
+    try {
+      Intl.DateTimeFormat('en', { timeZone: timezone });
+    } catch {
+      return error(reply, 400, 'invalid_timezone', 'Timezone must be a valid IANA timezone name');
+    }
+    try {
+      const result = await invokeInternal('analyticsManager', { action: 'stats', subdomain, days, timezone }, identity.user);
+      return data(reply, result);
+    } catch (cause) {
+      return analyticsError(reply, cause, 'analytics_stats_failed');
+    }
   });
 
   app.get('/api/v1/staff/whois', { config: { rateLimit: readLimit } }, async (request, reply) => {

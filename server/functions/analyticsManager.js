@@ -1,6 +1,9 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getClient } from '@umami/api-client';
 import { getModuleConfig } from '../module-settings.js';
+function requestError(message, status) {
+    return Object.assign(new Error(message), { status });
+}
 function cleanHost(value) {
     return String(value || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '').replace(/\.+$/, '');
 }
@@ -29,14 +32,14 @@ function unwrap(result, message) {
 async function getOwnership(platform, user, rawName) {
     const fullName = cleanHost(rawName);
     if (!fullName)
-        throw new Error('A subdomain is required');
+        throw requestError('A subdomain is required', 400);
     const rows = await platform.asServiceRole.entities.SubdomainOwnership.filter({
         owner_id: user.id,
         full_name: fullName,
     });
     const ownership = rows[0];
     if (!ownership)
-        throw new Error('You do not own this subdomain');
+        throw requestError('You do not own this subdomain', 403);
     return ownership;
 }
 function metricRows(value) {
@@ -163,6 +166,6 @@ export default async function (req) {
         console.error('analyticsManager error', error);
         return Response.json({
             error: error instanceof Error ? error.message : 'Analytics request failed',
-        }, { status: 500 });
+        }, { status: Number.isInteger(error?.status) ? error.status : 500 });
     }
 }
