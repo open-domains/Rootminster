@@ -29,6 +29,16 @@ export function requestFullName(request) {
     : ''));
 }
 
+export function requestLinksRecord(request, record) {
+  if (!request || !record) return false;
+  if (request.dns_record_id && request.dns_record_id === record.id) return true;
+  if (request.cloudflare_record_id && record.cloudflare_record_id && request.cloudflare_record_id === record.cloudflare_record_id) return true;
+  if (!Array.isArray(request.records)) return false;
+  return request.records.some(item =>
+    (item?.dns_record_id && item.dns_record_id === record.id) ||
+    (item?.cloudflare_record_id && record.cloudflare_record_id && item.cloudflare_record_id === record.cloudflare_record_id));
+}
+
 export function isLiveManagedRecord(record) {
   return record?.managed === true && record?.status !== 'suspended';
 }
@@ -72,23 +82,38 @@ function requestBelongsToOwner(request, owner) {
   return Boolean(requestEmail && ownerEmail && requestEmail === ownerEmail);
 }
 
-export async function resolveOwnershipBase(platform, owner, hostname, requestedBase = null, zoneName = null) {
+async function approvedRequestsForOwner(platform, owner) {
+  const batches = [];
+  if (owner?.id) batches.push(listAllEntities(platform.asServiceRole.entities.SubdomainRequest, { status: 'approved', requester_id: owner.id }));
+  const email = owner?.email || owner?.owner_email;
+  if (email) batches.push(listAllEntities(platform.asServiceRole.entities.SubdomainRequest, { status: 'approved', requester_email: email }));
+  if (!batches.length) return [];
+  const rows = (await Promise.all(batches)).flat();
+  return Array.from(new Map(rows.map(row => [row.id, row])).values());
+}
+
+export async function resolveOwnershipBase(platform, owner, hostname, requestedBase = null, zoneName = null, recordRef = null) {
   const host = normalizeName(hostname);
   const requested = normalizeName(requestedBase);
   if (!host) throw new Error('DNS record hostname is required');
   if (requested) {
-    if (!hostnameWithin(host, requested)) throw new Error('The DNS record is outside the requested owned namespace');
+    if (!hostnameWithin(host, requested) && !recordRef) throw new Error('The DNS record is outside the requested owned namespace');
     return requested;
   }
 
   const filter = ownerFilter(owner);
   const [ownerships, approvedRequests] = await Promise.all([
     filter ? listAllEntities(platform.asServiceRole.entities.SubdomainOwnership, filter) : [],
-    listAllEntities(platform.asServiceRole.entities.SubdomainRequest, { status: 'approved' }),
+    approvedRequestsForOwner(platform, owner),
   ]);
 
+  if (recordRef) {
+    const linked = approvedRequests.find(request => requestLinksRecord(request, recordRef));
+    const linkedName = requestFullName(linked);
+    if (linkedName) return linkedName;
+  }
+
   const approvedMatches = approvedRequests
-    .filter(request => requestBelongsToOwner(request, owner))
     .map(requestFullName)
     .filter(name => name && hostnameWithin(host, name))
     .sort((a, b) => b.length - a.length);
@@ -113,11 +138,15 @@ export async function syncOwnershipForNamespace(platform, { owner, fullName, zon
   const zoneName = normalizeName(zone?.name || zone?.zone_name || '');
   if (!full || !owner?.id || !owner?.email) return { ownership: null, status: null, recordCount: 0 };
 
-  const [existing, ownerRecords] = await Promise.all([
+  const [existing, ownerRecords, approvedRequests] = await Promise.all([
     listAllEntities(platform.asServiceRole.entities.SubdomainOwnership, { owner_id: owner.id, full_name: full }),
     listAllEntities(platform.asServiceRole.entities.DnsRecord, { owner_id: owner.id, managed: true }),
+    approvedRequestsForOwner(platform, owner),
   ]);
-  const liveRecords = ownerRecords.filter(record => isLiveManagedRecord(record) && hostnameWithin(record.name, full));
+  const linkedRequests = approvedRequests.filter(request => requestFullName(request) === full);
+  const liveRecords = ownerRecords.filter(record =>
+    isLiveManagedRecord(record) &&
+    (hostnameWithin(record.name, full) || linkedRequests.some(request => requestLinksRecord(request, record))));
   const active = liveRecords.length > 0;
   const nowIso = now.toISOString();
   const primary = existing[0];
@@ -198,6 +227,32 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
   const liveRecords = allRecords.filter(record => !record._removed && isLiveManagedRecord(record));
   const ownerships = ownershipRows.map(row => ({ ...row }));
 
+  const requestByDnsId = new Map();
+  const requestByCloudflareId = new Map();
+  for (const request of approvedRequests) {
+    const links = [];
+    if (request.dns_record_id) links.push({ kind: 'dns', id: request.dns_record_id });
+    if (request.cloudflare_record_id) links.push({ kind: 'cf', id: request.cloudflare_record_id });
+    for (const item of Array.isArray(request.records) ? request.records : []) {
+      if (item?.dns_record_id) links.push({ kind: 'dns', id: item.dns_record_id });
+      if (item?.cloudflare_record_id) links.push({ kind: 'cf', id: item.cloudflare_record_id });
+    }
+    for (const link of links) {
+      if (link.kind === 'dns') requestByDnsId.set(link.id, request);
+      else requestByCloudflareId.set(link.id, request);
+    }
+  }
+  const linkedNamespaceByRecordId = new Map();
+  for (const record of liveRecords) {
+    const request = requestByDnsId.get(record.id) ||
+      (record.cloudflare_record_id ? requestByCloudflareId.get(record.cloudflare_record_id) : null);
+    if (!request || !requestBelongsToOwner(request, { id: record.owner_id, email: record.owner_email })) continue;
+    const fullName = requestFullName(request);
+    if (fullName) linkedNamespaceByRecordId.set(record.id, fullName);
+  }
+  const recordBelongsTo = (record, ownership) => sameOwner(record, ownership) &&
+    (hostnameWithin(record.name, ownership.full_name) || linkedNamespaceByRecordId.get(record.id) === normalizeName(ownership.full_name));
+
   // Ensure every approved namespace has a durable ownership row. This is the strongest source
   // of truth for nested-subdomain boundaries.
   for (const request of approvedRequests) {
@@ -206,7 +261,8 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     const exists = ownerships.some(row => row.owner_id === request.requester_id && normalizeName(row.full_name) === fullName);
     if (exists) continue;
     const domain = domainByName.get(normalizeName(request.root_domain));
-    const hasRecords = liveRecords.some(record => record.owner_id === request.requester_id && hostnameWithin(record.name, fullName));
+    const hasRecords = liveRecords.some(record => record.owner_id === request.requester_id &&
+      (hostnameWithin(record.name, fullName) || linkedNamespaceByRecordId.get(record.id) === fullName));
     const rootDomain = normalizeName(request.root_domain);
     const created = await entities.SubdomainOwnership.create({
       full_name: fullName,
@@ -228,13 +284,13 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
   // existing/approved namespace. Approved requests win; otherwise use the root managed label.
   for (const record of liveRecords) {
     if (!record.owner_id || !record.owner_email) continue;
-    const covered = ownerships.some(row => sameOwner(row, record) && hostnameWithin(record.name, row.full_name));
+    const covered = ownerships.some(row => recordBelongsTo(record, row));
     if (covered) continue;
     const owner = { id: record.owner_id, email: record.owner_email };
     const approvedNames = canonicalRequestNames(approvedRequests, owner)
       .filter(name => hostnameWithin(record.name, name))
       .sort((a, b) => b.length - a.length);
-    const fullName = approvedNames[0] || inferBaseName(record);
+    const fullName = linkedNamespaceByRecordId.get(record.id) || approvedNames[0] || inferBaseName(record);
     if (!fullName) continue;
     const zoneName = normalizeName(record.zone_name);
     const created = await entities.SubdomainOwnership.create({
@@ -280,10 +336,14 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     const owner = { id: row.owner_id, email: row.owner_email };
     const approvedNames = canonicalRequestNames(approvedRequests, owner);
     if (approvedNames.includes(full)) continue;
-    const parent = approvedNames
+    const linkedParent = liveRecords
+      .filter(record => sameOwner(record, row) && normalizeName(record.name) === full)
+      .map(record => linkedNamespaceByRecordId.get(record.id))
+      .find(Boolean);
+    const parent = linkedParent || approvedNames
       .filter(name => name !== full && hostnameWithin(full, name))
       .sort((a, b) => b.length - a.length)[0];
-    if (!parent) continue;
+    if (!parent || parent === full) continue;
     const exactDnsName = liveRecords.some(record => sameOwner(record, row) && normalizeName(record.name) === full);
     if (!exactDnsName) continue;
     await entities.SubdomainOwnership.delete(row.id);
@@ -296,7 +356,7 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     if (row._removed || !row.owner_id || !row.owner_email) continue;
     const full = normalizeName(row.full_name);
     if (!full) continue;
-    const hasRecords = liveRecords.some(record => sameOwner(record, row) && hostnameWithin(record.name, full));
+    const hasRecords = liveRecords.some(record => recordBelongsTo(record, row));
     const desired = hasRecords ? 'active' : 'suspended';
     const payload = {
       status: desired,
