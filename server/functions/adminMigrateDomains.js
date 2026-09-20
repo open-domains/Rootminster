@@ -95,6 +95,7 @@ export default async function (req) {
             skipped++;
             continue;
         }
+        let shouldSyncOwnership = false;
         for (const rec of records) {
             const existing = await platform.asServiceRole.entities.DnsRecord.filter({
                 name: fullName, record_type: rec.type, zone_id: domain.zone_id
@@ -103,6 +104,9 @@ export default async function (req) {
             const dnsRecord = exactMatch || (existing.length > 0 ? existing[0] : null);
             if (dnsRecord) {
                 if (dnsRecord.managed && dnsRecord.owner_email) {
+                    const sameOwner = dnsRecord.owner_id === targetUser.id || dnsRecord.owner_email === targetUser.email;
+                    if (sameOwner)
+                        shouldSyncOwnership = true;
                     details.push({ full_name: fullName, type: rec.type, status: 'skipped', reason: 'Already managed' });
                     skipped++;
                     continue;
@@ -110,6 +114,7 @@ export default async function (req) {
                 await platform.asServiceRole.entities.DnsRecord.update(dnsRecord.id, {
                     managed: true, owner_email: targetUser.email, owner_id: targetUser.id, status: 'active'
                 });
+                shouldSyncOwnership = true;
             }
             else {
                 await platform.asServiceRole.entities.DnsRecord.create({
@@ -118,15 +123,18 @@ export default async function (req) {
                     ttl: 3600, managed: true, owner_email: targetUser.email, owner_id: targetUser.id,
                     status: 'active', last_synced: new Date().toISOString()
                 });
+                shouldSyncOwnership = true;
             }
             details.push({ full_name: fullName, type: rec.type, status: 'imported' });
             imported++;
         }
-        await syncOwnershipForNamespace(platform, {
-            owner: targetUser,
-            fullName,
-            zone: { name: rootDomain, zone_id: domain.zone_id },
-        });
+        if (shouldSyncOwnership) {
+            await syncOwnershipForNamespace(platform, {
+                owner: targetUser,
+                fullName,
+                zone: { name: rootDomain, zone_id: domain.zone_id },
+            });
+        }
     }
     await platform.asServiceRole.entities.AuditLog.create({
         actor_email: actor.email, actor_role: actor.role,
