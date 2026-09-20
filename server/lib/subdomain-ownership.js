@@ -107,8 +107,13 @@ export async function resolveOwnershipBase(platform, owner, hostname, requestedB
     approvedRequestsForOwner(platform, owner),
   ]);
 
-  if (recordRef) {
-    const linked = approvedRequests.find(request => requestLinksRecord(request, recordRef));
+  let linkedRecord = recordRef;
+  if (!linkedRecord && owner?.id) {
+    const matchingRecords = await listAllEntities(platform.asServiceRole.entities.DnsRecord, { owner_id: owner.id, name: host });
+    linkedRecord = matchingRecords.find(isLiveManagedRecord) || matchingRecords[0] || null;
+  }
+  if (linkedRecord) {
+    const linked = approvedRequests.find(request => requestLinksRecord(request, linkedRecord));
     const linkedName = requestFullName(linked);
     if (linkedName) return linkedName;
   }
