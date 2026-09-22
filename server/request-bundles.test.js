@@ -140,7 +140,7 @@ test('staff questions update every record even when email notifications are disa
 
 test('legacy public API cannot bypass bundle validation', async t => {
   const {entities,data}=fixture([]);bindStore(t,entities);
-  data.User=[owner];data.ApiToken=[{id:'token',user_email:owner.email,token_hash:createHash('sha256').update('test-token').digest('hex')}];
+  data.User=[{...owner,status:'active'}];data.ApiToken=[{id:'token',user_email:owner.email,token_hash:createHash('sha256').update('test-token').digest('hex')}];
   const response=await legacyApi(new Request('https://example.com/functions/publicApi',{method:'POST',headers:{Authorization:'Bearer test-token'},body:JSON.stringify({action:'submit',subdomain:'site',root_domain:'example.com',preview_link:'https://example.com',records:[row('a'),row('b','CNAME')]})}));
   assert.equal(response.status,400);assert.match((await response.json()).error,/CNAME/);assert.equal(data.SubdomainRequest.length,0);
 });
