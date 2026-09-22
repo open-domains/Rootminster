@@ -75,7 +75,7 @@ function publicRequest(record) {
   };
 }
 
-async function apiIdentity(request) {
+export async function apiIdentity(request) {
   const raw = bearerToken(request.headers.authorization);
   if (!raw) return null;
   const tokens = await store.filter('ApiToken', { token_hash: sha256(raw) }, '-created_date', 10);
@@ -89,7 +89,7 @@ async function apiIdentity(request) {
   return { user, token };
 }
 
-function tokenHasScope(identity, scope) {
+export function tokenHasScope(identity, scope) {
   if (!scope) return true;
   const scopes = Array.isArray(identity.token.scopes) ? identity.token.scopes : [];
   if (scopes.includes(scope)) return true;
@@ -123,6 +123,12 @@ export function tokenAllowsRecord(token, record) {
   const types = Array.isArray(token.allowed_record_types) ? token.allowed_record_types.map((type) => String(type).toUpperCase()) : [];
   return (!hostnames.length || hostnames.includes(normalHostname(record.name)))
     && (!types.length || types.includes(String(record.record_type || '').toUpperCase()));
+}
+
+export function tokenAllowsRequest(token, body = {}) {
+  const name = `${String(body.subdomain || '').trim().toLowerCase()}.${normalHostname(body.root_domain)}`;
+  const records = Array.isArray(body.records) && body.records.length ? body.records : [body];
+  return records.every(record => tokenAllowsRecord(token, { name, record_type: record?.record_type }));
 }
 
 export function publicIp(value) {
@@ -362,6 +368,7 @@ export async function registerPublicApiRoutes(app) {
   app.post('/api/v1/requests', { config: { rateLimit: writeLimit } }, async (request, reply) => {
     const identity = await requireApiIdentity(request, reply, null, 'requests:write');
     if (!identity) return;
+    if (!tokenAllowsRequest(identity.token, request.body || {})) return error(reply, 403, 'token_restricted', 'This token is not permitted to request that hostname or record type');
     try {
       const result = await invokeInternal('submitRequest', request.body || {}, { ...identity.user, trusted_source: 'api' });
       return data(reply, (result.requests || []).map(publicRequest), 201);

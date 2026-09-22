@@ -22,6 +22,13 @@ export default async function (req) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         const body = await req.json();
         const { action } = body;
+        // A pending session may verify an existing factor, but cannot enroll a
+        // replacement to satisfy that challenge. Accounts with no factor can bootstrap.
+        if (['setup', 'enable'].includes(action)
+            && (user.totp_enabled || user.passkey_enabled)
+            && user.mfa_verified !== true) {
+            return Response.json({ error: 'Verify your existing second factor before enrolling an authenticator' }, { status: 403 });
+        }
         if (action === 'setup') {
             if (user.totp_enabled)
                 return Response.json({ error: 'Two-factor authentication is already enabled' }, { status: 409 });

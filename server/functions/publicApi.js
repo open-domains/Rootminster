@@ -10,23 +10,13 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { invokeInternal } from '../function-runner.js';
+import { apiIdentity, tokenHasScope, tokenAllowsRecord, tokenAllowsRequest } from '../public-api.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
-async function sha256hex(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-async function resolveToken(platform, req) {
-    const auth = req.headers.get('Authorization') || '';
-    const raw = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null;
-    if (!raw)
-        return null;
-    const hash = await sha256hex(raw);
-    const tokens = await platform.asServiceRole.entities.ApiToken.filter({ token_hash: hash });
-    const token = tokens.find(item => item.revoked !== true);
-    if (!token)
-        return null;
-    await platform.asServiceRole.entities.ApiToken.update(token.id, { last_used: new Date().toISOString() });
-    return token;
+async function authorize(req, scope) {
+    const identity = await apiIdentity({ headers: { authorization: req.headers.get('Authorization') || '' } });
+    if (!identity) return { error: 'Unauthorized. Provide a valid API key in Authorization: Bearer <key>', status: 401 };
+    if (!tokenHasScope(identity, scope)) return { error: `This API token requires the ${scope} scope`, status: 403 };
+    return identity;
 }
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
@@ -79,11 +69,9 @@ export default async function (req) {
             const domain = url.searchParams.get('domain');
             if (!subdomain || !domain)
                 return respond({ error: 'subdomain and domain required' }, 400);
-            const tokenRec = await resolveToken(platform, req);
-            if (!tokenRec)
-                return respond({ error: 'Unauthorized. Provide a valid API key in Authorization: Bearer <key>' }, 401);
-            const userRecords = await platform.asServiceRole.entities.User.filter({ email: tokenRec.user_email });
-            const user = userRecords[0];
+            const identity = await authorize(req, 'staff:read');
+            if (identity.error) return respond({ error: identity.error }, identity.status);
+            const { user, token } = identity;
             if (!user || !['admin', 'staff'].includes(user.role)) {
                 return respond({ error: 'Forbidden. This endpoint is restricted to staff and admins.' }, 403);
             }
@@ -92,6 +80,8 @@ export default async function (req) {
             if (!records.length)
                 return respond({ error: 'Subdomain not found' }, 404);
             const record = records[0];
+            if (records.some(item => !tokenAllowsRecord(token, item)))
+                return respond({ error: 'This token is not permitted to access that hostname or record type' }, 403);
             const requests = await platform.asServiceRole.entities.SubdomainRequest.filter({ subdomain, root_domain: domain });
             return respond({
                 subdomain: fullName,
@@ -141,13 +131,9 @@ export default async function (req) {
         }
         // GET ?action=me (authenticated)
         if (action === 'me') {
-            const tokenRec = await resolveToken(platform, req);
-            if (!tokenRec)
-                return respond({ error: 'Unauthorized. Provide a valid API key in Authorization: Bearer <key>' }, 401);
-            const userRecords = await platform.asServiceRole.entities.User.filter({ email: tokenRec.user_email });
-            const user = userRecords[0];
-            if (!user)
-                return respond({ error: 'User not found' }, 401);
+            const identity = await authorize(req, 'account:read');
+            if (identity.error) return respond({ error: identity.error }, identity.status);
+            const { user } = identity;
             const [ownedRecords, requests, tokens] = await Promise.all([
                 platform.asServiceRole.entities.DnsRecord.filter({ owner_email: user.email }),
                 platform.asServiceRole.entities.SubdomainRequest.filter({ requester_email: user.email }),
@@ -175,14 +161,12 @@ export default async function (req) {
     if (req.method === 'POST') {
         const body = await req.json().catch(() => ({}));
         const { action } = body;
-        const tokenRec = await resolveToken(platform, req);
-        if (!tokenRec)
-            return respond({ error: 'Unauthorized. Provide a valid API key in Authorization: Bearer <key>' }, 401);
-        const userRecords = await platform.asServiceRole.entities.User.filter({ email: tokenRec.user_email });
-        const user = userRecords[0];
-        if (!user)
-            return respond({ error: 'User not found' }, 401);
+        const identity = await authorize(req, action === 'submit' ? 'requests:write' : 'dns:write');
+        if (identity.error) return respond({ error: identity.error }, identity.status);
+        const { user, token } = identity;
         if (action === 'submit') {
+            if (!tokenAllowsRequest(token, body))
+                return respond({ error: 'This token is not permitted to request that hostname or record type' }, 403);
             try {
                 const result = await invokeInternal('submitRequest', body, { ...user, trusted_source: 'api' });
                 const request = result.request || result.requests[0];
@@ -201,6 +185,8 @@ export default async function (req) {
                 return respond({ error: 'DNS record not found' }, 404);
             if (record.owner_email !== user.email && record.owner_id !== user.id)
                 return respond({ error: 'Forbidden: you do not own this record' }, 403);
+            if (!tokenAllowsRecord(token, record))
+                return respond({ error: 'This token is not permitted to modify that hostname or record type' }, 403);
             const changes = {};
             if (new_content !== undefined)
                 changes.content = new_content;

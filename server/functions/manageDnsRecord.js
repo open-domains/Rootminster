@@ -212,8 +212,9 @@ export default async function (req) {
 
       const zone = { name: record.zone_name, zone_id: record.zone_id };
       const recordOwner = { id: record.owner_id, email: record.owner_email };
-      const requestedBase = body.base_name && hostnameWithin(record.name, body.base_name) ? body.base_name : null;
-      const managedBase = await resolveOwnershipBase(platform, recordOwner, record.name, requestedBase, record.zone_name, record);
+      // Deleting a record must never mint a broader grant from a client-supplied
+      // base_name. Preserve the boundary established by server-side ownership.
+      const managedBase = await resolveOwnershipBase(platform, recordOwner, record.name, null, record.zone_name, record);
 
       const cf = await cfFetch('DELETE', `/zones/${record.zone_id}/dns_records/${record.cloudflare_record_id}`);
       if (!cf.success && cf._httpStatus !== 404) return Response.json({ error: `Cloudflare delete failed: ${cf.errors?.[0]?.message || 'unknown error'}` }, { status: 502 });
