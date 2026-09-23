@@ -1,10 +1,10 @@
 # Rootminster visual themes
 
-Tabler is the default style for the user and admin UI, forms and email. Themes change presentation; product content, navigation and account workflows stay shared.
+The existing Classic style remains the default. Themes change presentation; product content, navigation and account workflows stay shared.
 
-## Tabler (stored as `classic` for existing browser preferences)
+## Classic
 
-Inter typography, Tabler cards, buttons, tables, form controls and icons, neutral light surfaces and navy dark surfaces. The administrator's configured primary color overrides the base blue accent. The existing React and Radix controls retain their behaviour and keyboard handling. Email clients receive an inline-styled Tabler-inspired card wrapper from `server/lib/tabler-email.js`.
+Inter typography, neutral light surfaces and navy dark surfaces, existing rounded components. The administrator's configured primary color overrides the base blue accent.
 
 ## Fieldwork
 

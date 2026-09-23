@@ -17,15 +17,11 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
-  IconActivity as Activity, IconAlertTriangle as AlertTriangle, IconBan as Ban,
-  IconChartBar as BarChart3, IconBell as Bell, IconBook as BookOpen, IconPackages as Boxes,
-  IconChevronDown as ChevronDown, IconHelpCircle as CircleHelp, IconBrandDocker as Container,
-  IconReport as FileBarChart, IconCode as FileCode2, IconGitPullRequest as GitPullRequest,
-  IconWorld as Globe2, IconLayoutDashboard as LayoutDashboard, IconLogout as LogOut,
-  IconMenu2 as Menu, IconNews as Newspaper, IconSearch as Search, IconSettings as Settings,
-  IconShield as Shield, IconUsers as Users, IconUserX as UserX, IconTool as Wrench,
-  IconX as X,
-} from '@tabler/icons-react';
+  Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp, Container,
+  FileBarChart, FileCode2, GitPullRequest, Globe2, LayoutDashboard,
+  LogOut, Menu, Newspaper, Search, Settings, Shield, Users, UserX, Wrench,
+  X,
+} from 'lucide-react';
 
 const userNav = [
   { to: '/user-dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -62,7 +58,7 @@ function NavItem({ item, active, onNavigate }) {
       to={item.to}
       onClick={onNavigate}
       className={cn(
-        'tabler-nav-link group flex h-9 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors',
+        'group flex h-9 items-center gap-3 rounded-md px-3 text-[13px] font-medium transition-colors',
         active
           ? 'bg-primary/10 text-primary dark:bg-primary/15'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -86,7 +82,7 @@ function ProductSidebar({ user, mobile, onClose }) {
 
   return (
     <aside className={cn(
-      'tabler-sidebar flex h-full w-[244px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground',
+      'flex h-full w-[244px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground',
       mobile ? 'w-[min(86vw,280px)] shadow-2xl' : 'hidden lg:flex'
     )}>
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
@@ -246,7 +242,7 @@ export default function Layout() {
 
   return (
     <Sheet open={mobileNav} onOpenChange={setMobileNav}>
-    <div className="tabler-app min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <TosModal open={showTos} isUpdate={tosIsUpdate} terms={currentTerms} onAccepted={(updatedUser) => { setUser(updatedUser); setShowTos(false); }} />
 
@@ -259,7 +255,7 @@ export default function Layout() {
         </SheetContent>
 
         <div className="min-w-0 flex-1">
-          <header className="tabler-topbar sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-background/92 px-3 backdrop-blur-xl sm:h-16 sm:gap-3 sm:px-6 lg:px-7">
+          <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-background/92 px-3 backdrop-blur-xl sm:h-16 sm:gap-3 sm:px-6 lg:px-7">
             <SheetTrigger asChild><button onClick={() => setMobileNav(true)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden" aria-label="Open navigation"><Menu size={18} /></button></SheetTrigger>
 
             <button aria-label="Search domains" onClick={() => setCmdOpen(true)} className="flex h-9 w-9 min-w-0 flex-none items-center justify-center gap-2.5 rounded-md border border-border bg-card px-0 text-sm text-muted-foreground transition-colors hover:border-primary/30 hover:bg-muted/30 min-[480px]:w-auto min-[480px]:flex-1 min-[480px]:justify-start min-[480px]:px-3 sm:max-w-md">

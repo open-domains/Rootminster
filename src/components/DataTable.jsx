@@ -14,7 +14,7 @@ export default function DataTable({ columns, data, searchKeys = [], emptyMessage
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
   return (
-    <div className="card bg-card border border-border rounded-xl overflow-hidden shadow-card">
+    <div className="bg-card border border-border rounded-xl overflow-hidden shadow-card">
       {searchKeys.length > 0 && (
         <div className="p-3 sm:p-4 border-b border-border">
           <div className="relative w-full sm:max-w-xs">
@@ -29,7 +29,7 @@ export default function DataTable({ columns, data, searchKeys = [], emptyMessage
         </div>
       )}
       <div className="overflow-x-auto overscroll-x-contain review-modal-scroll" role="region" aria-label="Scrollable data table" tabIndex={0}>
-        <table className="table table-vcenter w-full text-sm min-w-[500px]">
+        <table className="w-full text-sm min-w-[500px]">
           <thead>
             <tr className="border-b border-border">
               {columns.map(col => (

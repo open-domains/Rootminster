@@ -1,4 +1,4 @@
-import { IconPalette as Palette, IconSun as Sun, IconMoon as Moon, IconDeviceDesktop as Monitor } from '@tabler/icons-react';
+import { Palette, Sun, Moon, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppearance } from '@/lib/ThemeContext';
 import { THEMES } from '@/lib/theme';

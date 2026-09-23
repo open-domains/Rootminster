@@ -5,14 +5,36 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
 function approvalEmailHtml(subdomain, domain, recordType, recordValue) {
     const escape = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-    const hostname = escape(`${subdomain}.${domain}`);
-    return `<p style="color:#2fb344;font-weight:600">✓ Approved</p>
-      <p>Your subdomain <strong>${hostname}</strong> is live and its DNS record is active.</p>
-      <table role="presentation" width="100%" style="background:#f6f8fb;border:1px solid #dce1e7;border-radius:6px;padding:16px">
-        <tr><td>Subdomain</td><td><code>${hostname}</code></td></tr>
-        <tr><td>Type</td><td><code>${escape(recordType)}</code></td></tr>
-        <tr><td>Value</td><td><code>${escape(recordValue)}</code></td></tr>
-      </table><p>Manage your subdomain from your Open Domains dashboard. Future changes require admin approval.</p>`;
+    [subdomain, domain, recordType, recordValue] = [subdomain, domain, recordType, recordValue].map(escape);
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;margin:0;padding:0}
+  .container{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,.08)}
+  .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px;text-align:center}
+  .header h1{color:#fff;margin:0;font-size:28px;font-weight:700}
+  .header p{color:rgba(255,255,255,.85);margin:8px 0 0}
+  .body{padding:40px}
+  .badge{display:inline-block;background:#d1fae5;color:#065f46;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:24px}
+  .record-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px;margin:20px 0}
+  .record-box code{font-family:monospace;background:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:14px}
+  .cta{display:block;width:fit-content;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;margin:24px auto 0;text-align:center}
+  .footer{text-align:center;padding:24px;color:#94a3b8;font-size:13px;border-top:1px solid #f1f5f9}
+  </style></head><body>
+  <div class="container">
+    <div class="header"><h1>🎉 Request Approved</h1><p>Open Domains Platform</p></div>
+    <div class="body">
+      <span class="badge">✓ APPROVED</span>
+      <h2 style="margin:0 0 8px;color:#1e293b">Your subdomain is live!</h2>
+      <p style="color:#64748b">Great news! Your subdomain request has been approved and the DNS record is now active.</p>
+      <div class="record-box">
+        <p style="margin:0 0 8px;font-weight:600;color:#1e293b">Record Details</p>
+        <p style="margin:4px 0;color:#475569">Subdomain: <code>${subdomain}.${domain}</code></p>
+        <p style="margin:4px 0;color:#475569">Type: <code>${recordType}</code></p>
+        <p style="margin:4px 0;color:#475569">Value: <code>${recordValue}</code></p>
+      </div>
+      <p style="color:#64748b">You can now manage your subdomain from the Open Domains dashboard. Future changes require admin approval.</p>
+    </div>
+    <div class="footer">Open Domains · Free Subdomain Management</div>
+  </div></body></html>`;
 }
 export default async function (req) {
     if (req.method !== 'POST')
