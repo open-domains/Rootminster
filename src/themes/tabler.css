@@ -1,0 +1,79 @@
+/* Tabler's CSS supplies the component base. These bridges keep the existing
+   Tailwind/Radix controls and administrator-selected brand accent in sync. */
+:root[data-theme="classic"] {
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-heading: 'Inter', system-ui, sans-serif;
+  --background: 220 33% 97%;
+  --foreground: 220 25% 17%;
+  --card: 0 0% 100%;
+  --border: 220 16% 88%;
+  --input: 220 16% 85%;
+  --muted: 220 24% 94%;
+  --muted-foreground: 220 10% 40%;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-border: 220 16% 88%;
+  --radius: 0.5rem;
+}
+:root[data-theme="classic"].dark {
+  --background: 222 30% 11%;
+  --foreground: 213 24% 94%;
+  --card: 220 27% 14%;
+  --border: 220 16% 25%;
+  --input: 220 16% 31%;
+  --muted: 220 20% 18%;
+  --muted-foreground: 215 14% 70%;
+  --sidebar-background: 220 28% 12%;
+  --sidebar-border: 220 16% 25%;
+}
+:root {
+  --tblr-primary: hsl(var(--primary));
+  --tblr-primary-rgb: 32, 107, 196;
+  --tblr-body-bg: hsl(var(--background));
+  --tblr-body-color: hsl(var(--foreground));
+  --tblr-border-color: hsl(var(--border));
+  --tblr-card-bg: hsl(var(--card));
+  --tblr-bg-surface: hsl(var(--card));
+  --tblr-border-radius: var(--radius);
+}
+/* The app uses Tailwind colour tokens and Radix state; keep Tabler's appearance
+   while retaining existing dimensions, focus management and disabled states. */
+#root .card {
+  --tblr-card-bg: hsl(var(--card));
+  --tblr-card-color: hsl(var(--card-foreground));
+  --tblr-card-border-color: hsl(var(--border));
+  color: hsl(var(--card-foreground));
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 2px hsl(220 30% 10% / .05);
+}
+#root .btn { font-weight: 600; letter-spacing: 0; border-radius: 6px; }
+#root .btn-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
+#root .btn-danger { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); border-color: hsl(var(--destructive)); }
+#root .btn-secondary { background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); border-color: hsl(var(--border)); }
+#root .btn-outline-primary { background: hsl(var(--background)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
+#root .btn:focus-visible, #root :is(input, textarea, select, [role="combobox"]):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+#root :is(.form-control, .form-select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select) {
+  border-radius: 6px;
+  border-color: hsl(var(--input));
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}
+#root :is(input, textarea)::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+#root [role="combobox"].form-select { background-image: none; }
+#root .table { --tblr-table-color: hsl(var(--foreground)); --tblr-table-border-color: hsl(var(--border)); margin-bottom: 0; }
+#root .table > :not(caption) > * > * { color: inherit; background: transparent; }
+.tabler-sidebar { box-shadow: 1px 0 0 hsl(var(--border) / .25); }
+.tabler-nav-link { border-radius: 6px; }
+.tabler-topbar { background: hsl(var(--card) / .96); }
+.tabler-auth .card { border-top: 3px solid hsl(var(--primary)); }
+@media (prefers-reduced-motion: reduce) { #root .btn { transition: none; } }
+/* A number of older screens render native elements directly. Apply the same
+   visual language without changing their event handlers or Radix semantics. */
+#root .tabler-app :is(button, [role="button"]), #root .tabler-auth :is(button, [role="button"]) { border-radius: 6px; }
+#root .tabler-app :is(.bg-card, [role="dialog"]), #root .tabler-auth .bg-card {
+  border-color: hsl(var(--border));
+}
+#root .tabler-app :is(table, .table) { font-variant-numeric: tabular-nums; }
+#root .tabler-app :is(th, [role="columnheader"]) { font-size: .75rem; font-weight: 600; color: hsl(var(--muted-foreground)); }
+#root .tabler-app :is([role="dialog"], [role="menu"], [role="listbox"]) { border-radius: 8px; }
+#root .tabler-app :is([data-state="active"], [aria-selected="true"]) { accent-color: hsl(var(--primary)); }

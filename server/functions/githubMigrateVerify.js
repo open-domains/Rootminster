@@ -1,3 +1,4 @@
+const escapeEmail = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getModuleConfig } from '../module-settings.js';
 export default async function (req) {
@@ -43,8 +44,8 @@ export default async function (req) {
         to: user.email,
         subject: 'Your Open Domains migration verification code',
         body: `
-      <p>Hi ${user.full_name || user.email},</p>
-      <p>You requested to migrate domains registered under <strong>${normalizedEmail}</strong> to your Open Domains account.</p>
+      <p>Hi ${escapeEmail(user.full_name || user.email)},</p>
+      <p>You requested to migrate domains registered under <strong>${escapeEmail(normalizedEmail)}</strong> to your Open Domains account.</p>
       <p>Your verification code is:</p>
       <h2 style="letter-spacing:4px;font-size:32px;font-family:monospace;">${code}</h2>
       <p>This code expires in 15 minutes.</p>

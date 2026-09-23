@@ -1,3 +1,5 @@
+const escapeEmail = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+import { config } from '../config.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
 import { getModuleConfig } from '../module-settings.js';
@@ -65,45 +67,10 @@ export default async function (req) {
         await platform.asServiceRole.integrations.Core.SendEmail({
             to: user.email,
             subject: '🎉 You\'ve been granted Legacy Donor status on Open Domains',
-            body: `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-        <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:12px 12px 0 0;padding:36px 40px;text-align:center;">
-          <div style="font-size:36px;margin-bottom:8px;">💜</div>
-          <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px;">Legacy Donor Status Granted</h1>
-          <p style="color:#c4b5fd;margin:8px 0 0;font-size:15px;">Thank you for your past support of Open Domains</p>
-        </td></tr>
-        <tr><td style="background:#1e293b;padding:36px 40px;">
-          <p style="color:#e2e8f0;font-size:16px;line-height:1.6;margin:0 0 20px;">Hi ${user.full_name || user.email},</p>
-          <p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 24px;">
-            Because your migrated domains include <strong style="color:#a78bfa;">NS (Nameserver) records</strong>, we've automatically recognised you as a <strong style="color:#a78bfa;">Legacy Donor</strong> and unlocked full NS record privileges on your account.
-          </p>
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border:1px solid #334155;border-radius:10px;margin-bottom:28px;">
-            <tr><td style="padding:24px;">
-              <p style="color:#94a3b8;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin:0 0 16px;">What's unlocked</p>
-              <table cellpadding="0" cellspacing="0">
-                <tr><td style="padding:6px 0;"><span style="color:#a78bfa;font-size:18px;margin-right:10px;">✦</span><span style="color:#e2e8f0;font-size:14px;">NS (Nameserver) record type when requesting subdomains</span></td></tr>
-                <tr><td style="padding:6px 0;"><span style="color:#a78bfa;font-size:18px;margin-right:10px;">✦</span><span style="color:#e2e8f0;font-size:14px;">Legacy Donor badge on your account</span></td></tr>
-                <tr><td style="padding:6px 0;"><span style="color:#a78bfa;font-size:18px;margin-right:10px;">✦</span><span style="color:#e2e8f0;font-size:14px;">Our heartfelt thanks for your continued support 💜</span></td></tr>
-              </table>
-            </td></tr>
-          </table>
-          <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-            <a href="https://open.domains/UserDashboard" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;">Go to my Dashboard →</a>
-          </td></tr></table>
-        </td></tr>
-        <tr><td style="background:#0f172a;border-radius:0 0 12px 12px;padding:24px 40px;text-align:center;border-top:1px solid #1e293b;">
-          <p style="color:#475569;font-size:13px;margin:0;">Open Domains · <a href="https://open.domains" style="color:#6366f1;text-decoration:none;">open.domains</a></p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
+            body: `<p>Hi ${escapeEmail(user.full_name || user.email)},</p>
+              <p>Because your migrated domains include <strong>NS (Nameserver) records</strong>, we have granted you Legacy Donor status and unlocked NS records on your account.</p>
+              <div style="padding:16px;background:#f6f8fb;border:1px solid #dce1e7;border-radius:6px"><strong>What's unlocked</strong><ul><li>NS records when requesting subdomains</li><li>Legacy Donor badge</li></ul></div>
+              <p><a href="${config.appUrl}/user-dashboard" style="display:inline-block;background:#206bc4;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">Go to dashboard</a></p>`
         });
     }
     const domains = await platform.asServiceRole.entities.Domain.filter({ status: 'active' });
@@ -192,13 +159,13 @@ export default async function (req) {
     });
     if (imported > 0) {
         const importedDomains = details.filter(d => d.status === 'imported');
-        const domainListHtml = importedDomains.map(d => `<li><code>${d.full_name}</code> (${d.type})</li>`).join('');
+        const domainListHtml = importedDomains.map(d => `<li><code>${escapeEmail(d.full_name)}</code> (${escapeEmail(d.type)})</li>`).join('');
         const domainListText = importedDomains.map(d => `• ${d.full_name} (${d.type})`).join('\n');
         await platform.asServiceRole.integrations.Core.SendEmail({
             to: user.email,
             subject: `Your domains have been migrated — Open Domains`,
             body: `
-        <p>Hi ${user.full_name || user.email},</p>
+        <p>Hi ${escapeEmail(user.full_name || user.email)},</p>
         <p>Your GitHub-registered domains have been successfully migrated and are now managed under your Open Domains account.</p>
         <p><strong>${imported} domain record${imported !== 1 ? 's' : ''} claimed:</strong></p>
         <ul>${domainListHtml}</ul>

@@ -99,7 +99,7 @@ async function sendVerification(user, token) {
   await sendEmail({
     to: user.email,
     subject: 'Verify your Open Domains account',
-    body: `<p>Hi ${escapeHtml(user.full_name)},</p><p>Confirm your email address to finish creating your Open Domains account.</p><p><a href="${verificationUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#fff;text-decoration:none;font-weight:600">Verify email address</a></p><p>This single-use link expires in 24 hours.</p><p>If the button does not work, copy this link into your browser:<br><a href="${verificationUrl}">${verificationUrl}</a></p>`,
+    body: `<p>Hi ${escapeHtml(user.full_name)},</p><p>Confirm your email address to finish creating your Open Domains account.</p><p><a href="${verificationUrl}" style="display:inline-block;padding:12px 20px;border-radius:6px;background:#206bc4;color:#fff;text-decoration:none;font-weight:600">Verify email address</a></p><p>This single-use link expires in 24 hours.</p><p>If the button does not work, copy this link into your browser:<br><a href="${verificationUrl}">${verificationUrl}</a></p>`,
   });
   return verificationUrl;
 }
@@ -259,7 +259,7 @@ export async function registerAuthRoutes(app) {
     await sendEmail({
       to: email,
       subject: 'Reset your Open Domains password',
-      body: `<p>Use the link below to reset your password. It expires in one hour.</p><p><a href="${config.appUrl}/reset-password?token=${encodeURIComponent(token)}">Reset password</a></p>`,
+      body: `<p>Use the link below to reset your password. It expires in one hour.</p><p><a href="${config.appUrl}/reset-password?token=${encodeURIComponent(token)}" style="display:inline-block;background:#206bc4;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">Reset password</a></p>`,
     });
     return { success: true, ...(config.production ? {} : { development_token: token }) };
   });

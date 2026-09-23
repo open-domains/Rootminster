@@ -1,7 +1,7 @@
 export const STYLE_KEY = 'rootminster_style';
 export const MODE_KEY = 'od_theme';
 export const THEMES = [
-  { id: 'classic', name: 'Classic', description: 'Clean, familiar, focused.' },
+  { id: 'classic', name: 'Tabler', description: 'Clean dashboard, controls and forms.' },
   { id: 'fieldwork', name: 'Fieldwork', description: 'Warm paper, forest ink, editorial type.' },
 ];
 export const MODES = ['light', 'dark', 'system'];

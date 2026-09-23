@@ -51,47 +51,14 @@ export default async function (req) {
             await Promise.all(recipients.map(u => platform.asServiceRole.integrations.Core.SendEmail({
                 to: u.email,
                 subject: `[ABUSE REPORT] ${String(abuse_type).slice(0, 80)}: ${String(subdomain).slice(0, 255)}`,
-                body: `<!DOCTYPE html>
-<html>
-<body style="font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155;">
-    <div style="background: #dc2626; padding: 20px 24px;">
-      <h1 style="margin: 0; color: #fff; font-size: 18px;">⚠️ New Abuse Report</h1>
-      <p style="margin: 4px 0 0; color: #fca5a5; font-size: 13px;">Open Domains Safety Team</p>
-    </div>
-    <div style="padding: 24px;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr>
-          <td style="padding: 8px 12px; background: #0f172a; border-radius: 6px; color: #94a3b8; font-size: 12px; font-weight: bold; width: 120px;">SUBDOMAIN</td>
-          <td style="padding: 8px 12px; color: #818cf8; font-family: monospace; font-weight: bold;">${safeSubdomain}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 12px; color: #94a3b8; font-size: 12px; font-weight: bold;">ABUSE TYPE</td>
-          <td style="padding: 8px 12px; color: #f87171; font-weight: bold;">${safeType}</td>
-        </tr>
-        <tr>
-          <td style="padding: 8px 12px; color: #94a3b8; font-size: 12px; font-weight: bold;">REPORTER</td>
-          <td style="padding: 8px 12px; color: #e2e8f0;">${safeReporter}</td>
-        </tr>
-      </table>
-      <div style="margin-top: 16px; padding: 16px; background: #0f172a; border-radius: 8px; border-left: 3px solid #dc2626;">
-        <p style="margin: 0 0 6px; color: #94a3b8; font-size: 11px; font-weight: bold; text-transform: uppercase;">Description</p>
-        <p style="margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.6;">${safeDescription}</p>
-      </div>
-      ${evidence ? `<div style="margin-top: 12px; padding: 16px; background: #0f172a; border-radius: 8px; border-left: 3px solid #64748b;">
-        <p style="margin: 0 0 6px; color: #94a3b8; font-size: 11px; font-weight: bold; text-transform: uppercase;">Evidence</p>
-        <p style="margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.6; word-break: break-all;">${safeEvidence}</p>
-      </div>` : ""}
-      <div style="margin-top: 20px; text-align: center;">
-        <a href="${config.appUrl}/admin-abuse-reports" style="display: inline-block; background: #4f46e5; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">View in Admin Panel →</a>
-      </div>
-    </div>
-    <div style="padding: 12px 24px; background: #0f172a; border-top: 1px solid #1e293b; text-align: center;">
-      <p style="margin: 0; color: #475569; font-size: 11px;">This email was sent to all Open Domains staff and admins.</p>
-    </div>
-  </div>
-</body>
-</html>`,
+                body: `<p style="color:#d63939;font-weight:600">New abuse report</p>
+                  <table role="presentation" width="100%" style="background:#f6f8fb;border:1px solid #dce1e7;border-radius:6px;padding:12px">
+                    <tr><td>Subdomain</td><td>${safeSubdomain}</td></tr>
+                    <tr><td>Abuse type</td><td>${safeType}</td></tr>
+                    <tr><td>Reporter</td><td>${safeReporter}</td></tr>
+                  </table><p><strong>Description</strong><br>${safeDescription}</p>
+                  ${evidence ? `<p><strong>Evidence</strong><br>${safeEvidence}</p>` : ''}
+                  <p><a href="${config.appUrl}/admin-abuse-reports" style="display:inline-block;background:#206bc4;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">View report</a></p>`,
             }).catch(() => null)));
         }
         catch (_) {

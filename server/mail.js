@@ -1,6 +1,7 @@
 import nodemailer from 'nodemailer';
 import { config } from './config.js';
 import { getModuleConfig } from './module-settings.js';
+import { renderTablerEmail, emailPlainText } from './lib/tabler-email.js';
 
 let transporter;
 let transporterKey;
@@ -36,7 +37,7 @@ export async function sendEmail({ to, subject, body, text }) {
     from: smtp.from,
     to,
     subject,
-    html: body,
-    text: text || String(body || '').replace(/<[^>]*>/g, ' '),
+    html: renderTablerEmail(subject, body),
+    text: text || emailPlainText(body),
   });
 }

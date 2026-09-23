@@ -10,7 +10,7 @@ export default function StatsCard({ title, value, icon: Icon, color = 'indigo', 
     purple: 'text-violet-400 bg-violet-500/10',
   };
   return (
-    <div className="bg-card border border-border rounded-xl p-5 shadow-card">
+    <div className="card bg-card border border-border rounded-xl p-5 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-muted-foreground text-sm font-medium">{title}</p>
