@@ -1,56 +1,94 @@
 services:
   app:
-    build: .
-    image: ${ROOTMINSTER_IMAGE:-rootminster-v2:latest}
+    image: ghcr.io/open-domains/rootminster:latest
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
-    env_file: .env
     environment:
-      DATABASE_URL: postgresql://rootminster:${POSTGRES_PASSWORD}@postgres:5432/rootminster
+      NODE_ENV: ${NODE_ENV}
+      APP_URL: ${APP_URL}
+      TRUST_CLOUDFLARE_PROXY: "true"
       HOST: 0.0.0.0
       PORT: 3001
-    ports:
-      - "127.0.0.1:${APP_PORT:-3000}:3001"
+      DATABASE_URL: postgresql://rootminster:${POSTGRES_PASSWORD}@postgres:5432/opendomains
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE}
+      MODULE_ENCRYPTION_KEY: ${MODULE_ENCRYPTION_KEY}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
     networks:
-      - rootminster-internal
+      - opendomains-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rootminster.rule=Host(`open-domains.com`)"
+      - "traefik.http.routers.rootminster.entrypoints=websecure"
+      - "traefik.http.routers.rootminster.tls=true"
+      - "traefik.http.routers.rootminster.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.rootminster.service=rootminster"
+      - "traefik.http.services.rootminster.loadbalancer.server.port=3001"
+      - "traefik.http.services.rootminster.loadbalancer.passhostheader=true"
 
   jobs:
-    image: ${ROOTMINSTER_IMAGE:-rootminster-v2:latest}
-    build: .
+    image: ghcr.io/open-domains/rootminster:latest
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       app:
         condition: service_healthy
     command: ["node", "server/jobs.js"]
-    env_file: .env
     environment:
-      DATABASE_URL: postgresql://rootminster:${POSTGRES_PASSWORD}@postgres:5432/rootminster
+      NODE_ENV: ${NODE_ENV}
+      DATABASE_URL: postgresql://rootminster:${POSTGRES_PASSWORD}@postgres:5432/opendomains
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE}
+      MODULE_ENCRYPTION_KEY: ${MODULE_ENCRYPTION_KEY}
     networks:
-      - rootminster-internal
+      - opendomains-internal
 
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: rootminster
+      POSTGRES_DB: opendomains
       POSTGRES_USER: rootminster
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rootminster -d rootminster"]
+      test: ["CMD-SHELL", "pg_isready -U rootminster -d opendomains"]
       interval: 5s
       timeout: 5s
       retries: 20
     shm_size: 256mb
     networks:
-      - rootminster-internal
+      - opendomains-internal
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DISABLE_POSTFIX: "true"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - opendomains-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pgadmin.rule=Host(`fishfinger.open-domains.com`)"
+      - "traefik.http.routers.pgadmin.entrypoints=websecure"
+      - "traefik.http.routers.pgadmin.tls=true"
+      - "traefik.http.routers.pgadmin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.pgadmin.service=pgadmin"
+      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
+      - "traefik.http.services.pgadmin.loadbalancer.passhostheader=true"
 
 volumes:
   postgres_data:
+  pgadmin_data:
 
 networks:
-  rootminster-internal:
-    internal: true
+  opendomains-internal:
