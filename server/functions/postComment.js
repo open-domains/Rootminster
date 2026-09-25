@@ -9,7 +9,7 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#x27;');
 }
-function needsInfoEmailHtml(subdomain, domain, question, staffEmail) {
+function needsInfoEmailHtml(subdomain, domain, question) {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;margin:0;padding:0}
   .container{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,.08)}
@@ -27,13 +27,21 @@ function needsInfoEmailHtml(subdomain, domain, question, staffEmail) {
       <h2 style="margin:0 0 8px;color:#1e293b">Our team has a question</h2>
       <p style="color:#64748b">Regarding your subdomain request for <strong>${escapeHtml(subdomain)}.${escapeHtml(domain)}</strong>, our review team needs some clarification before proceeding.</p>
       <div class="msg-box">
-        <p style="margin:0 0 4px;font-size:12px;color:#94a3b8">From ${escapeHtml(staffEmail)}:</p>
+        <p style="margin:0 0 4px;font-size:12px;color:#94a3b8">From Open Domains staff:</p>
         <p style="margin:0;color:#1e293b">${escapeHtml(question)}</p>
       </div>
       <p style="color:#64748b">Please log in to your dashboard and reply to this question to continue the review process.</p>
     </div>
     <div class="footer">Open Domains · Free Subdomain Management</div>
   </div></body></html>`;
+}
+function publicComment(comment) {
+    if (!comment) return comment;
+    if (comment.author_role === 'staff' || comment.author_role === 'admin') {
+        const { author_email, ...safe } = comment;
+        return { ...safe, author_name: 'Open Domains staff' };
+    }
+    return comment;
 }
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
@@ -60,7 +68,6 @@ export default async function (req) {
     const bundle = targetEntity === 'SubdomainRequest' ? await requestBundle(platform.asServiceRole.entities, fresh) : null;
     if (bundle) await ensureRequestGroup(platform.asServiceRole.entities, bundle);
     const canonicalId = bundle?.id || request_id;
-    // Internal notes only for staff/admin
     const canInternal = elevated;
     const isInternal = is_internal && canInternal;
     const comment = await platform.asServiceRole.entities.RequestComment.create({
@@ -72,8 +79,6 @@ export default async function (req) {
         is_internal: isInternal,
         message_type: message_type || 'comment'
     });
-    // If staff/admin is asking for info → update request status to needs_info and email user.
-    // Cover all sibling records in the same group so the whole request waits for a reply.
     if ((user.role === 'admin' || user.role === 'staff') && message_type === 'question' && !isInternal) {
         const entity = platform.asServiceRole.entities.SubdomainRequest;
         const requests = targetEntity === 'SubdomainRequest' ? [target] : [];
@@ -85,7 +90,7 @@ export default async function (req) {
                 await platform.asServiceRole.integrations.Core.SendEmail({
                     to: r.requester_email,
                     subject: `Question about your request: ${r.subdomain || r.subdomain_name}.${r.root_domain}`,
-                    body: needsInfoEmailHtml(r.subdomain || r.subdomain_name, r.root_domain, message, user.email)
+                    body: needsInfoEmailHtml(r.subdomain || r.subdomain_name, r.root_domain, message)
                 });
                 await platform.asServiceRole.entities.EmailLog.create({
                     to: r.requester_email, subject: 'Question about your request',
@@ -101,8 +106,6 @@ export default async function (req) {
             }
         }
     }
-    // Any public owner reply marks the whole open conversation as responded.
-    // Notification preferences must not control review state.
     if (!elevated && !isInternal && bundle) {
         for (const row of bundle._requests.filter(row => OPEN_REQUEST_STATUSES.includes(row.status))) {
             await platform.asServiceRole.entities.SubdomainRequest.update(row.id, { status: 'user_responded' });
@@ -113,7 +116,7 @@ export default async function (req) {
         action: 'comment_posted', entity_type: 'RequestComment', entity_id: comment.id,
         description: `${message_type || 'comment'} on ${request_type} request ${request_id}`
     });
-    return Response.json({ success: true, comment });
+    return Response.json({ success: true, comment: elevated ? comment : publicComment(comment) });
     };
     return targetEntity === 'SubdomainRequest' ? withRequestLock(requestHostname(target), post) : post();
 }
