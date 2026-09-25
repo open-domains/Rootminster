@@ -66,6 +66,30 @@ async function getOauthClient(clientId) {
   return result.rows[0] || null;
 }
 
+async function authenticateOauthClient(request, body) {
+  let clientId = String(body.client_id || '');
+  let clientSecret = String(body.client_secret || '');
+  const authorization = String(request.headers.authorization || '');
+  if (/^Basic\s+/i.test(authorization)) {
+    try {
+      const decoded = Buffer.from(authorization.replace(/^Basic\s+/i, ''), 'base64').toString('utf8');
+      const separator = decoded.indexOf(':');
+      if (separator < 0) return null;
+      clientId = decodeURIComponent(decoded.slice(0, separator));
+      clientSecret = decodeURIComponent(decoded.slice(separator + 1));
+    } catch {
+      return null;
+    }
+  }
+  if (!clientId) return null;
+  const client = await getOauthClient(clientId);
+  if (!client) return null;
+  const method = client.token_endpoint_auth_method || 'none';
+  if (method === 'none') return client;
+  if (!clientSecret || !client.client_secret_hash || sha256(clientSecret) !== client.client_secret_hash) return null;
+  return client;
+}
+
 function validateAuthorizeRequest(query, client) {
   if (query.response_type !== 'code') return 'Only the authorization code flow is supported';
   if (!client) return 'Unknown OAuth client';
@@ -290,7 +314,7 @@ export async function registerMcpRoutes(app) {
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code', 'refresh_token'],
     code_challenge_methods_supported: ['S256'],
-    token_endpoint_auth_methods_supported: ['none'],
+    token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
     scopes_supported: ['rootminster'],
   }));
 
@@ -299,13 +323,27 @@ export async function registerMcpRoutes(app) {
     if (!Array.isArray(redirectUris) || !redirectUris.length || redirectUris.length > 10 || !redirectUris.every(validRedirectUri)) {
       return oauthError(reply, 400, 'invalid_redirect_uri', 'Provide one to ten HTTPS redirect URIs');
     }
-    if (request.body?.token_endpoint_auth_method && request.body.token_endpoint_auth_method !== 'none') {
-      return oauthError(reply, 400, 'invalid_client_metadata', 'Only public PKCE clients are supported');
+    const authMethod = String(request.body?.token_endpoint_auth_method || 'none');
+    if (!['none', 'client_secret_post', 'client_secret_basic'].includes(authMethod)) {
+      return oauthError(reply, 400, 'invalid_client_metadata', 'Unsupported token endpoint authentication method');
     }
     const clientId = `rmcp_client_${randomToken(24)}`;
     const clientName = String(request.body?.client_name || 'MCP client').slice(0, 120);
-    await pool.query('INSERT INTO mcp_oauth_clients(client_id, client_name, redirect_uris) VALUES ($1, $2, $3::jsonb)', [clientId, clientName, JSON.stringify(redirectUris)]);
-    return reply.code(201).send({ client_id: clientId, client_id_issued_at: Math.floor(Date.now() / 1000), client_name: clientName, redirect_uris: redirectUris, token_endpoint_auth_method: 'none', grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'] });
+    const clientSecret = authMethod === 'none' ? null : `rmcp_secret_${randomToken(32)}`;
+    await pool.query(
+      'INSERT INTO mcp_oauth_clients(client_id, client_name, redirect_uris, token_endpoint_auth_method, client_secret_hash) VALUES ($1, $2, $3::jsonb, $4, $5)',
+      [clientId, clientName, JSON.stringify(redirectUris), authMethod, clientSecret ? sha256(clientSecret) : null],
+    );
+    return reply.code(201).send({
+      client_id: clientId,
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      client_name: clientName,
+      redirect_uris: redirectUris,
+      token_endpoint_auth_method: authMethod,
+      grant_types: ['authorization_code', 'refresh_token'],
+      response_types: ['code'],
+      ...(clientSecret ? { client_secret: clientSecret, client_secret_expires_at: 0 } : {}),
+    });
   });
 
   app.get('/oauth/authorize', { preHandler: requireMcpModule }, async (request, reply) => {
@@ -366,6 +404,9 @@ export async function registerMcpRoutes(app) {
     reply.header('Pragma', 'no-cache');
     const body = request.body || {};
     if (body.grant_type === 'authorization_code') {
+      const client = await authenticateOauthClient(request, body);
+      if (!client) return oauthError(reply, 401, 'invalid_client', 'Client authentication failed');
+      body.client_id = client.client_id;
       const verifier = String(body.code_verifier || '');
       const result = await pool.query(
         `DELETE FROM mcp_oauth_codes WHERE code_hash = $1 AND client_id = $2 AND redirect_uri = $3 AND expires_at > now() RETURNING *`,
@@ -378,6 +419,9 @@ export async function registerMcpRoutes(app) {
       return issueTokens({ clientId: saved.client_id, userId: saved.user_id, resource: saved.resource, scope: saved.scope, mfaVerifiedAt: saved.mfa_verified_at });
     }
     if (body.grant_type === 'refresh_token') {
+      const client = await authenticateOauthClient(request, body);
+      if (!client) return oauthError(reply, 401, 'invalid_client', 'Client authentication failed');
+      body.client_id = client.client_id;
       const result = await pool.query(
         `DELETE FROM mcp_oauth_tokens WHERE refresh_token_hash = $1 AND client_id = $2 AND refresh_expires_at > now() AND revoked_at IS NULL RETURNING *`,
         [sha256(String(body.refresh_token || '')), String(body.client_id || '')],
