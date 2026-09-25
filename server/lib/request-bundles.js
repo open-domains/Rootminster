@@ -17,9 +17,15 @@ export async function requestBundle(entities, request) {
   const rows = siblings.filter(row => !Array.isArray(row.records) && (request.requester_id ? row.requester_id === request.requester_id : String(row.requester_email).toLowerCase() === String(request.requester_email).toLowerCase()) && requestHostname(row) === requestHostname(request));
   return groupSubdomainRequests(rows.length ? rows : [request])[0];
 }
+function redactPublicComment(comment) {
+  if (!comment || !['staff', 'admin'].includes(comment.author_role)) return comment;
+  const { author_email, ...safe } = comment;
+  return { ...safe, author_name: 'Open Domains staff' };
+}
 export async function bundleComments(entities, bundle, elevated) {
   const comments = await entities.RequestComment.filter({ request_id: { $in: bundle._request_ids }, request_type: 'subdomain' }, 'created_date', 10000);
-  return comments.filter(comment => elevated || !comment.is_internal);
+  const visible = comments.filter(comment => elevated || !comment.is_internal);
+  return elevated ? visible : visible.map(redactPublicComment);
 }
 
 export async function ensureRequestGroup(entities, bundle) {
