@@ -42,6 +42,11 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
   };
 
   const roleLabel = (role) => role ? role.charAt(0).toUpperCase() + role.slice(1) : '';
+  const authorLabel = (comment) => {
+    if (!comment) return '';
+    if (!isStaffOrAdmin && (comment.author_role === 'staff' || comment.author_role === 'admin')) return comment.author_name || 'Open Domains staff';
+    return comment.author_name || userNames[comment.author_email] || comment.author_email || roleLabel(comment.author_role);
+  };
 
   const load = async () => {
     const version = ++loadVersion.current;
@@ -111,14 +116,17 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
           <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : loadError ? (<p role="alert" className="text-sm text-destructive">Could not load this conversation. <button onClick={load} className="underline">Retry</button></p>) : comments.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-6">{t('conversation.empty')}</p>
-        ) : comments.map(c => (
+        ) : comments.map(c => {
+          const name = authorLabel(c);
+          const title = isStaffOrAdmin ? c.author_email : undefined;
+          return (
           <div key={c.id} className="flex gap-3 flex-row">
             <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 border', roleColors[c.author_role] || roleColors.user)}>
-              {(userNames[c.author_email] || c.author_email)?.[0]?.toUpperCase()}
+              {name?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="text-foreground text-xs font-medium" title={c.author_email}>{userNames[c.author_email] || c.author_email}</span>
+                <span className="text-foreground text-xs font-medium" title={title}>{name}</span>
                 <span className={cn('text-xs px-1.5 py-0.5 rounded border', roleColors[c.author_role] || roleColors.user)}>{roleLabel(c.author_role)}</span>
                 {c.is_internal && <span className="flex items-center gap-0.5 text-xs text-muted-foreground"><Lock size={10} /> {t('conversation.internal')}</span>}
                 <span className="text-muted-foreground/60 text-xs ml-auto">{c.created_date ? format(new Date(c.created_date), 'MMM d, HH:mm') : ''}</span>
@@ -134,7 +142,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
               </div>
             </div>
           </div>
-        ))}
+        ); })}
       </div>
 
       {!readOnly && (
