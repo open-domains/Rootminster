@@ -69,6 +69,7 @@ async function getOauthClient(clientId) {
 async function authenticateOauthClient(request, body) {
   let clientId = String(body.client_id || '');
   let clientSecret = String(body.client_secret || '');
+  let presentedMethod = clientSecret ? 'client_secret_post' : 'none';
   const authorization = String(request.headers.authorization || '');
   if (/^Basic\s+/i.test(authorization)) {
     try {
@@ -77,6 +78,7 @@ async function authenticateOauthClient(request, body) {
       if (separator < 0) return null;
       clientId = decodeURIComponent(decoded.slice(0, separator));
       clientSecret = decodeURIComponent(decoded.slice(separator + 1));
+      presentedMethod = 'client_secret_basic';
     } catch {
       return null;
     }
@@ -85,6 +87,7 @@ async function authenticateOauthClient(request, body) {
   const client = await getOauthClient(clientId);
   if (!client) return null;
   const method = client.token_endpoint_auth_method || 'none';
+  if (method !== presentedMethod) return null;
   if (method === 'none') return client;
   if (!clientSecret || !client.client_secret_hash || sha256(clientSecret) !== client.client_secret_hash) return null;
   return client;
