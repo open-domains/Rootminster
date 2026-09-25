@@ -293,8 +293,13 @@ CREATE TABLE IF NOT EXISTS mcp_oauth_clients (
   client_id text PRIMARY KEY,
   client_name text NOT NULL,
   redirect_uris jsonb NOT NULL,
+  token_endpoint_auth_method text NOT NULL DEFAULT 'none',
+  client_secret_hash text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE mcp_oauth_clients ADD COLUMN IF NOT EXISTS token_endpoint_auth_method text NOT NULL DEFAULT 'none';
+ALTER TABLE mcp_oauth_clients ADD COLUMN IF NOT EXISTS client_secret_hash text;
 
 CREATE TABLE IF NOT EXISTS mcp_oauth_codes (
   code_hash text PRIMARY KEY,
