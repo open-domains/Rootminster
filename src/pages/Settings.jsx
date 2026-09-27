@@ -16,6 +16,7 @@ import PasskeyManager from '@/components/PasskeyManager';
 import { usePublicConfig } from '@/lib/public-config';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { displayText, initialText } from '@/lib/display-text';
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -109,9 +110,11 @@ export default function Settings() {
     finally { setSaving(false); }
   };
 
-  const initials = user?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || '?';
-  const roleKey = user?.role ? `settings.role${user.role.charAt(0).toUpperCase() + user.role.slice(1)}` : null;
+  const initials = initialText(user?.full_name, user?.email);
+  const roleKey = user?.role ? `settings.role${String(user.role).charAt(0).toUpperCase() + String(user.role).slice(1)}` : null;
   const roleLabel = roleKey ? t(roleKey) : t('common.user');
+  const displayName = displayText(user?.full_name, t('common.user'));
+  const emailText = displayText(user?.email);
 
   return (
     <div className="space-y-6">
@@ -150,8 +153,8 @@ export default function Settings() {
                   <div className="flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">{initials}</div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{user?.full_name || t('common.user')}</p>
-                      <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{emailText}</p>
                       <span className="mt-1.5 inline-flex items-center gap-1 rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"><Shield size={10} /> {roleLabel}</span>
                     </div>
                   </div>
@@ -163,7 +166,7 @@ export default function Settings() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">{t('settings.email')}</Label>
-                      <Input value={user?.email || ''} disabled className="h-9 cursor-not-allowed opacity-60" />
+                      <Input value={emailText} disabled className="h-9 cursor-not-allowed opacity-60" />
                     </div>
                   </div>
 
