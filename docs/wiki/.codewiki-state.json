@@ -1,0 +1,18 @@
+{
+  "repo_name": "Rootminster",
+  "source_path": "/root/Rootminster",
+  "source_sha": "26c9f26aacb006269da47e3788f8de338a623a1e",
+  "generated_at": "2026-09-27T16:16:56Z",
+  "generator": "hermes-agent code-wiki skill v0.1.0",
+  "modules_documented": [
+    "frontend-routing-and-ui",
+    "frontend-client-and-auth",
+    "server-runtime-and-routes",
+    "authentication-and-security",
+    "entity-store-and-data-model",
+    "function-handlers-and-dns-workflows",
+    "public-api-and-mcp",
+    "modules-integrations-and-configuration",
+    "jobs-and-backups"
+  ]
+}
