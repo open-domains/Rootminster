@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { pool, withAdvisoryLock } from './database.js';
 import { invokeInternal } from './function-runner.js';
 import { runScheduledBackup } from './backup-service.js';
+import { purgeApprovedAccountDeletionRequests } from './lib/account-deletion-retention.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Jobs' };
 
@@ -38,6 +39,8 @@ cron.schedule('0 4 * * *', async () => {
   await pool.query('DELETE FROM oauth_states WHERE expires_at <= now()');
   await pool.query('DELETE FROM design_auth_codes WHERE expires_at <= now()');
   await pool.query('DELETE FROM design_auth_requests WHERE expires_at <= now()');
+  const deletionRequestPurge = await purgeApprovedAccountDeletionRequests(pool);
+  if (deletionRequestPurge.deleted) console.log(`[jobs] purged ${deletionRequestPurge.deleted} approved account deletion request(s)`);
 }, { timezone: 'UTC' });
 
 console.log('Rootminster job runner started.');
