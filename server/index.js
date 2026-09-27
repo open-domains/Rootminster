@@ -13,6 +13,7 @@ import { registerAuthRoutes } from './auth.js';
 import { registerEntityRoutes } from './entity-routes.js';
 import { registerFunctionRoutes } from './function-runner.js';
 import { registerMcpRoutes } from './mcp.js';
+import { shouldServeSpaFallback } from './static-fallback.js';
 import { registerSetupRoutes } from './setup.js';
 import { registerDiscordRoutes } from './discord.js';
 import { registerPublicApiRoutes } from './public-api.js';
@@ -169,7 +170,7 @@ if (hasDist) {
     etag: true
   });
   app.setNotFoundHandler((request, reply) => {
-    if (/^\/(?:api|functions)(?:[/?]|$)/.test(request.url)) {
+    if (!shouldServeSpaFallback(request.url)) {
       return reply.header('Cache-Control', 'no-store').code(404).send({ error: 'Not found' });
     }
     return reply.header('Cache-Control', 'no-store').sendFile('index.html');

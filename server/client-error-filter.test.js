@@ -14,6 +14,7 @@ test('filters handled browser translation DOM mutations', () => {
 test('filters known Turnstile internals while retaining other Turnstile failures', () => {
   assert.equal(shouldIgnoreClientErrorEvent(event('[Cloudflare Turnstile] Error: 300010.', [{}])), true);
   assert.equal(shouldIgnoreClientErrorEvent(event('[Cloudflare Turnstile] Error: 300030.', [{}])), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event('[Cloudflare Turnstile] Nothing to reset found for provided container.', [{}])), true);
   assert.equal(shouldIgnoreClientErrorEvent(event('[Cloudflare Turnstile] Error: 110200.', [{}])), false);
 });
 
@@ -43,4 +44,13 @@ test('filters extension-intercepted third-party fetch errors with mixed stack fr
   ];
   assert.equal(shouldIgnoreClientErrorEvent(event('Failed to fetch (www.google-analytics.com)', frames)), true);
   assert.equal(shouldIgnoreClientErrorEvent(event('Failed to fetch', frames)), false);
+});
+
+test('filters injected wallet-provider globals without hiding app Ethereum errors', () => {
+  assert.equal(shouldIgnoreClientErrorEvent(event("undefined is not an object (evaluating 'window.ethereum.selectedAddress = undefined')", [
+    { filename: '/', function: 'global code' },
+  ])), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event("undefined is not an object (evaluating 'window.ethereum.selectedAddress = undefined')", [
+    { filename: '/assets/index.js', function: 'connectWallet' },
+  ])), false);
 });

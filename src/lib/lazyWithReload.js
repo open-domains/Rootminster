@@ -1,9 +1,9 @@
 import { lazy } from 'react';
 
 const RETRY_KEY = 'rootminster_chunk_reload';
-const CHUNK_ERROR = /(?:Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk \d+ failed|ChunkLoadError)/i;
+const CHUNK_ERROR = /(?:Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk \d+ failed|ChunkLoadError|not a valid JavaScript MIME type)/i;
 
-function isChunkLoadError(error) {
+export function isChunkLoadError(error) {
   return CHUNK_ERROR.test(String(error?.message || error || ''));
 }
 
