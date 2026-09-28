@@ -52,10 +52,7 @@ export function enableAnalytics() {
   loading = Promise.all([
     addScript('rootminster-google-analytics', { async: '', src: `https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}` }),
     addScript('rootminster-umami-analytics', { defer: '', src: 'https://analytics.open-domains.com/script.js', 'data-website-id': UMAMI_WEBSITE_ID }),
-  ]).then(() => true).catch((error) => {
-    console.warn('Consent-enabled analytics could not start', error);
-    return false;
-  });
+  ]).then(() => true).catch(() => false);
   return loading;
 }
 

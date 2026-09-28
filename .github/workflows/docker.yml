@@ -37,6 +37,7 @@ jobs:
         run: npm run build
         env:
           VITE_GLITCHTIP_RELEASE: ${{ github.sha }}
+          UPLOAD_SOURCEMAPS: ${{ env.GLITCHTIP_AUTH_TOKEN != '' && 'true' || 'false' }}
 
       - name: Upload GlitchTip sourcemaps
         if: env.GLITCHTIP_AUTH_TOKEN != ''

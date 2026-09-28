@@ -5,9 +5,9 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   logLevel: 'error', // Suppress warnings, only show errors
   build: {
-    // Generate uploadable maps without publishing sourceMappingURL comments in
-    // the production JavaScript. CI removes the .map files after uploading.
-    sourcemap: 'hidden',
+    // Emit hidden source maps only for the CI sourcemap-upload job. Ordinary
+    // production builds should not leave source files in dist.
+    sourcemap: process.env.UPLOAD_SOURCEMAPS === 'true' ? 'hidden' : false,
   },
   resolve: {
     alias: {

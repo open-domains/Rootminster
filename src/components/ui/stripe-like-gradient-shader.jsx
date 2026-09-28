@@ -18,7 +18,7 @@ class GradientErrorBoundary extends ReactComponent {
   }
 
   componentDidCatch(error) {
-    console.warn('Animated gradient unavailable; using static fallback', error);
+    if (import.meta.env.DEV) console.warn('Animated gradient unavailable; using static fallback', error);
   }
 
   render() {

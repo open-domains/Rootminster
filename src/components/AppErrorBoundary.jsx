@@ -11,7 +11,7 @@ export default class AppErrorBoundary extends Component {
 
   componentDidCatch(error, details) {
     captureClientException(error, { componentStack: details?.componentStack });
-    console.error('Rootminster interface error', error, details);
+    if (import.meta.env.DEV) console.error('Rootminster interface error', error, details);
   }
 
   render() {

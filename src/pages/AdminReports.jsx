@@ -322,7 +322,7 @@ export default function AdminReports() {
       setLastSummary({ filename, generatedAt, sections: datasets.length, records: datasets.reduce((sum, d) => sum + d.rows.length, 0), pages });
       toast.success('PDF report generated.');
     } catch (error) {
-      console.error(error);
+      if (import.meta.env.DEV) console.error(error);
       toast.error(error?.message || 'Could not generate the report.');
     } finally {
       setLoading(false);

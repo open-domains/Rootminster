@@ -53,7 +53,7 @@ export function initializeClientGlitchTip() {
       return sdk;
     })
     .catch((error) => {
-      console.warn('GlitchTip monitoring could not start', error);
+      if (import.meta.env.DEV) console.warn('GlitchTip monitoring could not start', error);
       return null;
     });
   return startup;

@@ -15,6 +15,7 @@ import SetupGate from '@/components/SetupGate';
 import BrandRuntime from '@/components/BrandRuntime';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
 import CookieConsentManager from '@/components/CookieConsentManager';
+import SeoManager from '@/components/SeoManager';
 import { lazyWithReload as lazy } from '@/lib/lazyWithReload';
 
 const PageNotFound = lazy(() => import('./lib/PageNotFound'));
@@ -226,6 +227,7 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
+          <SeoManager />
           <AppErrorBoundary>
             <BrandRuntime>
               <SetupGate>

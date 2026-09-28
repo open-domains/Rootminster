@@ -1,4 +1,4 @@
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
@@ -14,6 +14,7 @@ import { registerEntityRoutes } from './entity-routes.js';
 import { registerFunctionRoutes } from './function-runner.js';
 import { registerMcpRoutes } from './mcp.js';
 import { shouldServeSpaFallback } from './static-fallback.js';
+import { publicSitemapEntries, resolveSeo } from '../shared/seo.js';
 import { registerSetupRoutes } from './setup.js';
 import { registerDiscordRoutes } from './discord.js';
 import { registerPublicApiRoutes } from './public-api.js';
@@ -164,16 +165,55 @@ try {
 } catch {}
 
 if (hasDist) {
+  const indexTemplate = await readFile(join(dist, 'index.html'), 'utf8');
+  const escapeHtml = (value) => String(value).replace(/[&<>\"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+  const renderIndex = (request) => {
+    const seo = resolveSeo(new URL(request.url, config.appUrl).pathname, config.appUrl);
+    const tags = [
+      `<title>${escapeHtml(seo.title)}</title>`,
+      `<meta name="description" content="${escapeHtml(seo.description)}">`,
+      `<meta name="robots" content="${escapeHtml(seo.robots)}">`,
+      `<link rel="canonical" href="${escapeHtml(seo.canonical)}">`,
+      '<link rel="icon" type="image/png" href="/open-domains-icon.png">',
+      '<link rel="apple-touch-icon" href="/open-domains-icon.png">',
+      `<meta property="og:site_name" content="${escapeHtml(seo.siteName)}">`,
+      `<meta property="og:type" content="${escapeHtml(seo.type)}">`,
+      `<meta property="og:title" content="${escapeHtml(seo.title)}">`,
+      `<meta property="og:description" content="${escapeHtml(seo.description)}">`,
+      `<meta property="og:url" content="${escapeHtml(seo.canonical)}">`,
+      `<meta property="og:image" content="${escapeHtml(seo.image)}">`,
+      '<meta name="twitter:card" content="summary_large_image">',
+      `<meta name="twitter:title" content="${escapeHtml(seo.title)}">`,
+      `<meta name="twitter:description" content="${escapeHtml(seo.description)}">`,
+      `<meta name="twitter:image" content="${escapeHtml(seo.image)}">`,
+    ].join('\n    ');
+    return indexTemplate.replace('<!--rootminster-meta-->', tags);
+  };
+
+  app.get('/robots.txt', async (_request, reply) => reply
+    .type('text/plain; charset=utf-8')
+    .send(`User-agent: *\nAllow: /\nSitemap: ${new URL('/sitemap.xml', config.appUrl).href}\n`));
+
+  app.get('/sitemap.xml', async (_request, reply) => {
+    const now = new Date().toISOString().slice(0, 10);
+    const urls = publicSitemapEntries(config.appUrl).map(({ loc }) => `  <url><loc>${escapeHtml(loc)}</loc><lastmod>${now}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`).join('\n');
+    return reply.type('application/xml; charset=utf-8').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
+  });
+
   await app.register(fastifyStatic, {
     root: dist,
     wildcard: false,
-    etag: true
+    etag: true,
+    index: false,
   });
+
+  app.get('/', async (request, reply) => reply.type('text/html; charset=utf-8').header('Cache-Control', 'no-store').send(renderIndex(request)));
+
   app.setNotFoundHandler((request, reply) => {
     if (!shouldServeSpaFallback(request.url)) {
       return reply.header('Cache-Control', 'no-store').code(404).send({ error: 'Not found' });
     }
-    return reply.header('Cache-Control', 'no-store').sendFile('index.html');
+    return reply.type('text/html; charset=utf-8').header('Cache-Control', 'no-store').send(renderIndex(request));
   });
 }
 
