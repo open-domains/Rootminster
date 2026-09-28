@@ -17,6 +17,7 @@ import { usePublicConfig } from '@/lib/public-config';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { displayText, initialText } from '@/lib/display-text';
+import { deletionRequestViewState } from '@/lib/account-deletion-view-state';
 
 export default function Settings() {
   const { t } = useTranslation();
@@ -115,8 +116,7 @@ export default function Settings() {
   const roleLabel = roleKey ? t(roleKey) : t('common.user');
   const displayName = displayText(user?.full_name, t('common.user'));
   const emailText = displayText(user?.email);
-  const deletionStatus = displayText(deletionRequest?.status, 'pending');
-  const deletionDecisionReason = displayText(deletionRequest?.decision_reason);
+  const deletionView = deletionRequestViewState(deletionRequest);
 
   return (
     <div className="space-y-6">
@@ -235,23 +235,21 @@ export default function Settings() {
                 <p className="mt-0.5 text-xs text-muted-foreground">Request permanent deletion of your account. An administrator will review the request before anything is removed.</p>
               </div>
               <div className="space-y-4 p-5">
-                {deletionStatus === 'pending' ? (
+                {deletionView.hasPendingRequest ? (
                   <>
                     <div className="rounded-lg border border-border bg-muted/30 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="text-sm font-medium text-foreground">Deletion request: {deletionStatus}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">Submitted {new Date(deletionRequest.requested_at).toLocaleString()}</p>
+                          <p className="text-sm font-medium text-foreground">Deletion request: {deletionView.status}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Submitted {deletionView.requestedAt}</p>
                         </div>
-                        <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400">{deletionStatus}</span>
+                        <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400">{deletionView.status}</span>
                       </div>
-                      {deletionDecisionReason && <p className="mt-3 text-xs text-muted-foreground"><strong>Decision note:</strong> {deletionDecisionReason}</p>}
+                      {deletionView.decisionReason && <p className="mt-3 text-xs text-muted-foreground"><strong>Decision note:</strong> {deletionView.decisionReason}</p>}
                     </div>
-                    {deletionStatus === 'pending' && (
-                      <div className="flex justify-end">
-                        <Button variant="outline" disabled={deletionBusy} onClick={cancelDeletionRequest}>Cancel request</Button>
-                      </div>
-                    )}
+                    <div className="flex justify-end">
+                      <Button variant="outline" disabled={deletionBusy} onClick={cancelDeletionRequest}>Cancel request</Button>
+                    </div>
                   </>
                 ) : (
                   <>

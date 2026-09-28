@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { getClient } from '@umami/api-client';
+import { UmamiClient } from '@umami/api-client';
 import { getModuleConfig } from '../module-settings.js';
 function requestError(message, status) {
     return Object.assign(new Error(message), { status });
@@ -12,15 +12,34 @@ function analyticsBaseUrl(settings) {
     if (explicit) return explicit.replace(/\/+$/, '');
     return settings.api_endpoint ? settings.api_endpoint.replace(/\/api\/?$/, '').replace(/\/+$/, '') : '';
 }
-function makeUmamiClient(settings) {
-    const userId = settings.user_id;
-    const secret = settings.api_secret;
-    const base = analyticsBaseUrl(settings);
-    const apiEndpoint = settings.api_endpoint || (base ? `${base}/api/` : '');
-    if (!userId || !secret || !apiEndpoint) {
-        throw new Error('Analytics is not configured. UMAMI user ID, app secret and endpoint are required.');
+async function toLegacyResult(operation) {
+    try {
+        return { ok: true, data: await operation() };
     }
-    return getClient({ userId, secret, apiEndpoint });
+    catch (error) {
+        return {
+            ok: false,
+            status: error?.status,
+            error,
+        };
+    }
+}
+export function makeUmamiClient(settings) {
+    const token = settings.api_secret || settings.api_key || settings.token;
+    const base = analyticsBaseUrl(settings);
+    const baseUrl = settings.api_endpoint || (base ? `${base}/api` : '');
+    if (!token || !baseUrl) {
+        throw new Error('Analytics is not configured. UMAMI API token and endpoint are required.');
+    }
+    const client = new UmamiClient({ token, baseUrl: baseUrl.replace(/\/+$/, '') });
+    return {
+        createWebsite: (input) => toLegacyResult(() => client.createWebsite(input)),
+        deleteWebsite: (websiteId) => toLegacyResult(() => client.deleteWebsite({ websiteId })),
+        getWebsiteStats: (websiteId, input = {}) => toLegacyResult(() => client.getWebsiteStats({ websiteId, ...input })),
+        getWebsitePageviews: (websiteId, input = {}) => toLegacyResult(() => client.getWebsitePageviews({ websiteId, ...input })),
+        getWebsiteActive: (websiteId) => toLegacyResult(() => client.getWebsiteActive({ websiteId })),
+        getWebsiteMetrics: (websiteId, input = {}) => toLegacyResult(() => client.getWebsiteMetrics({ websiteId, ...input })),
+    };
 }
 function unwrap(result, message) {
     if (!result?.ok) {
