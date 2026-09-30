@@ -28,10 +28,12 @@ export function sanitizeNameInput(v) {
 // Validate a name entered in the Add row, relative to baseName (the page's subdomain).
 // Returns { valid, isRoot, label, full, error }
 export function validateAddName(raw, baseName) {
+  const base = sanitizeNameInput(baseName);
   const r = (raw || '').trim().toLowerCase();
-  if (r === '' || r === '@' || r === baseName) return { valid: true, isRoot: true, label: '', full: baseName, error: null };
+  if (r === '' || r === '@' || sanitizeNameInput(r) === base) return { valid: true, isRoot: true, label: '', full: base, error: null };
 
-  const s = sanitizeNameInput(r);
+  let s = sanitizeNameInput(r);
+  if (s.endsWith(`.${base}`)) s = s.slice(0, -(base.length + 1));
   if (s === '') return { valid: false, isRoot: false, label: '', full: '', error: 'Invalid name' };
   if (!/^[a-z0-9\-._*]+$/.test(s)) return { valid: false, isRoot: false, label: s, full: '', error: 'Only a-z, 0-9, -, _, ., * allowed' };
 
@@ -43,7 +45,7 @@ export function validateAddName(raw, baseName) {
     if (!ok) return { valid: false, isRoot: false, label: s, full: '', error: `Invalid label: "${lab}"` };
   }
 
-  const full = `${s}.${baseName}`;
+  const full = `${s}.${base}`;
   if (full.length > 255) return { valid: false, isRoot: false, label: s, full: '', error: 'FQDN exceeds 255 chars' };
   return { valid: true, isRoot: false, label: s, full, error: null };
 }
@@ -70,8 +72,11 @@ export function validateContent(type, content) {
       }
       return { valid: false, error: 'MX needs priority & host — e.g. "10 mail.example.com"' };
     }
+    case 'NS':
+      return /^([a-zA-Z0-9_-]+\.)+[a-zA-Z0-9_-]+\.?$/.test(v)
+        ? { valid: true } : { valid: false, error: 'Invalid nameserver hostname' };
     case 'TXT':
-      return { valid: true };
+      return v.length <= 2048 ? { valid: true } : { valid: false, error: 'TXT value is too long' };
     default:
       return { valid: true };
   }
