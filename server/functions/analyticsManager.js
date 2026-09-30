@@ -41,10 +41,20 @@ export function makeUmamiClient(settings) {
         getWebsiteMetrics: (websiteId, input = {}) => toLegacyResult(() => client.getWebsiteMetrics({ websiteId, ...input })),
     };
 }
+export function analyticsDependencyFailure(message, cause) {
+    const upstreamStatus = Number(cause?.status || cause?.statusCode || 0);
+    const detail = cause?.message || cause?.error || cause || `HTTP ${upstreamStatus || 'error'}`;
+    const publicDetail = upstreamStatus === 401 || upstreamStatus === 403
+        ? 'Analytics provider rejected the configured API credentials'
+        : typeof detail === 'string' ? detail : JSON.stringify(detail);
+    return Object.assign(new Error(`${message}: ${publicDetail}`), {
+        status: 424,
+        upstreamStatus: upstreamStatus || undefined,
+    });
+}
 function unwrap(result, message) {
     if (!result?.ok) {
-        const detail = result?.error?.message || result?.error?.error || result?.error || `HTTP ${result?.status || 'error'}`;
-        throw new Error(`${message}: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`);
+        throw analyticsDependencyFailure(message, result?.error || { status: result?.status });
     }
     return result.data;
 }
