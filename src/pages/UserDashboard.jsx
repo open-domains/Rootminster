@@ -20,6 +20,20 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 // ─── Mini Metric ────────────────────────────────────────────────────────────
+function recordNamespace(record) {
+  const name = record?.name || '';
+  const zone = record?.zone_name || '';
+  if (!zone || !name.endsWith(`.${zone}`)) return name;
+  const relative = name.slice(0, -(zone.length + 1));
+  const labels = relative.split('.').filter(Boolean);
+  return labels.length <= 1 ? name : `${labels.slice(1).join('.')}.${zone}`;
+}
+
+function safeDate(value) {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
 function Metric({ icon: Icon, label, value, tone = 'default' }) {
   const tones = {
     default: 'text-muted-foreground bg-muted/60',
@@ -65,12 +79,12 @@ function Card({ title, description, actions, children, empty, icon: Icon }) {
 }
 
 // ─── Subdomain Row ──────────────────────────────────────────────────────────
-function SubdomainRow({ records, pendingSubs, needsInfoSubs }) {
+function SubdomainRow({ records, namespace, pendingSubs, needsInfoSubs }) {
   const [expanded, setExpanded] = useState(false);
   const primary = records[0];
   const hasMultiple = records.length > 1;
   const overallStatus = records.some(r => r.status === 'active') ? 'active' : primary.status;
-  const name = primary.name;
+  const name = namespace || primary.name;
   const isPending = pendingSubs.has(name);
   const isIssue = needsInfoSubs.has(name) || records.some(r => r.status === 'suspended' || r.dns_verified === false);
 
@@ -153,7 +167,7 @@ function RequestRow({ request, onView }) {
           )}
         </div>
         <p className="text-muted-foreground text-xs mt-0.5">
-          {request.record_type} · {request.created_date ? formatDistanceToNow(new Date(request.created_date), { addSuffix: true }) : ''}
+          {request.record_type} · {safeDate(request.created_date) ? formatDistanceToNow(safeDate(request.created_date), { addSuffix: true }) : ''}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -187,7 +201,7 @@ export default function UserDashboard() {
         rootminster.entities.SubdomainRequest.filter({ requester_email: u.email })
       ]);
       setOwnedRecords(records.filter(r => r.status !== 'suspended'));
-      setRequests(groupSubdomainRequests(reqs).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      setRequests(groupSubdomainRequests(reqs).sort((a, b) => (safeDate(b.created_date)?.getTime() || 0) - (safeDate(a.created_date)?.getTime() || 0)));
     } catch (error) {
       setLoadError(error?.message || 'The dashboard could not be loaded.');
     } finally {
@@ -220,9 +234,13 @@ export default function UserDashboard() {
   const needsInfo = requests.filter(r => r.status === 'needs_info').length;
   const approved = requests.filter(r => r.status === 'approved').length;
 
-  const groupedRecords = Object.values(
-    ownedRecords.reduce((acc, r) => { (acc[r.name] ||= []).push(r); return acc; }, {})
-  );
+  const groupedRecords = Object.entries(
+    ownedRecords.reduce((acc, record) => {
+      const namespace = recordNamespace(record);
+      (acc[namespace] ||= []).push(record);
+      return acc;
+    }, {})
+  ).map(([namespace, grouped]) => ({ namespace, records: grouped }));
 
   const pendingSubs = new Set(
     requests.filter(r => r.status === 'pending').map(r => `${r.subdomain}.${r.root_domain}`)
@@ -232,10 +250,10 @@ export default function UserDashboard() {
   );
 
   const tabPredicate = (group) => {
-    const name = group[0].name;
+    const name = group.namespace;
     const isPending = pendingSubs.has(name);
-    const isIssue = needsInfoSubs.has(name) || group.some(r => r.status === 'suspended' || r.dns_verified === false);
-    const active = group.some(r => r.status === 'active');
+    const isIssue = needsInfoSubs.has(name) || group.records.some(r => r.status === 'suspended' || r.dns_verified === false);
+    const active = group.records.some(r => r.status === 'active');
     if (tab === 'all') return true;
     if (tab === 'active') return active && !isIssue;
     if (tab === 'pending') return isPending;
@@ -244,7 +262,7 @@ export default function UserDashboard() {
   };
 
   const filteredGroups = groupedRecords.filter(tabPredicate);
-  const hasIssues = groupedRecords.some(g => needsInfoSubs.has(g[0].name) || g.some(r => r.status === 'suspended' || r.dns_verified === false));
+  const hasIssues = groupedRecords.some(g => needsInfoSubs.has(g.namespace) || g.records.some(r => r.status === 'suspended' || r.dns_verified === false));
 
   // Activity feed: merge record creations + request events, newest first
   const activity = [
@@ -258,13 +276,13 @@ export default function UserDashboard() {
       sub: r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : r.status === 'needs_info' ? 'Needs your reply' : 'Pending review',
       icon: r.status === 'needs_info' ? AlertTriangle : r.status === 'approved' ? CheckCircle2 : Activity,
     })),
-  ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 7);
+  ].sort((a, b) => (safeDate(b.date)?.getTime() || 0) - (safeDate(a.date)?.getTime() || 0)).slice(0, 7);
 
   const tabs = [
     { id: 'all', label: 'All', count: groupedRecords.length },
-    { id: 'active', label: 'Active', count: groupedRecords.filter(g => g.some(r => r.status === 'active') && !(needsInfoSubs.has(g[0].name) || g.some(r => r.status === 'suspended' || r.dns_verified === false))).length },
-    { id: 'pending', label: 'Pending', count: [...pendingSubs].filter(n => groupedRecords.some(g => g[0].name === n)).length },
-    { id: 'issues', label: 'Issues', count: groupedRecords.filter(g => needsInfoSubs.has(g[0].name) || g.some(r => r.status === 'suspended' || r.dns_verified === false)).length },
+    { id: 'active', label: 'Active', count: groupedRecords.filter(g => g.records.some(r => r.status === 'active') && !(needsInfoSubs.has(g.namespace) || g.records.some(r => r.status === 'suspended' || r.dns_verified === false))).length },
+    { id: 'pending', label: 'Pending', count: [...pendingSubs].filter(n => groupedRecords.some(g => g.namespace === n)).length },
+    { id: 'issues', label: 'Issues', count: groupedRecords.filter(g => needsInfoSubs.has(g.namespace) || g.records.some(r => r.status === 'suspended' || r.dns_verified === false)).length },
   ];
 
   const firstName = user?.full_name?.split(' ')[0];
@@ -372,7 +390,7 @@ export default function UserDashboard() {
                   </div>
                 ) : (
                   filteredGroups.map(group => (
-                    <SubdomainRow key={group[0].name} records={group} pendingSubs={pendingSubs} needsInfoSubs={needsInfoSubs} />
+                    <SubdomainRow key={group.namespace} namespace={group.namespace} records={group.records} pendingSubs={pendingSubs} needsInfoSubs={needsInfoSubs} />
                   ))
                 )}
 
@@ -452,7 +470,7 @@ export default function UserDashboard() {
                         <div className="min-w-0 pt-0.5">
                           <p className="text-foreground text-sm leading-snug">{ev.label}</p>
                           <p className="text-muted-foreground text-xs mt-0.5">
-                            {ev.sub ? ev.sub + ' · ' : ''}{ev.date ? formatDistanceToNow(new Date(ev.date), { addSuffix: true }) : ''}
+                            {ev.sub ? ev.sub + ' · ' : ''}{safeDate(ev.date) ? formatDistanceToNow(safeDate(ev.date), { addSuffix: true }) : ''}
                           </p>
                         </div>
                       </li>
@@ -524,7 +542,7 @@ function RequestDetailView({ request, user, onBack }) {
           </div>
           <div>
             <p className="text-muted-foreground text-xs uppercase tracking-wide mb-1">{t('dashboard.submitted')}</p>
-            <p className="text-foreground text-xs">{request.created_date ? format(new Date(request.created_date), 'MMM d, yyyy') : '—'}</p>
+            <p className="text-foreground text-xs">{safeDate(request.created_date) ? format(safeDate(request.created_date), 'MMM d, yyyy') : '—'}</p>
           </div>
           {request.reason && (
             <div className="col-span-2">

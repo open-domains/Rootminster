@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { rootminster } from '@/api/rootminsterClient';
@@ -67,7 +67,7 @@ export default function SubdomainDnsManager() {
     if (!subdomainName) navigate('/my-subdomains');
   }, [subdomainName, navigate]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!subdomainName) return;
     const generation = ++loadGeneration.current;
     setLoading(true);
@@ -96,7 +96,7 @@ export default function SubdomainDnsManager() {
     } finally {
       if (generation === loadGeneration.current) setLoading(false);
     }
-  };
+  }, [subdomainName, config.features.nsRequiresDonation]);
 
   useEffect(() => {
     setSelected(new Set());
@@ -104,7 +104,7 @@ export default function SubdomainDnsManager() {
     setShowAddRow(false);
     if (subdomainName) load();
     return () => { loadGeneration.current += 1; };
-  }, [subdomainName, config.features.nsRequiresDonation]);
+  }, [subdomainName, config.features.nsRequiresDonation, load]);
 
   const availableTypes = nsUnlocked ? [...BASE_RECORD_TYPES, 'NS'] : BASE_RECORD_TYPES;
   const rootDomain = ownership?.root_domain || records[0]?.zone_name || (subdomainName ? subdomainName.split('.').slice(1).join('.') : '');
@@ -169,9 +169,26 @@ export default function SubdomainDnsManager() {
     }
   };
 
-  const handleDuplicate = (record) => {
+  const relativeNameForRecord = (record) => {
+    if (!record?.name || record.name === subdomainName) return '@';
+    const suffix = `.${subdomainName}`;
+    return record.name.endsWith(suffix) ? record.name.slice(0, -suffix.length) : record.name;
+  };
+
+  const openAddRow = (initial = {}) => {
+    setCols(current => ({ ...current, type: true, content: true, proxy: true, ttl: true }));
     setShowAddRow(true);
-    setAddForm({ name: '', record_type: record.record_type, record_value: record.content, proxied: false, ttl: 3600 });
+    if (Object.keys(initial).length) setAddForm(current => ({ ...current, ...initial }));
+  };
+
+  const handleDuplicate = (record) => {
+    openAddRow({
+      name: relativeNameForRecord(record),
+      record_type: record.record_type,
+      record_value: record.content || '',
+      proxied: PROXYABLE_TYPES.includes(record.record_type) ? !!record.proxied : false,
+      ttl: record.ttl || 3600,
+    });
   };
 
   // Add root and arbitrarily nested records through the same direct mutation path.
@@ -226,7 +243,7 @@ export default function SubdomainDnsManager() {
       await load();
     } catch (err) {
       const prefix = applied > 0 ? (applied === 1 ? t('dnsManager.templatePartialPrefixOne', { count: applied }) : t('dnsManager.templatePartialPrefixOther', { count: applied })) : '';
-      toast.success(`${prefix}${err?.response?.data?.error || err?.message || t('dnsManager.templateFailed')}`);
+      toast.error(`${prefix}${err?.response?.data?.error || err?.message || t('dnsManager.templateFailed')}`);
       await load();
     } finally {
       setTemplateApplying(false);
@@ -282,60 +299,6 @@ export default function SubdomainDnsManager() {
     }
   };
 
-  // ── Bulk actions ──
-  const toggleSelect = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const allSelected = records.length > 0 && records.every(r => selected.has(r.id));
-  const toggleSelectAll = () => setSelected(allSelected ? new Set() : new Set(records.map(r => r.id)));
-
-  const bulkDelete = async () => {
-    const ids = [...selected];
-    for (const id of ids) {
-      const r = records.find(x => x.id === id);
-      if (!r) continue;
-      setSavingId(id);
-      try {
-        await mutateDns({ action: 'delete', record_id: r.id });
-      } catch (err) { toast.error(err?.response?.data?.error || t('dnsManager.bulkDeleteFailed', { name: r.name })); break; }
-    }
-    setSavingId(null);
-    setSelected(new Set());
-    setBulkOpen(false);
-    toast.success(t('dnsManager.bulkDeleted', { count: ids.length }));
-    await load();
-  };
-
-  const bulkToggleProxy = async () => {
-    const ids = [...selected].filter(id => { const r = records.find(x => x.id === id); return r && PROXYABLE_TYPES.includes(r.record_type); });
-    for (const id of ids) {
-      const r = records.find(x => x.id === id);
-      setSavingId(id);
-      try {
-        await mutateDns({ action: 'update', record_id: r.id, proxied: !r.proxied });
-      } catch (err) { toast.error(err?.response?.data?.error || t('dnsManager.bulkUpdateFailed', { name: r.name })); break; }
-    }
-    setSavingId(null);
-    setSelected(new Set());
-    setBulkOpen(false);
-    toast.success(t('dnsManager.proxyToggled'));
-    await load();
-  };
-
-  const bulkSetTtl = async () => {
-    for (const id of [...selected]) {
-      const r = records.find(x => x.id === id);
-      if (!r) continue;
-      setSavingId(id);
-      try {
-        await mutateDns({ action: 'update', record_id: r.id, ttl: Number(bulkTtl) });
-      } catch (err) { toast.error(err?.response?.data?.error || t('dnsManager.bulkUpdateFailed', { name: r.name })); break; }
-    }
-    setSavingId(null);
-    setSelected(new Set());
-    setBulkOpen(false);
-    toast.success(t('dnsManager.ttlUpdated'));
-    await load();
-  };
-
   const resetFilters = () => { setSearch(''); setTypeFilter('all'); setProxyFilter('all'); };
 
   const filtered = useMemo(() => records.filter(r => {
@@ -350,6 +313,88 @@ export default function SubdomainDnsManager() {
     }
     return true;
   }), [records, search, typeFilter, proxyFilter]);
+
+  // ── Bulk actions ──
+  const toggleSelect = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const visibleIds = useMemo(() => filtered.map(record => record.id), [filtered]);
+  const visibleIdSet = useMemo(() => new Set(visibleIds), [visibleIds]);
+  const selectedVisibleCount = visibleIds.filter(id => selected.has(id)).length;
+  const allSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+
+  useEffect(() => {
+    setSelected(current => {
+      const next = new Set([...current].filter(id => visibleIdSet.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [visibleIdSet]);
+  const toggleSelectAll = () => setSelected(current => {
+    const next = new Set(current);
+    if (allSelected) {
+      visibleIds.forEach(id => next.delete(id));
+    } else {
+      visibleIds.forEach(id => next.add(id));
+    }
+    return next;
+  });
+
+  const bulkDelete = async () => {
+    const ids = [...selected].filter(id => visibleIdSet.has(id));
+    let completed = 0;
+    for (const id of ids) {
+      const r = records.find(x => x.id === id);
+      if (!r) continue;
+      setSavingId(id);
+      try {
+        await mutateDns({ action: 'delete', record_id: r.id });
+        completed += 1;
+      } catch (err) {
+        toast.error(err?.response?.data?.error || t('dnsManager.bulkDeleteFailed', { name: r.name }));
+        break;
+      }
+    }
+    setSavingId(null);
+    setSelected(current => new Set([...current].filter(id => !ids.includes(id))));
+    setBulkOpen(false);
+    if (completed > 0) toast.success(t('dnsManager.bulkDeleted', { count: completed }));
+    await load();
+  };
+
+  const bulkToggleProxy = async () => {
+    const ids = [...selected].filter(id => { const r = records.find(x => x.id === id); return visibleIdSet.has(id) && r && PROXYABLE_TYPES.includes(r.record_type); });
+    let completed = 0;
+    for (const id of ids) {
+      const r = records.find(x => x.id === id);
+      setSavingId(id);
+      try {
+        await mutateDns({ action: 'update', record_id: r.id, proxied: !r.proxied });
+        completed += 1;
+      } catch (err) { toast.error(err?.response?.data?.error || t('dnsManager.bulkUpdateFailed', { name: r.name })); break; }
+    }
+    setSavingId(null);
+    setSelected(current => new Set([...current].filter(id => !ids.includes(id))));
+    setBulkOpen(false);
+    if (completed > 0) toast.success(t('dnsManager.proxyToggled'));
+    await load();
+  };
+
+  const bulkSetTtl = async () => {
+    const ids = [...selected].filter(id => visibleIdSet.has(id));
+    let completed = 0;
+    for (const id of ids) {
+      const r = records.find(x => x.id === id);
+      if (!r) continue;
+      setSavingId(id);
+      try {
+        await mutateDns({ action: 'update', record_id: r.id, ttl: Number(bulkTtl) });
+        completed += 1;
+      } catch (err) { toast.error(err?.response?.data?.error || t('dnsManager.bulkUpdateFailed', { name: r.name })); break; }
+    }
+    setSavingId(null);
+    setSelected(current => new Set([...current].filter(id => !ids.includes(id))));
+    setBulkOpen(false);
+    if (completed > 0) toast.success(t('dnsManager.ttlUpdated'));
+    await load();
+  };
 
   if (!subdomainName) return null;
 
@@ -392,7 +437,7 @@ export default function SubdomainDnsManager() {
                 {(allNames.length ? allNames : [subdomainName]).map(n => <SelectItem key={n} value={n} className="font-mono text-sm">{n}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button onClick={() => { setShowAddRow(true); }} className="h-9 w-full gap-2 px-4 sm:w-auto">
+            <Button onClick={() => openAddRow()} className="h-9 w-full gap-2 px-4 sm:w-auto">
               <Plus size={15} /> {t('dnsManager.addRecord')}
             </Button>
           </div>
@@ -411,7 +456,7 @@ export default function SubdomainDnsManager() {
             <p className="text-sm font-medium text-foreground">This subdomain is suspended because it has no DNS records.</p>
             <p className="mt-1 text-xs text-muted-foreground">Add a record during the 7-day grace period to reactivate it immediately.</p>
           </div>
-          <Button onClick={() => setShowAddRow(true)} className="h-9 shrink-0 gap-2 px-4">
+          <Button onClick={() => openAddRow()} className="h-9 shrink-0 gap-2 px-4">
             <Plus size={15} /> Add record and reactivate
           </Button>
         </div>
@@ -489,6 +534,7 @@ export default function SubdomainDnsManager() {
           search={search} setSearch={setSearch}
           typeFilter={typeFilter} setTypeFilter={setTypeFilter}
           proxyFilter={proxyFilter} setProxyFilter={setProxyFilter}
+          availableTypes={availableTypes}
           cols={cols} setCols={setCols}
           onReset={resetFilters}
           recordCount={filtered.length}

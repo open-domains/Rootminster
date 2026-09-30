@@ -4,11 +4,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { BASE_RECORD_TYPES } from './dnsConfig';
 
 export default function DnsToolbar({
   search, setSearch, typeFilter, setTypeFilter, proxyFilter, setProxyFilter,
-  cols, setCols, onReset, recordCount,
+  cols, setCols, onReset, recordCount, availableTypes,
 }) {
   const toggleCol = (key) => setCols(c => ({ ...c, [key]: !c[key] }));
 
@@ -32,7 +31,7 @@ export default function DnsToolbar({
           <SelectTrigger aria-label="Filter by record type" className="h-8 w-[110px] text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All types</SelectItem>
-            {BASE_RECORD_TYPES.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
+            {availableTypes.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
           </SelectContent>
         </Select>
 
