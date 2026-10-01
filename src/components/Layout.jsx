@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp, Container,
-  FileBarChart, FileCode2, GitPullRequest, Globe2, LayoutDashboard,
+  FileBarChart, FileCode2, GitPullRequest, Globe2, Heart, LayoutDashboard, Mail,
   LogOut, Menu, Newspaper, Search, Settings, Shield, Users, UserX, Wrench,
   X,
 } from 'lucide-react';
@@ -41,11 +41,14 @@ const adminNav = [
   { to: '/admin-dashboard', icon: LayoutDashboard, label: 'Overview' },
   { to: '/admin-requests', icon: GitPullRequest, label: 'Requests' },
   { to: '/admin-subdomains', icon: Globe2, label: 'User Domains' },
+  { to: '/admin-domains', icon: Globe2, label: 'Root Domains', adminOnly: true },
   { to: '/admin-users', icon: Users, label: 'Users', adminOnly: true },
   { to: '/admin-reports', icon: FileBarChart, label: 'Reports', adminOnly: true },
   { to: '/admin-account-deletions', icon: UserX, label: 'Account Deletions', adminOnly: true },
   { to: '/admin-abuse-reports', icon: AlertTriangle, label: 'Abuse Reports' },
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
+  { to: '/admin-email-logs', icon: Mail, label: 'Email Logs', adminOnly: true },
+  { to: '/admin-donations', icon: Heart, label: 'Donations', adminOnly: true },
   { to: '/admin-settings', icon: Settings, label: 'Platform Settings', adminOnly: true },
   { to: '/admin-modules', icon: Boxes, label: 'Module Settings', adminOnly: true },
   { to: '/docker-engine', icon: Container, label: 'Docker Engine', adminOnly: true },
@@ -230,6 +233,7 @@ export default function Layout() {
 
   const initials = ((user?.full_name || user?.email || 'U')[0] || 'U').toUpperCase();
   const fullName = user?.full_name || 'User';
+  const isAdminPath = location.pathname.startsWith('/admin-') || location.pathname === '/docker-engine';
   const cmdItems = [...userNav, ...resourceNav, ...(isPrivileged ? adminNav.filter(i => !i.adminOnly || isAdmin) : [])];
   const stopImpersonation = async () => {
     try {
@@ -315,7 +319,14 @@ export default function Layout() {
             </div>
           )}
 
-          <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1500px] px-3 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className={cn(
+              'mx-auto w-full px-3 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-7',
+              isAdminPath ? 'max-w-[1640px] bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.07),transparent_34rem)]' : 'max-w-[1500px]'
+            )}
+          >
             <Outlet />
           </main>
         </div>

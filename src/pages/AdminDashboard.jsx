@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { AdminHeader, AdminPage, AdminSection, AdminStatsGrid } from '@/components/AdminPageShell';
 
 export default function AdminDashboard() {
   const { t } = useTranslation();
@@ -85,48 +86,33 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{t('adminDashboard.eyebrow')}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{user?.role === 'admin' ? t('adminDashboard.titleAdmin') : t('adminDashboard.titleStaff')}</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">{t('adminDashboard.subtitle')}</p>
-        </div>
-        {user?.role === 'admin' && (
+    <AdminPage>
+      <AdminHeader
+        eyebrow={t('adminDashboard.eyebrow')}
+        title={user?.role === 'admin' ? t('adminDashboard.titleAdmin') : t('adminDashboard.titleStaff')}
+        description={t('adminDashboard.subtitle')}
+        meta={user?.role === 'admin' ? 'Full access' : 'Staff review console'}
+        actions={user?.role === 'admin' && (
           <Button onClick={syncAll} disabled={syncing} variant="outline" className="h-9 gap-2">
             <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
             {syncing ? t('adminDashboard.syncing') : t('adminDashboard.syncAll')}
           </Button>
         )}
-      </div>
+      />
 
-      <div className={`grid overflow-hidden rounded-lg border border-border bg-card ${overviewStats.length === 5 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
-        {overviewStats.map((item, index) => (
-          <div key={item.label} className={`${index > 0 ? 'border-l border-border' : ''} px-4 py-3.5`}>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <item.icon size={13} />
-              <span className="text-[10px] font-medium uppercase tracking-wide">{item.label}</span>
-            </div>
-            <p className="mt-1.5 text-xl font-semibold tabular-nums text-foreground">{item.value ?? '—'}</p>
+      <AdminStatsGrid columns={overviewStats.length} stats={overviewStats} />
+
+      <AdminSection title={t('adminDashboard.chartTitle')}>
+        {loading ? (
+          <div className="h-[200px] flex items-end justify-between gap-3 px-2" aria-hidden="true">
+            {[40, 65, 30, 80, 50, 70].map((h, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                <div className="w-full rounded-t bg-primary/30 animate-pulse" style={{ height: `${h}%` }} />
+                <div className="h-2.5 w-10 rounded bg-muted animate-pulse" />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      <div className="bg-card border border-border rounded-xl overflow-hidden mb-6 shadow-card">
-        <div className="p-4 border-b border-border">
-          <h2 className="text-foreground font-semibold text-sm">{t('adminDashboard.chartTitle')}</h2>
-        </div>
-        <div className="p-4">
-          {loading ? (
-            <div className="h-[200px] flex items-end justify-between gap-3 px-2" aria-hidden="true">
-              {[40, 65, 30, 80, 50, 70].map((h, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-full rounded-t bg-primary/30 animate-pulse" style={{ height: `${h}%` }} />
-                  <div className="h-2.5 w-10 rounded bg-muted animate-pulse" />
-                </div>
-              ))}
-            </div>
-          ) : (
+        ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={requestsChart} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -137,8 +123,7 @@ export default function AdminDashboard() {
               </BarChart>
             </ResponsiveContainer>
           )}
-        </div>
-      </div>
+      </AdminSection>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card border border-border rounded-xl overflow-hidden shadow-card">
@@ -181,6 +166,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminPage>
   );
 }

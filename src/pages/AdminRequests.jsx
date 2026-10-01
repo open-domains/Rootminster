@@ -10,6 +10,7 @@ import { Eye, AlertTriangle, Loader2, Search, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { AdminHeader, AdminPage } from '@/components/AdminPageShell';
 
 function RequestCard({ request, onReview, userNames = {} }) {
   const { t } = useTranslation();
@@ -169,14 +170,14 @@ export default function AdminRequests() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{t('adminRequests.eyebrow')}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('adminRequests.title')}</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">{t('adminRequests.subtitle')}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <AdminPage className="space-y-4">
+      <AdminHeader
+        eyebrow={t('adminRequests.eyebrow')}
+        title={t('adminRequests.title')}
+        description={t('adminRequests.subtitle')}
+        meta={`${pendingSubdomains} pending · ${dnsIssueCount} DNS issues`}
+        actions={(
+          <div className="flex flex-wrap gap-2">
           {user?.role === 'admin' && tab === 'dns' && (
             <Button onClick={runDnsCheck} disabled={dnsCheckRunning} variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
               {dnsCheckRunning ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
@@ -187,7 +188,8 @@ export default function AdminRequests() {
             <RefreshCw size={14} />
           </Button>
         </div>
-      </div>
+        )}
+      />
 
       <div className="flex gap-1 overflow-x-auto border-b border-border">
         {tabs.map(tl => (
@@ -255,6 +257,6 @@ export default function AdminRequests() {
         onClose={() => setSelected(null)}
         onSuccess={load}
       />
-    </div>
+    </AdminPage>
   );
 }

@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
+import { AdminHeader, AdminLoading, AdminPage, AdminStatsGrid } from '@/components/AdminPageShell';
 
 export default function AdminDomains() {
   const { t } = useTranslation();
@@ -114,7 +115,7 @@ export default function AdminDomains() {
   const totalRecords = domains.reduce((sum, d) => sum + (d.record_count || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <AdminPage>
       <AlertDialog open={!!confirmDelete} onOpenChange={open => !open && setConfirmDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -130,33 +131,27 @@ export default function AdminDomains() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{t('adminDomains.eyebrow')}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('adminDomains.title')}</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">{t('adminDomains.subtitle')}</p>
-        </div>
-        <Button onClick={() => { setShowAdd(true); fetchZones(); }} className="h-9 gap-2 px-4">
-          <Plus size={15} /> {t('adminDomains.addDomain')}
-        </Button>
-      </div>
+      <AdminHeader
+        eyebrow={t('adminDomains.eyebrow')}
+        title={t('adminDomains.title')}
+        description={t('adminDomains.subtitle')}
+        meta="Cloudflare zones"
+        actions={(
+          <Button onClick={() => { setShowAdd(true); fetchZones(); }} className="h-9 gap-2 px-4">
+            <Plus size={15} /> {t('adminDomains.addDomain')}
+          </Button>
+        )}
+      />
 
-      <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card md:grid-cols-4">
-        {[
-          { label: t('adminDomains.labelZones'), value: domains.length, icon: Globe },
-          { label: t('adminDomains.labelRecords'), value: totalRecords, icon: Database },
-          { label: t('adminDomains.labelOpen'), value: openForRequests, icon: CheckCircle2 },
-          { label: t('adminDomains.labelFailed'), value: failedSyncs, icon: XCircle },
-        ].map((item, index) => (
-          <div key={item.label} className={`${index > 0 ? 'border-l border-border' : ''} px-4 py-3.5`}>
-            <div className="flex items-center gap-2 text-muted-foreground"><item.icon size={13} /><span className="text-[10px] font-medium uppercase tracking-wide">{item.label}</span></div>
-            <p className="mt-1.5 text-xl font-semibold tabular-nums text-foreground">{item.value}</p>
-          </div>
-        ))}
-      </div>
+      <AdminStatsGrid stats={[
+        { label: t('adminDomains.labelZones'), value: domains.length, icon: Globe },
+        { label: t('adminDomains.labelRecords'), value: totalRecords, icon: Database },
+        { label: t('adminDomains.labelOpen'), value: openForRequests, icon: CheckCircle2 },
+        { label: t('adminDomains.labelFailed'), value: failedSyncs, icon: XCircle, className: failedSyncs ? 'text-destructive' : undefined },
+      ]} />
 
       {loading ? (
-        <div className="flex justify-center py-20"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+        <AdminLoading label="Loading root domains…" />
       ) : (
         <>
           <div className="space-y-6">
@@ -215,6 +210,7 @@ export default function AdminDomains() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 }
+
