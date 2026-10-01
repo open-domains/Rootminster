@@ -3,6 +3,8 @@ import { rootminster } from '@/api/rootminsterClient';
 import DataTable from '@/components/DataTable';
 import StatusBadge from '@/components/StatusBadge';
 import { format } from 'date-fns';
+import { AdminHeader, AdminLoading, AdminPage, AdminStatsGrid } from '@/components/AdminPageShell';
+import { Mail, Send, TriangleAlert } from 'lucide-react';
 
 export default function AdminEmailLogs() {const { t } = useTranslation();
   const [logs, setLogs] = useState([]);
@@ -26,23 +28,24 @@ export default function AdminEmailLogs() {const { t } = useTranslation();
   const failed = logs.filter((l) => l.status === 'failed').length;
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-border pb-5">
-        <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{t("operational.admin_email_logs.messaging_caef62")}</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("operational.admin_email_logs.email_logs_a8c386")}</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">{t("operational.admin_email_logs.inspect_transactional_email_delivery_and_f_bc5c59")}</p>
-      </div>
+    <AdminPage>
+      <AdminHeader
+        eyebrow={t("operational.admin_email_logs.messaging_caef62")}
+        title={t("operational.admin_email_logs.email_logs_a8c386")}
+        description={t("operational.admin_email_logs.inspect_transactional_email_delivery_and_f_bc5c59")}
+        meta="Transactional mail"
+      />
 
-      <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card sm:grid-cols-3">
-        <div className="px-4 py-3.5"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("operational.admin_email_logs.total_b25928")}</p><p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{logs.length}</p></div>
-        <div className="border-l border-border px-4 py-3.5"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("operational.admin_email_logs.sent_35f49d")}</p><p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{sent}</p></div>
-        <div className="border-l border-border px-4 py-3.5"><p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("operational.admin_email_logs.failed_09fef5")}</p><p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{failed}</p></div>
-      </div>
+      <AdminStatsGrid columns={3} stats={[
+        { label: t("operational.admin_email_logs.total_b25928"), value: logs.length, icon: Mail },
+        { label: t("operational.admin_email_logs.sent_35f49d"), value: sent, icon: Send, className: 'text-emerald-500' },
+        { label: t("operational.admin_email_logs.failed_09fef5"), value: failed, icon: TriangleAlert, className: failed ? 'text-destructive' : undefined },
+      ]} />
       {loading ?
-      <div className="flex justify-center py-20"><div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div> :
+      <AdminLoading label="Loading email logs…" /> :
 
-      <DataTable columns={columns} data={logs} searchKeys={['to', 'subject', 'template_type']} emptyMessage="No email logs yet." />
+      <DataTable columns={columns} data={logs} searchKeys={['to', 'subject', 'template_type']} emptyMessage="No email logs yet." searchPlaceholder="Search recipient, subject or template…" />
       }
-    </div>);
+    </AdminPage>);
 
 }

@@ -3,6 +3,7 @@ import { rootminster } from '@/api/rootminsterClient';
 import DataTable from '@/components/DataTable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
+import { AdminHeader, AdminLoading, AdminPage } from '@/components/AdminPageShell';
 
 export default function AdminAuditLogs() {const { t } = useTranslation();
   const [logs, setLogs] = useState([]);
@@ -56,14 +57,15 @@ export default function AdminAuditLogs() {const { t } = useTranslation();
   ), [logs, filterAction, filterEntity, filterRole]);
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-border pb-5">
-        <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{t("operational.admin_audit_logs.security_compliance_081f97")}</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("operational.admin_audit_logs.audit_logs_676e58")}</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">{t("operational.admin_audit_logs.trace_administrative_actions_system_events_9de7b0")}</p>
-      </div>
+    <AdminPage>
+      <AdminHeader
+        eyebrow={t("operational.admin_audit_logs.security_compliance_081f97")}
+        title={t("operational.admin_audit_logs.audit_logs_676e58")}
+        description={t("operational.admin_audit_logs.trace_administrative_actions_system_events_9de7b0")}
+        meta={`${logs.length} events loaded`}
+      />
       {loading ?
-      <div className="flex justify-center py-20"><div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div> :
+      <AdminLoading label="Loading audit events…" /> :
 
       <div className="space-y-4">
           <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 sm:flex-row">
@@ -92,6 +94,6 @@ export default function AdminAuditLogs() {const { t } = useTranslation();
           <DataTable columns={columns} data={filtered} searchKeys={['actor_email', 'action', 'description']} emptyMessage="No audit logs match your filters." />
         </div>
       }
-    </div>);
+    </AdminPage>);
 
 }

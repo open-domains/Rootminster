@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-export default function DataTable({ columns, data, searchKeys = [], emptyMessage = 'No records found', pageSize = 20 }) {
+export default function DataTable({ columns, data, searchKeys = [], emptyMessage = 'No records found', pageSize = 20, searchPlaceholder = 'Search...', density = 'comfortable' }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
@@ -12,19 +12,23 @@ export default function DataTable({ columns, data, searchKeys = [], emptyMessage
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const cellPadding = density === 'compact' ? 'px-4 py-2' : 'px-4 py-3';
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden shadow-card">
       {searchKeys.length > 0 && (
         <div className="p-3 sm:p-4 border-b border-border">
-          <div className="relative w-full sm:max-w-xs">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(0); }}
-              className="pl-9 h-8 text-sm"
-            />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                placeholder={searchPlaceholder}
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(0); }}
+                className="pl-9 h-8 text-sm"
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">{filtered.length} of {data.length} records</span>
           </div>
         </div>
       )}
@@ -46,7 +50,7 @@ export default function DataTable({ columns, data, searchKeys = [], emptyMessage
               paginated.map((row, i) => (
                 <tr key={row.id || i} className="hover:bg-muted/50 transition-colors">
                   {columns.map(col => (
-                    <td key={col.key} className="px-4 py-3 text-foreground">
+                    <td key={col.key} className={`${cellPadding} text-foreground align-top`}>
                       {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
                     </td>
                   ))}

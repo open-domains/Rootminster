@@ -7,6 +7,7 @@ import {
   AlertTriangle, AtSign, ChevronRight, CircleUserRound, Database,
   Globe2, Search, Server, ShieldCheck, UserRound,
 } from 'lucide-react';
+import { AdminHeader, AdminLoading, AdminPage, AdminStatsGrid } from '@/components/AdminPageShell';
 
 const normalize = value => String(value || '').trim().toLowerCase().replace(/\.+$/, '');
 const belongsTo = (record, ownership) => {
@@ -145,32 +146,21 @@ export default function AdminSubdomains() {
   const selectedUser = selectedItem?.user;
 
   return (
-    <div className="space-y-6">
-      <div className="border-b border-border pb-5">
-        <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Platform ownership</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">User subdomains</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          View every owned subdomain, its account holder, and the DNS records inside its namespace.
-        </p>
-      </div>
+    <AdminPage>
+      <AdminHeader
+        eyebrow="Platform ownership"
+        title="User subdomains"
+        description="View every owned subdomain, its account holder, and the DNS records inside its namespace."
+        meta={`${zones.length} root zones`}
+      />
 
       {!loading && (
-        <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card lg:grid-cols-4">
-          {[
-            { label: 'Subdomains', value: subdomains.length, icon: Globe2 },
-            { label: 'Active', value: activeCount, icon: ShieldCheck },
-            { label: 'Suspended', value: suspendedCount, icon: AlertTriangle },
-            { label: 'DNS records', value: recordCount, icon: Database },
-          ].map((item, index) => (
-            <div key={item.label} className={`${index > 0 ? 'border-l border-border' : ''} px-4 py-3.5`}>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <item.icon size={13} />
-                <span className="text-[10px] font-medium uppercase tracking-wide">{item.label}</span>
-              </div>
-              <p className="mt-1.5 text-xl font-semibold tabular-nums text-foreground">{item.value}</p>
-            </div>
-          ))}
-        </div>
+        <AdminStatsGrid stats={[
+          { label: 'Subdomains', value: subdomains.length, icon: Globe2 },
+          { label: 'Active', value: activeCount, icon: ShieldCheck, className: 'text-emerald-500' },
+          { label: 'Suspended', value: suspendedCount, icon: AlertTriangle, className: suspendedCount ? 'text-amber-500' : undefined },
+          { label: 'DNS records', value: recordCount, icon: Database },
+        ]} />
       )}
 
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:flex-row">
@@ -201,9 +191,7 @@ export default function AdminSubdomains() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
+        <AdminLoading label="Loading user subdomains…" />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3 text-xs text-muted-foreground">
@@ -322,6 +310,6 @@ export default function AdminSubdomains() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </AdminPage>
   );
 }
