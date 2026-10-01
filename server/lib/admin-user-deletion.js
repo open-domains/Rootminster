@@ -12,6 +12,47 @@ export function normaliseUserDeletionIds(value) {
   return ids;
 }
 
+export function userDeletionTombstones(users, actor = {}) {
+  return users.map((user) => ({
+    user_id: user.id,
+    user_email: String(user.email || '').toLowerCase(),
+    user_role: user.role || null,
+    deleted_by_id: actor.id || null,
+    deleted_by_email: actor.email || null,
+  }));
+}
+
+export async function ensureDeletedUserTombstoneTable(db = pool) {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS deleted_user_tombstones (
+      user_id uuid PRIMARY KEY,
+      user_email citext NOT NULL,
+      user_role text,
+      deleted_at timestamptz NOT NULL DEFAULT now(),
+      deleted_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+      deleted_by_email citext,
+      source text NOT NULL DEFAULT 'account_deletion'
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS deleted_user_tombstones_email_idx ON deleted_user_tombstones(lower(user_email))`);
+}
+
+export async function upsertDeletedUserTombstones(db, rows) {
+  if (!rows.length) return { inserted: 0 };
+  await ensureDeletedUserTombstoneTable(db);
+  const result = await db.query(
+    `INSERT INTO deleted_user_tombstones(user_id, user_email, user_role, deleted_by_id, deleted_by_email)
+     SELECT * FROM jsonb_to_recordset($1::jsonb) AS x(user_id uuid, user_email citext, user_role text, deleted_by_id uuid, deleted_by_email citext)
+     ON CONFLICT (user_id) DO UPDATE SET
+       user_email = excluded.user_email,
+       user_role = excluded.user_role,
+       deleted_by_id = COALESCE(deleted_user_tombstones.deleted_by_id, excluded.deleted_by_id),
+       deleted_by_email = COALESCE(deleted_user_tombstones.deleted_by_email, excluded.deleted_by_email)`,
+    [JSON.stringify(rows)],
+  );
+  return { inserted: result.rowCount || 0 };
+}
+
 async function deleteCloudflareRecords(records) {
   const failures = [];
   const queue = [...records];
@@ -62,6 +103,8 @@ export async function deleteUserAccounts(rawIds, actor) {
   const deleted = await transaction(async (client) => {
     const locked = await client.query('SELECT id FROM users WHERE id = ANY($1::uuid[]) FOR UPDATE', [userIds]);
     if (locked.rowCount !== userIds.length) throw Object.assign(new Error('One or more selected users no longer exist'), { status: 404 });
+
+    await upsertDeletedUserTombstones(client, userDeletionTombstones(targetResult.rows, actor));
 
     const records = await client.query(
       `WITH target_records AS MATERIALIZED (

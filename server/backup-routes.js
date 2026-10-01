@@ -60,7 +60,7 @@ export async function registerBackupRoutes(app) {
     if (!id) return;
     if (request.body?.confirmation !== 'RESTORE') return reply.code(400).send({ error: 'Enter RESTORE to confirm this destructive operation' });
     if (!verifyCurrentTotp(actor, request.body?.totp_code)) return reply.code(403).send({ error: 'Enter a current two-factor authentication code' });
-    return restoreBackup(id, actor);
+    return restoreBackup(id, actor, { data_groups: request.body?.data_groups });
   });
 
   app.delete('/api/admin/backups/:id', async (request, reply) => {

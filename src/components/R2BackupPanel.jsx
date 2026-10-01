@@ -33,6 +33,7 @@ export default function R2BackupPanel({ moduleEnabled }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [confirmation, setConfirmation] = useState('');
   const [totpCode, setTotpCode] = useState('');
+  const [restoreGroups, setRestoreGroups] = useState(['all']);
 
   const load = async () => {
     try { setStatus(await rootminster.backups.status()); }
@@ -48,18 +49,28 @@ export default function R2BackupPanel({ moduleEnabled }) {
   };
 
   const restore = async () => {
-    if (!restoreTarget || confirmation !== 'RESTORE' || !/^\d{6}$/.test(totpCode)) return;
+    if (!restoreTarget || confirmation !== 'RESTORE' || !/^\d{6}$/.test(totpCode) || !restoreGroups.length) return;
     const target = restoreTarget;
+    const groups = restoreGroups;
     setRestoreTarget(null);
     setBusy(`restore:${target.id}`);
     try {
-      await rootminster.backups.restore(target.id, confirmation, totpCode);
-      toast.success('Database restored. Sign in again to continue.');
+      await rootminster.backups.restore(target.id, confirmation, totpCode, groups);
+      toast.success(groups.includes('all') ? 'Database restored. Sign in again to continue.' : 'Selected backup data restored. Sign in again to continue.');
       window.location.assign('/login');
     } catch (error) {
       toast.error(error?.response?.data?.error || error.message || 'Restore failed');
       setBusy('');
-    } finally { setConfirmation(''); setTotpCode(''); }
+    } finally { setConfirmation(''); setTotpCode(''); setRestoreGroups(['all']); }
+  };
+
+  const toggleRestoreGroup = (group) => {
+    setRestoreGroups((current) => {
+      if (group === 'all') return ['all'];
+      const withoutAll = current.filter((item) => item !== 'all');
+      const next = withoutAll.includes(group) ? withoutAll.filter((item) => item !== group) : [...withoutAll, group];
+      return next.length ? next : ['all'];
+    });
   };
 
   const ready = moduleEnabled && status?.configured && status?.encryption_configured;
@@ -95,12 +106,30 @@ export default function R2BackupPanel({ moduleEnabled }) {
         {!backups.length ? <div className="px-4 py-8 text-center text-xs text-muted-foreground">No backups have been created yet.</div> : <div className="divide-y divide-border">
           {backups.map((backup) => <div key={backup.id} className={`grid gap-3 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center ${backup.deleted_at ? 'opacity-50' : ''}`}>
             <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-xs font-medium text-foreground">{backup.file_name}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${backup.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : backup.status === 'failed' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-300'}`}>{backup.deleted_at ? 'deleted' : backup.status}</span>{backup.verified_at && <span className="flex items-center gap-1 text-[10px] text-emerald-400"><CheckCircle2 size={11} /> Verified</span>}</div><p className="mt-1 text-[11px] text-muted-foreground">{date(backup.started_at)} · {bytes(backup.size_bytes)} · {String(backup.trigger).replace('_', ' ')}</p>{backup.error_message && <p className="mt-1 line-clamp-2 text-[11px] text-red-400">{backup.error_message}</p>}</div>
-            {backup.status === 'completed' && !backup.deleted_at && <div className="flex flex-wrap gap-1"><Button type="button" size="sm" variant="ghost" title="Verify backup" onClick={() => action(`verify:${backup.id}`, () => rootminster.backups.verify(backup.id), 'Backup successfully verified')} disabled={Boolean(busy)}>{busy === `verify:${backup.id}` ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}</Button><Button type="button" size="sm" variant="ghost" title="Download encrypted archive" onClick={() => window.location.assign(rootminster.backups.downloadUrl(backup.id))} disabled={Boolean(busy)}><Download size={14} /></Button><Button type="button" size="sm" variant="ghost" title="Restore backup" onClick={() => { setRestoreTarget(backup); setConfirmation(''); setTotpCode(''); }} disabled={Boolean(busy)}><RefreshCw size={14} /></Button><Button type="button" size="sm" variant="ghost" title="Delete backup" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(backup)} disabled={Boolean(busy)}><Trash2 size={14} /></Button></div>}
+            {backup.status === 'completed' && !backup.deleted_at && <div className="flex flex-wrap gap-1"><Button type="button" size="sm" variant="ghost" title="Verify backup" onClick={() => action(`verify:${backup.id}`, () => rootminster.backups.verify(backup.id), 'Backup successfully verified')} disabled={Boolean(busy)}>{busy === `verify:${backup.id}` ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}</Button><Button type="button" size="sm" variant="ghost" title="Download encrypted archive" onClick={() => window.location.assign(rootminster.backups.downloadUrl(backup.id))} disabled={Boolean(busy)}><Download size={14} /></Button><Button type="button" size="sm" variant="ghost" title="Restore backup" onClick={() => { setRestoreTarget(backup); setConfirmation(''); setTotpCode(''); setRestoreGroups(['all']); }} disabled={Boolean(busy)}><RefreshCw size={14} /></Button><Button type="button" size="sm" variant="ghost" title="Delete backup" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(backup)} disabled={Boolean(busy)}><Trash2 size={14} /></Button></div>}
           </div>)}
         </div>}
       </div>
 
-      <AlertDialog open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) { setRestoreTarget(null); setConfirmation(''); setTotpCode(''); } }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Restore this database backup?</AlertDialogTitle><AlertDialogDescription>Rootminster will create a safety backup, enter maintenance mode, restore the archive and revoke all active sessions and access grants.</AlertDialogDescription></AlertDialogHeader><div className="space-y-3"><div className="space-y-2"><label className="text-xs font-medium text-foreground">Enter <strong>RESTORE</strong> to continue</label><Input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" /></div><div className="space-y-2"><label className="text-xs font-medium text-foreground">Current 2FA code</label><Input value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" /></div></div><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={restore} disabled={confirmation !== 'RESTORE' || !/^\d{6}$/.test(totpCode)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Restore database</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) { setRestoreTarget(null); setConfirmation(''); setTotpCode(''); setRestoreGroups(['all']); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore this backup?</AlertDialogTitle>
+            <AlertDialogDescription>Rootminster will create a safety backup, enter maintenance mode, restore the selected data and revoke all active sessions and access grants. Deleted-user tombstones are always preserved so approved account deletions are not undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-border bg-muted/20 p-3">
+              <p className="text-xs font-medium text-foreground">Data to restore</p>
+              <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                {[['all', 'Full database'], ['users', 'Users and deletion records'], ['dns', 'DNS and subdomain records'], ['requests', 'Requests and reviews'], ['settings', 'Platform settings'], ['backups', 'Backup history']].map(([value, label]) => <label key={value} className="flex items-center gap-2"><input type="checkbox" checked={restoreGroups.includes(value)} onChange={() => toggleRestoreGroup(value)} /> {label}</label>)}
+              </div>
+            </div>
+            <div className="space-y-2"><label className="text-xs font-medium text-foreground">Enter <strong>RESTORE</strong> to continue</label><Input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" /></div>
+            <div className="space-y-2"><label className="text-xs font-medium text-foreground">Current 2FA code</label><Input value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" /></div>
+          </div>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={restore} disabled={confirmation !== 'RESTORE' || !/^\d{6}$/.test(totpCode) || !restoreGroups.length} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Restore backup</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete this backup?</AlertDialogTitle><AlertDialogDescription>The encrypted archive will be permanently deleted from Cloudflare R2. This cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { const target = deleteTarget; setDeleteTarget(null); action(`delete:${target.id}`, () => rootminster.backups.delete(target.id), 'Backup deleted'); }}>Delete backup</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>

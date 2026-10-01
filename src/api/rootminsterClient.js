@@ -180,7 +180,7 @@ export const rootminster = {
     async testR2() { return request('/api/admin/backups/r2/test', { method: 'POST', body: {} }); },
     async create() { return request('/api/admin/backups', { method: 'POST', body: {} }); },
     async verify(id) { return request(`/api/admin/backups/${encodeURIComponent(id)}/verify`, { method: 'POST', body: {} }); },
-    async restore(id, confirmation, totpCode) { return request(`/api/admin/backups/${encodeURIComponent(id)}/restore`, { method: 'POST', body: { confirmation, totp_code: totpCode } }); },
+    async restore(id, confirmation, totpCode, dataGroups = ['all']) { return request(`/api/admin/backups/${encodeURIComponent(id)}/restore`, { method: 'POST', body: { confirmation, totp_code: totpCode, data_groups: dataGroups } }); },
     async delete(id) { return request(`/api/admin/backups/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
     downloadUrl(id) { return `/api/admin/backups/${encodeURIComponent(id)}/download`; },
   },

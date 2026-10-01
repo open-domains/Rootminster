@@ -10,11 +10,34 @@ import { pool, withAdvisoryLock } from './database.js';
 import { getModuleConfig } from './module-settings.js';
 import { sendEmail } from './mail.js';
 import { createR2Client, r2Limits } from './r2.js';
+import { ensureDeletedUserTombstoneTable, upsertDeletedUserTombstones } from './lib/admin-user-deletion.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Backups' };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let restoreInProgress = false;
+
+export const RESTORE_DATA_GROUPS = Object.freeze({
+  users: ['users', 'account_deletion_requests', 'deleted_user_tombstones'],
+  dns: ['entity_records'],
+  requests: ['entity_records'],
+  settings: ['entity_records'],
+  backups: ['backup_runs', 'backup_usage_monthly'],
+});
+
+export function normaliseRestoreOptions(options = {}) {
+  if (Array.isArray(options?.data_groups) && !options.data_groups.length) throw Object.assign(new Error('Choose at least one data group to restore'), { status: 400 });
+  const groups = Array.isArray(options?.data_groups) ? [...new Set(options.data_groups.map((group) => String(group || '').trim()).filter(Boolean))] : [];
+  if (!groups.length || groups.includes('all')) return { mode: 'full', data_groups: ['all'] };
+  const unknown = groups.filter((group) => !RESTORE_DATA_GROUPS[group]);
+  if (unknown.length) throw Object.assign(new Error(`Unknown restore data group: ${unknown.join(', ')}`), { status: 400 });
+  return { mode: 'selective', data_groups: groups };
+}
+
+export function restoreTablesForOptions(options) {
+  if (options?.mode !== 'selective') return [];
+  return [...new Set(options.data_groups.flatMap((group) => RESTORE_DATA_GROUPS[group] || []))];
+}
 
 function databaseEnvironment() {
   const url = new URL(config.databaseUrl);
@@ -39,6 +62,14 @@ function execute(command, args, options = {}) {
     child.once('error', (error) => reject(Object.assign(new Error(`${command} could not start: ${error.message}`), { cause: error })));
     child.once('close', (code) => code === 0 ? resolve() : reject(new Error(`${command} failed (${code}): ${errors.trim() || 'No diagnostic output'}`)));
   });
+}
+
+function maintenanceDatabaseEnvironment(databaseName = 'postgres') {
+  return { ...databaseEnvironment(), PGDATABASE: databaseName };
+}
+
+function quoteIdentifier(identifier) {
+  return `"${String(identifier).replaceAll('"', '""')}"`;
 }
 
 function monthKey(date = new Date()) {
@@ -266,16 +297,97 @@ export async function deleteBackup(id, actor) {
   return { success: true };
 }
 
-async function restoreArchive(record, actor) {
+async function currentDeletedUserTombstones() {
+  await ensureDeletedUserTombstoneTable(pool);
+  const result = await pool.query('SELECT user_id, user_email, user_role, deleted_by_id, deleted_by_email FROM deleted_user_tombstones');
+  return result.rows.map((row) => ({
+    user_id: row.user_id,
+    user_email: String(row.user_email || '').toLowerCase(),
+    user_role: row.user_role || null,
+    deleted_by_id: row.deleted_by_id || null,
+    deleted_by_email: row.deleted_by_email || null,
+  }));
+}
+
+async function suppressRestoredDeletedUsers(tombstones) {
+  if (!tombstones.length) return { deleted_users_suppressed: 0 };
+  await upsertDeletedUserTombstones(pool, tombstones);
+  const userIds = tombstones.map((row) => row.user_id);
+  const emails = tombstones.map((row) => String(row.user_email || '').toLowerCase()).filter(Boolean);
+  const users = await pool.query('SELECT id FROM users WHERE id = ANY($1::uuid[]) OR lower(email) = ANY($2::text[])', [userIds, emails]);
+  if (!users.rowCount) return { deleted_users_suppressed: 0 };
+  await pool.query(
+    `WITH target_records AS MATERIALIZED (
+       SELECT id::text
+       FROM entity_records
+       WHERE
+         (entity_type IN ('DnsRecord', 'SubdomainOwnership')
+           AND ((data->>'owner_id') = ANY($1::text[]) OR lower(data->>'owner_email') = ANY($2::text[])))
+         OR (entity_type IN ('SubdomainRequest', 'EditRequest')
+           AND ((data->>'requester_id') = ANY($1::text[]) OR lower(data->>'requester_email') = ANY($2::text[])))
+         OR (entity_type IN ('Donation', 'ApiToken', 'TrustedDevice', 'DeviceCode')
+           AND ((data->>'user_id') = ANY($1::text[]) OR lower(data->>'user_email') = ANY($2::text[]) OR lower(data->>'email') = ANY($2::text[])))
+         OR (entity_type = 'AbuseReport' AND lower(data->>'reporter_email') = ANY($2::text[]))
+     ), related_records AS MATERIALIZED (
+       SELECT id::text
+       FROM entity_records
+       WHERE
+         (entity_type = 'RequestComment' AND (lower(data->>'author_email') = ANY($2::text[]) OR data->>'request_id' IN (SELECT id FROM target_records)))
+         OR (entity_type = 'SafetyAssessment' AND data->>'request_id' IN (SELECT id FROM target_records))
+         OR (entity_type = 'EmailLog' AND (lower(data->>'to') = ANY($2::text[]) OR data->>'related_entity_id' IN (SELECT id FROM target_records)))
+     )
+     DELETE FROM entity_records
+     WHERE id::text IN (SELECT id FROM target_records)
+        OR id::text IN (SELECT id FROM related_records)
+        OR (entity_type = 'AuditLog' AND (lower(data->>'actor_email') = ANY($2::text[])
+          OR data->>'entity_id' IN (SELECT id FROM target_records)
+          OR data->>'entity_id' IN (SELECT id FROM related_records)))`,
+    [userIds, emails],
+  );
+  await pool.query('UPDATE backup_runs SET created_by_id = NULL, created_by_email = NULL WHERE created_by_id = ANY($1::uuid[]) OR lower(created_by_email) = ANY($2::text[])', [userIds, emails]);
+  const deleted = await pool.query('DELETE FROM users WHERE id = ANY($1::uuid[]) OR lower(email) = ANY($2::text[])', [userIds, emails]);
+  return { deleted_users_suppressed: deleted.rowCount || 0 };
+}
+
+async function revokeRestoredSessions() {
+  await pool.query('DELETE FROM sessions; DELETE FROM password_resets; DELETE FROM email_verifications; DELETE FROM oauth_states; DELETE FROM mcp_oauth_codes; DELETE FROM mcp_oauth_consents; UPDATE mcp_oauth_tokens SET revoked_at = now() WHERE revoked_at IS NULL;');
+}
+
+async function restoreSelectiveTables(dumpPath, directory, tables) {
+  const tempDatabase = `rootminster_restore_${crypto.randomUUID().replaceAll('-', '_')}`;
+  const env = maintenanceDatabaseEnvironment();
+  try {
+    await execute('createdb', [tempDatabase], { env });
+    await execute('pg_restore', ['--exit-on-error', '--no-owner', '--no-acl', '--dbname', tempDatabase, dumpPath], { env: maintenanceDatabaseEnvironment(tempDatabase) });
+    for (const table of tables) {
+      const dataPath = join(directory, `${table}.sql`);
+      await execute('pg_dump', ['--data-only', '--no-owner', '--no-acl', '--table', table, '--file', dataPath, tempDatabase], { env: maintenanceDatabaseEnvironment(tempDatabase) });
+      await execute('psql', ['--set', 'ON_ERROR_STOP=1', '--dbname', databaseEnvironment().PGDATABASE, '--command', `TRUNCATE TABLE ${quoteIdentifier(table)} RESTART IDENTITY CASCADE`]);
+      await execute('psql', ['--set', 'ON_ERROR_STOP=1', '--dbname', databaseEnvironment().PGDATABASE, '--file', dataPath]);
+    }
+  } finally {
+    await execute('dropdb', ['--if-exists', tempDatabase], { env }).catch(() => {});
+  }
+}
+
+async function restoreArchive(record, actor, options = normaliseRestoreOptions()) {
   return withDownloadedBackup(record, async ({ directory, encryptedPath }) => {
     const dumpPath = join(directory, 'restore.dump');
+    const tombstones = await currentDeletedUserTombstones();
     await decryptBackup(encryptedPath, dumpPath);
-    await execute('pg_restore', ['--clean', '--if-exists', '--single-transaction', '--exit-on-error', '--no-owner', '--no-acl', '--dbname', databaseEnvironment().PGDATABASE, dumpPath]);
+    const restoredTables = restoreTablesForOptions(options);
+    if (options.mode === 'selective') {
+      await restoreSelectiveTables(dumpPath, directory, restoredTables);
+    } else {
+      await execute('pg_restore', ['--clean', '--if-exists', '--single-transaction', '--exit-on-error', '--no-owner', '--no-acl', '--dbname', databaseEnvironment().PGDATABASE, dumpPath]);
+    }
     const schema = await readFile(join(here, 'schema.sql'), 'utf8');
     await pool.query(schema);
-    await pool.query('DELETE FROM sessions; DELETE FROM password_resets; DELETE FROM email_verifications; DELETE FROM oauth_states; DELETE FROM mcp_oauth_codes; DELETE FROM mcp_oauth_consents; UPDATE mcp_oauth_tokens SET revoked_at = now() WHERE revoked_at IS NULL;');
-    await audit('backup_restored', `Database restored from R2 backup ${record.file_name} by ${actor.email}; all sessions and access grants were revoked`, systemActor);
-    return { success: true, sessions_revoked: true };
+    const suppression = await suppressRestoredDeletedUsers(tombstones);
+    await revokeRestoredSessions();
+    const modeLabel = options.mode === 'selective' ? `selected data (${options.data_groups.join(', ')})` : 'database';
+    await audit('backup_restored', `${modeLabel} restored from R2 backup ${record.file_name} by ${actor.email}; all sessions and access grants were revoked; ${suppression.deleted_users_suppressed} deleted user account(s) suppressed`, systemActor);
+    return { success: true, sessions_revoked: true, restore_mode: options.mode, data_groups: options.data_groups, restored_tables: restoredTables, ...suppression };
   });
 }
 
@@ -284,15 +396,16 @@ async function usageForCurrentMonth() {
   return result.rows[0] || { month_key: monthKey(), class_a_operations: 0, class_b_operations: 0 };
 }
 
-export async function restoreBackup(id, actor) {
+export async function restoreBackup(id, actor, rawOptions = {}) {
   if (restoreInProgress) throw Object.assign(new Error('A restore is already running'), { status: 409 });
+  const options = normaliseRestoreOptions(rawOptions);
   const selected = await backupRecord(id);
   const result = await withAdvisoryLock('rootminster:backup-operation', async () => {
     restoreInProgress = true;
     try {
       const safetyBackup = await performBackup({ actor, trigger: 'pre_restore', protectedObjectKey: selected.object_key });
       const usageBeforeRestore = await usageForCurrentMonth();
-      const restored = await restoreArchive(selected, actor);
+      const restored = await restoreArchive(selected, actor, options);
       await pool.query(
         `INSERT INTO backup_usage_monthly(month_key, class_a_operations, class_b_operations, updated_at)
          VALUES ($1, $2, $3, now()) ON CONFLICT (month_key) DO UPDATE SET
