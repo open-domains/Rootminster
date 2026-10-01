@@ -395,6 +395,19 @@ CREATE INDEX IF NOT EXISTS account_deletion_requests_status_idx
 CREATE UNIQUE INDEX IF NOT EXISTS account_deletion_requests_pending_user_unique
   ON account_deletion_requests(user_id) WHERE status = 'pending' AND user_id IS NOT NULL;
 
+CREATE TABLE IF NOT EXISTS deleted_user_tombstones (
+  user_id uuid PRIMARY KEY,
+  user_email citext NOT NULL,
+  user_role text,
+  deleted_at timestamptz NOT NULL DEFAULT now(),
+  deleted_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  deleted_by_email citext,
+  source text NOT NULL DEFAULT 'account_deletion'
+);
+
+CREATE INDEX IF NOT EXISTS deleted_user_tombstones_email_idx
+  ON deleted_user_tombstones(lower(user_email));
+
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version text PRIMARY KEY,
   applied_at timestamptz NOT NULL DEFAULT now()
