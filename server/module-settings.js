@@ -44,9 +44,18 @@ export const MODULE_DEFINITIONS = Object.freeze({
     name: 'Observer', description: 'Policy scanner integration for approved subdomains, findings and screenshot evidence.', defaultEnabled: false,
     fields: [
       { key: 'shared_secret', label: 'Observer shared secret', type: 'secret', required: true, description: 'Must match OBSERVER_SHARED_SECRET in Observer.' },
-      { key: 'observer_url', label: 'Observer base URL', type: 'url', required: true, description: 'Staff-facing Observer origin protected by Cloudflare Access.' },
+      { key: 'observer_url', label: 'Observer staff URL', type: 'url', required: true, description: 'Staff-facing Observer origin protected by Cloudflare Access.' },
+      { key: 'observer_internal_url', label: 'Observer internal URL', type: 'url', required: true, description: 'Internal URL Rootminster uses to trigger Observer scans, for example http://observer:8080.' },
     ],
-    env: () => ({ enabled: Boolean(process.env.OBSERVER_SHARED_SECRET), shared_secret: process.env.OBSERVER_SHARED_SECRET || '', observer_url: process.env.OBSERVER_URL || 'https://observer.open-domains.com' }),
+    env: () => {
+      const observerUrl = process.env.OBSERVER_URL || 'https://observer.open-domains.com';
+      return {
+        enabled: Boolean(process.env.OBSERVER_SHARED_SECRET),
+        shared_secret: process.env.OBSERVER_SHARED_SECRET || '',
+        observer_url: observerUrl,
+        observer_internal_url: process.env.OBSERVER_INTERNAL_URL || observerUrl,
+      };
+    },
   },
   glitchtip: {
     name: 'GlitchTip monitoring', description: 'Optional privacy-conscious browser and server error reporting with browser performance traces.', defaultEnabled: false,
