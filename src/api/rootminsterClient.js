@@ -171,6 +171,7 @@ export const rootminster = {
   },
   observer: {
     async findings() { return request('/api/admin/observer/findings'); },
+    async scanSubdomain(ownershipId) { return request('/api/admin/observer/scan-subdomain', { method: 'POST', body: { ownership_id: ownershipId } }); },
   },
   docker: {
     async projects() { return request('/api/admin/docker/projects'); },

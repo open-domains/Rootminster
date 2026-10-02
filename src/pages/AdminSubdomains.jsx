@@ -3,11 +3,13 @@ import { rootminster } from '@/api/rootminsterClient';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 import {
   AlertTriangle, AtSign, ChevronRight, CircleUserRound, Database,
-  Globe2, Search, Server, ShieldCheck, UserRound,
+  Globe2, Loader2, Search, Server, ShieldCheck, UserRound,
 } from 'lucide-react';
 import { AdminHeader, AdminLoading, AdminPage, AdminStatsGrid } from '@/components/AdminPageShell';
+import { toast } from 'sonner';
 
 const normalize = value => String(value || '').trim().toLowerCase().replace(/\.+$/, '');
 const belongsTo = (record, ownership) => {
@@ -85,6 +87,7 @@ export default function AdminSubdomains() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [scanningId, setScanningId] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -144,6 +147,19 @@ export default function AdminSubdomains() {
   const recordCount = subdomains.reduce((total, item) => total + item.records.length, 0);
   const selectedItem = selected ? subdomains.find(item => item.id === selected.id) || selected : null;
   const selectedUser = selectedItem?.user;
+
+  const triggerObserverScan = async (item) => {
+    if (!item?.id || scanningId) return;
+    setScanningId(item.id);
+    try {
+      await rootminster.observer.scanSubdomain(item.id);
+      toast.success(`Observer scan triggered for ${item.full_name}`);
+    } catch (err) {
+      toast.error(err.message || 'Could not trigger Observer scan');
+    } finally {
+      setScanningId('');
+    }
+  };
 
   return (
     <AdminPage>
@@ -294,6 +310,26 @@ export default function AdminSubdomains() {
                     <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{selectedItem.owner_id}</p>
                   </div>
                 </div>
+              </section>
+
+              <section className="rounded-lg border border-border bg-card p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-foreground">Observer scan</h2>
+                    <p className="mt-1 text-xs text-muted-foreground">Trigger Observer to scan this subdomain for policy issues.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2"
+                    disabled={selectedItem.status === 'suspended' || scanningId === selectedItem.id}
+                    onClick={() => triggerObserverScan(selectedItem)}
+                  >
+                    {scanningId === selectedItem.id ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                    {scanningId === selectedItem.id ? 'Triggering…' : 'Trigger Observer scan'}
+                  </Button>
+                </div>
+                {selectedItem.status === 'suspended' && <p className="mt-3 text-xs text-amber-500">Suspended subdomains cannot be scanned manually.</p>}
               </section>
 
               <section>
