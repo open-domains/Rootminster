@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { signingHeaders, observerScanUrl, scanObserverTarget, scanAllObserverTargets } from './observer.js';
+import { signingHeaders, observerScanUrl, scanObserverTarget, scanAllObserverTargets, scanObserverOwnershipTarget } from './observer.js';
 
 const observerSettings = {
   enabled: true,
@@ -50,4 +50,50 @@ test('scanAllObserverTargets asks Observer to scan every Rootminster target', as
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'http://observer:8080/api/scan-all');
   assert.equal(calls[0].options.method, 'POST');
+});
+
+test('scanObserverOwnershipTarget lets staff trigger Observer for a chosen active subdomain', async () => {
+  const calls = [];
+  const result = await scanObserverOwnershipTarget('owned-1', {
+    settings: observerSettings,
+    storeImpl: {
+      get: async (entity, id) => {
+        assert.equal(entity, 'SubdomainOwnership');
+        assert.equal(id, 'owned-1');
+        return { id, full_name: 'Manual.Example.Test', status: 'active' };
+      },
+    },
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, json: async () => ({ queued: true }) };
+    },
+  });
+
+  assert.deepEqual(result, { queued: true });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, 'http://observer:8080/api/scan');
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    hostname: 'manual.example.test',
+    url: 'https://manual.example.test',
+  });
+});
+
+test('scanObserverOwnershipTarget refuses missing or suspended ownership records', async () => {
+  await assert.rejects(
+    () => scanObserverOwnershipTarget('missing', {
+      settings: observerSettings,
+      storeImpl: { get: async () => null },
+      fetchImpl: async () => { throw new Error('fetch should not run'); },
+    }),
+    /Subdomain not found/,
+  );
+
+  await assert.rejects(
+    () => scanObserverOwnershipTarget('suspended', {
+      settings: observerSettings,
+      storeImpl: { get: async () => ({ id: 'suspended', full_name: 'suspended.example.test', status: 'suspended' }) },
+      fetchImpl: async () => { throw new Error('fetch should not run'); },
+    }),
+    /Only active subdomains can be scanned/,
+  );
 });

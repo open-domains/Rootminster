@@ -199,7 +199,8 @@ const AuthenticatedApp = () => {
         {/* Staff + Admin: Abuse Reports */}
         <Route element={<RoleProtectedRoute allowedRoles={['admin', 'staff']} />}>
           <Route path="/admin-abuse-reports" element={<AdminAbuseReports />} />
-          <Route path="/admin-observer" element={<AdminObserverFindings />} />
+          <Route path="/staff-observer" element={<AdminObserverFindings />} />
+          <Route path="/admin-observer" element={<Navigate to="/staff-observer" replace />} />
         </Route>
 
         {/* Admin-only Routes */}

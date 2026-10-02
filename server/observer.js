@@ -79,6 +79,14 @@ export async function scanObserverTarget(record, options = {}) {
   return response.json ? response.json() : { ok: true };
 }
 
+export async function scanObserverOwnershipTarget(ownershipId, options = {}) {
+  const storeImpl = options.storeImpl || store;
+  const ownership = await storeImpl.get('SubdomainOwnership', ownershipId);
+  if (!ownership) throw Object.assign(new Error('Subdomain not found'), { status: 404 });
+  if (ownership.status === 'suspended') throw Object.assign(new Error('Only active subdomains can be scanned'), { status: 400 });
+  return scanObserverTarget(ownership, options);
+}
+
 export async function scanAllObserverTargets(options = {}) {
   const settings = options.settings || await getModuleConfig('observer', { fresh: true });
   if (!settings.enabled) return { skipped: true, reason: 'observer_disabled' };
@@ -144,5 +152,27 @@ export async function registerObserverRoutes(app) {
     if (!actor || !['admin', 'staff'].includes(actor.role)) return reply.code(403).send({ error: 'Forbidden' });
     const findings = await store.list('ObserverFinding', '-created_date', 100);
     return { findings };
+  });
+
+  app.post('/api/admin/observer/scan-subdomain', { config: { rateLimit: { max: 30, timeWindow: '1 hour' } } }, async (request, reply) => {
+    const { authenticateRequest } = await import('./auth.js');
+    const actor = await authenticateRequest(request);
+    if (!actor || !['admin', 'staff'].includes(actor.role)) return reply.code(403).send({ error: 'Forbidden' });
+    try {
+      const ownershipId = String(request.body?.ownership_id || request.body?.subdomain_id || '').trim();
+      if (!ownershipId) return reply.code(400).send({ error: 'ownership_id is required' });
+      const result = await scanObserverOwnershipTarget(ownershipId);
+      await store.create('AuditLog', {
+        action: 'observer.scan_subdomain',
+        actor_id: actor.id,
+        actor_email: actor.email,
+        target_type: 'SubdomainOwnership',
+        target_id: ownershipId,
+        metadata: { result },
+      }, actor);
+      return { ok: true, result };
+    } catch (error) {
+      return reply.code(error.status || 500).send({ error: error.message });
+    }
   });
 }
