@@ -31,6 +31,7 @@ Rootminster runs scheduled maintenance in a separate Node process using `server/
 - `30 3 * * *` UTC — `cleanupSuspendedRecords`.
 - `0 2 */6 * *` UTC — `scheduledSync`.
 - `0 3 1 */2 *` UTC — `verifyDnsRecords`.
+- `0 4,12,20 * * *` UTC — `observerScanAll`, scanning 20 Observer targets per run / 60 per day.
 - `0 23 * * 0` UTC — `weeklyStatsDiscord`.
 - `*/15 * * * *` UTC — check whether a scheduled R2 backup should run.
 - `0 4 * * *` UTC — purge expired auth/session helper rows.

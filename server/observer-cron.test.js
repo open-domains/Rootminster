@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 
-test('job runner schedules Observer daily batch scan', async () => {
+test('job runner schedules Observer batch scans three times daily', async () => {
   const jobs = await readFile(new URL('./jobs.js', import.meta.url), 'utf8');
-  assert.match(jobs, /cron\.schedule\('0 4 \* \* \*', \(\) => run\('observerScanAll'\)/);
+  assert.match(jobs, /cron\.schedule\('0 4,12,20 \* \* \*', \(\) => run\('observerScanAll'\)/);
 });
