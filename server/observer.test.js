@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { signingHeaders, observerScanUrl, scanObserverTarget, scanAllObserverTargets, scanObserverOwnershipTarget } from './observer.js';
+import {
+  signingHeaders, observerScanUrl, scanObserverTarget, scanAllObserverTargets,
+  scanObserverOwnershipTarget, fetchObserverFindings, mergeObserverFindings,
+  observerStatusesByHostname, loadObserverFindings,
+} from './observer.js';
 
 const observerSettings = {
   enabled: true,
@@ -96,4 +100,92 @@ test('scanObserverOwnershipTarget refuses missing or suspended ownership records
     }),
     /Only active subdomains can be scanned/,
   );
+});
+
+
+test('fetchObserverFindings normalises live Observer findings from the internal API', async () => {
+  const findings = await fetchObserverFindings({
+    settings: { enabled: true, observer_internal_url: 'http://observer:8080', observer_url: 'https://observer.example' },
+    fetchImpl: async (url, options) => {
+      assert.equal(url, 'http://observer:8080/api/findings');
+      assert.equal(options.headers.accept, 'application/json');
+      return {
+        ok: true,
+        json: async () => ({
+          findings: [{
+            id: 7,
+            hostname: 'Flagged.Example.Test.',
+            severity: 'high',
+            score: 35,
+            status: 'open',
+            finding_type: 'commercial_use',
+            screenshot_page_url: '/screenshots/abc',
+            last_seen_at: '2026-10-02 18:06:14',
+          }],
+        }),
+      };
+    },
+  });
+
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].hostname, 'flagged.example.test');
+  assert.equal(findings[0].source, 'observer');
+  assert.equal(findings[0].screenshot_url, 'https://observer.example/screenshots/abc');
+  assert.equal(findings[0].last_seen_at, '2026-10-02 18:06:14');
+});
+
+test('observerStatusesByHostname reports worst live severity per subdomain', () => {
+  const statuses = observerStatusesByHostname([
+    { hostname: 'demo.example.test', severity: 'low', score: 10, last_seen_at: '2026-10-01T00:00:00Z' },
+    { hostname: 'demo.example.test', severity: 'critical', score: 80, last_seen_at: '2026-10-02T00:00:00Z' },
+    { hostname: 'other.example.test', severity: 'medium', score: 20, last_seen_at: '2026-10-01T00:00:00Z' },
+  ]);
+
+  assert.equal(statuses['demo.example.test'].severity, 'critical');
+  assert.equal(statuses['demo.example.test'].finding_count, 2);
+  assert.equal(statuses['demo.example.test'].score, 80);
+  assert.equal(statuses['other.example.test'].severity, 'medium');
+});
+
+test('loadObserverFindings merges stored findings with live Observer findings', async () => {
+  const result = await loadObserverFindings({
+    settings: { enabled: true, observer_internal_url: 'http://observer:8080' },
+    storeImpl: {
+      list: async (entity, sort, limit) => {
+        assert.equal(entity, 'ObserverFinding');
+        assert.equal(sort, '-created_date');
+        assert.equal(limit, 10000);
+        return [{ hostname: 'stored.example.test', severity: 'medium', observed_at: '2026-10-01T00:00:00Z' }];
+      },
+    },
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ findings: [{ hostname: 'live.example.test', severity: 'high', last_seen_at: '2026-10-02 00:00:00' }] }),
+    }),
+  });
+
+  assert.deepEqual(result.findings.map(finding => finding.hostname), ['live.example.test', 'stored.example.test']);
+  assert.equal(result.observer_error, '');
+});
+
+test('loadObserverFindings falls back to stored findings when live Observer is unavailable', async () => {
+  const result = await loadObserverFindings({
+    settings: { enabled: true, observer_internal_url: 'http://observer:8080' },
+    storeImpl: { list: async () => [{ hostname: 'stored.example.test', severity: 'medium' }] },
+    fetchImpl: async () => ({ ok: false, status: 503 }),
+  });
+
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].hostname, 'stored.example.test');
+  assert.match(result.observer_error, /HTTP 503/);
+});
+
+test('mergeObserverFindings prefers live Observer data over a duplicate stored finding', () => {
+  const merged = mergeObserverFindings(
+    [{ hostname: 'same.example.test', url: 'https://same.example.test', finding_type: 'abuse', policy_section: '6', evidence: 'same', source: 'rootminster', observed_at: '2026-10-01T00:00:00Z' }],
+    [{ hostname: 'same.example.test', url: 'https://same.example.test', finding_type: 'abuse', policy_section: '6', evidence: 'same', source: 'observer', last_seen_at: '2026-10-02T00:00:00Z' }],
+  );
+
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].source, 'observer');
 });

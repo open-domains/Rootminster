@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Button } from '@/components/ui/button';
 import {
   AlertTriangle, AtSign, ChevronRight, CircleUserRound, Database,
-  Globe2, Loader2, Search, Server, ShieldCheck, UserRound,
+  Globe2, Loader2, Search, Server, ShieldAlert, ShieldCheck, UserRound,
 } from 'lucide-react';
 import { AdminHeader, AdminLoading, AdminPage, AdminStatsGrid } from '@/components/AdminPageShell';
 import { toast } from 'sonner';
@@ -29,6 +29,32 @@ function StatusPill({ status }) {
     }`}>
       {suspended ? <AlertTriangle size={11} /> : <ShieldCheck size={11} />}
       {suspended ? 'Suspended' : 'Active'}
+    </span>
+  );
+}
+
+
+function ObserverStatusPill({ status }) {
+  if (!status) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
+        <ShieldCheck size={11} /> Clear
+      </span>
+    );
+  }
+  const severity = String(status.severity || 'unknown').toLowerCase();
+  const critical = severity === 'critical';
+  const high = severity === 'high';
+  const label = critical ? 'Critical' : high ? 'High' : severity === 'unknown' ? 'Flagged' : severity.charAt(0).toUpperCase() + severity.slice(1);
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium ${
+      critical
+        ? 'border-red-500/25 bg-red-500/10 text-red-400'
+        : high
+          ? 'border-orange-500/25 bg-orange-500/10 text-orange-400'
+          : 'border-amber-500/25 bg-amber-500/10 text-amber-400'
+    }`} title={`${status.finding_count || 1} Observer finding${status.finding_count === 1 ? '' : 's'}`}>
+      <ShieldAlert size={11} /> {label}{status.finding_count > 1 ? ` (${status.finding_count})` : ''}
     </span>
   );
 }
@@ -88,21 +114,26 @@ export default function AdminSubdomains() {
   const [zoneFilter, setZoneFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [scanningId, setScanningId] = useState('');
+  const [observerStatuses, setObserverStatuses] = useState({});
+  const [observerError, setObserverError] = useState('');
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       setLoading(true);
       try {
-        const [owned, dns, userResponse] = await Promise.all([
+        const [owned, dns, userResponse, observerResponse] = await Promise.all([
           rootminster.entities.SubdomainOwnership.list('full_name', 10000),
           rootminster.entities.DnsRecord.filter({ managed: true }, 'name', 10000),
           rootminster.functions.invoke('adminListUsers', {}),
+          rootminster.observer.statuses().catch(err => ({ statuses: {}, observer_error: err.message || 'Could not load Observer statuses' })),
         ]);
         if (!active) return;
         setOwnerships(owned);
         setRecords(dns);
         setUsers(userResponse.data?.users || []);
+        setObserverStatuses(observerResponse.statuses || {});
+        setObserverError(observerResponse.observer_error || '');
       } finally {
         if (active) setLoading(false);
       }
@@ -119,8 +150,9 @@ export default function AdminSubdomains() {
       ...ownership,
       user: userById.get(ownership.owner_id),
       records: ownedRecords,
+      observerStatus: observerStatuses[normalize(ownership.full_name)] || null,
     };
-  }).sort((a, b) => normalize(a.full_name).localeCompare(normalize(b.full_name))), [ownerships, records, userById]);
+  }).sort((a, b) => normalize(a.full_name).localeCompare(normalize(b.full_name))), [ownerships, records, userById, observerStatuses]);
 
   const zones = useMemo(
     () => [...new Set(subdomains.map(item => item.root_domain).filter(Boolean))].sort(),
@@ -206,6 +238,12 @@ export default function AdminSubdomains() {
         </Select>
       </div>
 
+      {observerError && !loading && (
+        <div role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-300">
+          Live Observer statuses could not be refreshed: {observerError}. Showing stored Rootminster data where available.
+        </div>
+      )}
+
       {loading ? (
         <AdminLoading label="Loading user subdomains…" />
       ) : (
@@ -221,6 +259,7 @@ export default function AdminSubdomains() {
                   <th className="px-4 py-2.5 text-left font-medium">Subdomain</th>
                   <th className="px-4 py-2.5 text-left font-medium">Owner</th>
                   <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                  <th className="px-4 py-2.5 text-left font-medium">Observer</th>
                   <th className="px-4 py-2.5 text-left font-medium">Records</th>
                   <th className="px-4 py-2.5 text-left font-medium">Zone</th>
                   <th className="w-12 px-4 py-2.5" />
@@ -248,6 +287,7 @@ export default function AdminSubdomains() {
                         {ownerName && <p className="mt-0.5 text-xs text-muted-foreground">{item.owner_email}</p>}
                       </td>
                       <td className="px-4 py-3.5"><StatusPill status={item.status} /></td>
+                      <td className="px-4 py-3.5"><ObserverStatusPill status={item.observerStatus} /></td>
                       <td className="px-4 py-3.5">
                         <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Server size={13} /> {item.records.length}
@@ -277,8 +317,9 @@ export default function AdminSubdomains() {
           {selectedItem && (
             <div className="space-y-6">
               <SheetHeader className="text-left">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <StatusPill status={selectedItem.status} />
+                  <ObserverStatusPill status={selectedItem.observerStatus} />
                   <span className="font-mono text-xs text-muted-foreground">{selectedItem.root_domain}</span>
                 </div>
                 <SheetTitle className="break-all font-mono text-xl">{selectedItem.full_name}</SheetTitle>
@@ -316,7 +357,7 @@ export default function AdminSubdomains() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-sm font-semibold text-foreground">Observer scan</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">Trigger Observer to scan this subdomain for policy issues.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Trigger Observer to scan this subdomain for policy issues. Current reported status: {selectedItem.observerStatus ? `${selectedItem.observerStatus.severity} finding` : 'clear'}.</p>
                   </div>
                   <Button
                     type="button"

@@ -50,6 +50,123 @@ function normaliseScreenshotUrl(settings, finding) {
   return new URL(raw, settings.observer_url).href;
 }
 
+
+const SEVERITY_RANK = new Map([
+  ['critical', 5],
+  ['high', 4],
+  ['medium', 3],
+  ['low', 2],
+  ['info', 1],
+  ['unknown', 0],
+]);
+
+function normaliseObserverFinding(settings, finding, source = 'rootminster') {
+  const hostname = String(finding.hostname || '').toLowerCase().replace(/\.$/, '').slice(0, 253);
+  const observedAt = finding.observed_at || finding.last_seen_at || finding.updated_date || finding.created_date || new Date().toISOString();
+  return {
+    ...finding,
+    id: String(finding.id || `${source}:${hostname}:${finding.finding_type || ''}:${observedAt}`),
+    hostname,
+    url: String(finding.url || '').slice(0, 2000),
+    severity: String(finding.severity || finding.policy_result?.severity || 'unknown').slice(0, 40),
+    score: Number(finding.score ?? finding.policy_result?.score ?? 0),
+    finding_type: String(finding.finding_type || '').slice(0, 120),
+    policy_section: String(finding.policy_section || '').slice(0, 240),
+    evidence: String(finding.evidence || '').slice(0, 4000),
+    recommended_action: String(finding.recommended_action || '').slice(0, 4000),
+    status: String(finding.status || 'open').slice(0, 40),
+    screenshot_url: normaliseScreenshotUrl(settings, finding),
+    observed_at: observedAt,
+    first_seen_at: finding.first_seen_at || finding.observed_at || finding.created_date || observedAt,
+    last_seen_at: finding.last_seen_at || finding.observed_at || finding.updated_date || finding.created_date || observedAt,
+    source,
+  };
+}
+
+function findingTime(finding) {
+  const raw = finding.last_seen_at || finding.observed_at || finding.updated_date || finding.created_date || finding.first_seen_at;
+  const parsed = raw ? Date.parse(String(raw).replace(' ', 'T')) : 0;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function findingKey(finding) {
+  return [
+    String(finding.hostname || '').toLowerCase(),
+    String(finding.url || '').toLowerCase(),
+    String(finding.finding_type || '').toLowerCase(),
+    String(finding.policy_section || '').toLowerCase(),
+    String(finding.evidence || '').slice(0, 120),
+  ].join('|');
+}
+
+export function mergeObserverFindings(storedFindings = [], liveFindings = []) {
+  const merged = new Map();
+  for (const finding of [...storedFindings, ...liveFindings]) {
+    if (!finding.hostname) continue;
+    const key = findingKey(finding);
+    const existing = merged.get(key);
+    if (!existing || finding.source === 'observer' || findingTime(finding) >= findingTime(existing)) {
+      merged.set(key, finding);
+    }
+  }
+  return [...merged.values()].sort((a, b) => findingTime(b) - findingTime(a));
+}
+
+export async function fetchObserverFindings(options = {}) {
+  const settings = options.settings || await getModuleConfig('observer', { fresh: true });
+  if (!settings.enabled) return [];
+  const fetchImpl = options.fetchImpl || fetch;
+  const response = await fetchImpl(observerScanUrl(settings, '/api/findings'), {
+    headers: { accept: 'application/json' },
+  });
+  if (!response.ok) throw Object.assign(new Error(`Observer findings failed with HTTP ${response.status}`), { status: response.status });
+  const body = response.json ? await response.json() : {};
+  const findings = Array.isArray(body.findings) ? body.findings : [];
+  return findings.map(finding => normaliseObserverFinding(settings, finding, 'observer')).filter(finding => finding.hostname);
+}
+
+export function observerStatusesByHostname(findings = []) {
+  const statuses = new Map();
+  for (const finding of findings) {
+    const hostname = String(finding.hostname || '').toLowerCase().replace(/\.$/, '');
+    if (!hostname) continue;
+    const severity = String(finding.severity || 'unknown').toLowerCase();
+    const current = statuses.get(hostname) || {
+      hostname,
+      status: 'flagged',
+      severity: 'unknown',
+      finding_count: 0,
+      last_seen_at: '',
+      score: 0,
+    };
+    const rank = SEVERITY_RANK.get(severity) ?? 0;
+    const currentRank = SEVERITY_RANK.get(String(current.severity || 'unknown').toLowerCase()) ?? 0;
+    current.finding_count += 1;
+    current.score = Math.max(Number(current.score) || 0, Number(finding.score) || 0);
+    if (rank >= currentRank) current.severity = severity;
+    if (findingTime(finding) >= findingTime({ last_seen_at: current.last_seen_at })) {
+      current.last_seen_at = finding.last_seen_at || finding.observed_at || current.last_seen_at;
+    }
+    statuses.set(hostname, current);
+  }
+  return Object.fromEntries(statuses.entries());
+}
+
+export async function loadObserverFindings(options = {}) {
+  const settings = options.settings || await getModuleConfig('observer', { fresh: true });
+  const stored = (await (options.storeImpl || store).list('ObserverFinding', '-created_date', 10000))
+    .map(finding => normaliseObserverFinding(settings, finding, 'rootminster'))
+    .filter(finding => finding.hostname);
+  let live = [];
+  let observer_error = '';
+  try {
+    live = await fetchObserverFindings({ settings, fetchImpl: options.fetchImpl });
+  } catch (error) {
+    observer_error = error.message || 'Could not fetch live Observer findings';
+  }
+  return { findings: mergeObserverFindings(stored, live), observer_error };
+}
+
 export function observerScanUrl(settings, path) {
   const base = String(settings.observer_internal_url || settings.observer_url || '').trim().replace(/\/$/, '');
   if (!base) throw Object.assign(new Error('Observer internal URL is not configured'), { status: 503 });
@@ -136,6 +253,7 @@ export async function registerObserverRoutes(app) {
           evidence: String(finding.evidence || '').slice(0, 4000),
           recommended_action: String(finding.recommended_action || '').slice(0, 4000),
           screenshot_url: normaliseScreenshotUrl(settings, finding),
+          status: String(finding.status || 'open').slice(0, 40),
           observed_at: new Date().toISOString(),
           raw: finding,
         }));
@@ -150,8 +268,16 @@ export async function registerObserverRoutes(app) {
     const { authenticateRequest } = await import('./auth.js');
     const actor = await authenticateRequest(request);
     if (!actor || !['admin', 'staff'].includes(actor.role)) return reply.code(403).send({ error: 'Forbidden' });
-    const findings = await store.list('ObserverFinding', '-created_date', 100);
-    return { findings };
+    const result = await loadObserverFindings();
+    return result;
+  });
+
+  app.get('/api/admin/observer/statuses', async (request, reply) => {
+    const { authenticateRequest } = await import('./auth.js');
+    const actor = await authenticateRequest(request);
+    if (!actor || !['admin', 'staff'].includes(actor.role)) return reply.code(403).send({ error: 'Forbidden' });
+    const result = await loadObserverFindings();
+    return { statuses: observerStatusesByHostname(result.findings), observer_error: result.observer_error };
   });
 
   app.post('/api/admin/observer/scan-subdomain', { config: { rateLimit: { max: 30, timeWindow: '1 hour' } } }, async (request, reply) => {
