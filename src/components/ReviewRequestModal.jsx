@@ -37,8 +37,6 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const [action, setAction] = useState(null);
   const [externalWarning, setExternalWarning] = useState(true);
   const [pendingUrl, setPendingUrl] = useState(null);
-  const [overrideVerdict, setOverrideVerdict] = useState('review');
-  const [overrideReason, setOverrideReason] = useState('');
   const [safetyLoading, setSafetyLoading] = useState(false);
 
   useEffect(() => {
@@ -73,8 +71,6 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     setAction(null);
     setAdminNotes('');
     setRejectionReason('');
-    setOverrideVerdict('review');
-    setOverrideReason('');
   }, [open, request]);
 
   if (!request) return null;
@@ -85,8 +81,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const pendingRecords = records.filter(r => ['pending', 'needs_info', 'user_responded'].includes(r.status));
 
   const previewUrl = normalizeUrl(request.preview_link);
-  const safetyAssessments = records.map((record) => record._safety).filter(Boolean).sort((a, b) => Number(b.score) - Number(a.score));
-  const safety = safetyAssessments[0] || null;
+  const observerFindings = (request._observerFindings || []).filter((finding) => !['dismissed', 'resolved'].includes(String(finding.status || 'open').toLowerCase()));
   const observerStatus = request.observer_status || (request.observer_scanned_at ? 'clear' : 'undetermined');
   const observerSeverity = request.observer_severity || observerStatus;
   const observerScore = request.observer_score ?? 0;
@@ -136,29 +131,15 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     }
   };
 
-  const handleSafetyAction = async (kind) => {
-    if (kind === 'override' && overrideReason.trim().length < 5) {
-      toast.error('Please give a short reason for the override.');
-      return;
-    }
+  const handleObserverRerun = async () => {
     setSafetyLoading(true);
     try {
-      if (kind === 'rerun') {
-        await Promise.all(requestRows.map((record) => rootminster.observer.scanRequest(record.id)));
-        toast.success('Observer scan completed.');
-      } else {
-        await Promise.all(requestRows.map((record) => rootminster.functions.invoke('manageSafetyAssessment', {
-          action: kind,
-          request_id: record.id,
-          verdict: overrideVerdict,
-          reason: overrideReason.trim(),
-        })));
-        toast.success('Safety verdict overridden.');
-      }
+      await Promise.all(requestRows.map((record) => rootminster.observer.scanRequest(record.id)));
+      toast.success('Observer scan completed.');
       await onSuccess?.();
       onClose();
     } catch (error) {
-      toast.error(error?.response?.data?.error || error?.message || 'Could not update the safety assessment.');
+      toast.error(error?.response?.data?.error || error?.message || 'Could not run the Observer scan.');
     } finally {
       setSafetyLoading(false);
     }
@@ -258,21 +239,32 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
                   <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Severity</p><p className="mt-1 font-mono capitalize text-foreground">{observerSeverity || '—'}</p></div>
                   <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Findings</p><p className="mt-1 text-foreground">{observerFindingCount} · {observerScore}/100</p></div>
                 </div>
-                <p className="text-xs text-muted-foreground">Observer is triggered automatically for every new request. Approved subdomains not yet scanned by the daily rotation show as undetermined until Rootminster gives them to Observer.</p>
-                {safety?.overridden && <div className="rounded-md border border-primary/25 bg-primary/5 p-3 text-xs"><p className="font-medium text-primary">Overridden by {safety.overridden_by}</p><p className="mt-1 text-muted-foreground">{safety.override_reason}</p></div>}
-                <div className="space-y-3 border-t border-border pt-4">
-                  <Button type="button" size="sm" variant="outline" disabled={safetyLoading} onClick={() => handleSafetyAction('rerun')} className="gap-2">
+                <p className="text-xs text-muted-foreground">Observer is triggered automatically for every new request. Flagged requests list the matched policy/category below, with screenshot evidence when Observer provides it.</p>
+                {observerFindings.length > 0 ? (
+                  <div className="space-y-2 border-t border-border pt-4">
+                    <p className="text-xs font-medium text-foreground">Flagged against</p>
+                    {observerFindings.map((finding) => (
+                      <div key={finding.id || `${finding.finding_type}-${finding.observed_at}`} className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="font-medium text-foreground">{finding.policy_section || finding.finding_type || 'Observer policy finding'}</p>
+                          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-mono text-amber-700 dark:text-amber-300">{finding.severity || 'unknown'} · {Number(finding.score) || 0}</span>
+                        </div>
+                        {finding.evidence && <p className="mt-2 text-muted-foreground break-words">{finding.evidence}</p>}
+                        {finding.screenshot_url && (
+                          <button type="button" onClick={() => openExternal(finding.screenshot_url)} className="mt-2 text-primary underline hover:opacity-80">
+                            Open Observer screenshot
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">No active Observer findings are attached to this request.</p>
+                )}
+                <div className="border-t border-border pt-4">
+                  <Button type="button" size="sm" variant="outline" disabled={safetyLoading} onClick={handleObserverRerun} className="gap-2">
                     {safetyLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-run Observer scan
                   </Button>
-                  <div className="grid gap-2 sm:grid-cols-[150px_1fr_auto]">
-                    <select value={overrideVerdict} onChange={(event) => setOverrideVerdict(event.target.value)} className="h-9 rounded-md border border-border bg-background px-2 text-xs text-foreground">
-                      <option value="clear">Mark clear</option>
-                      <option value="review">Keep for review</option>
-                      <option value="high_risk">Mark high risk</option>
-                    </select>
-                    <Textarea value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Required reason for staff override" className="min-h-9 resize-none text-xs" />
-                    <Button type="button" size="sm" disabled={safetyLoading || overrideReason.trim().length < 5} onClick={() => handleSafetyAction('override')}>Apply override</Button>
-                  </div>
                 </div>
               </div>
             </div>

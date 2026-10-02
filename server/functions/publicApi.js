@@ -170,7 +170,7 @@ export default async function (req) {
             try {
                 const result = await invokeInternal('submitRequest', body, { ...user, trusted_source: 'api' });
                 const request = result.request || result.requests[0];
-                return respond({ ...result, request_id: request.id, status: request.status, safety: { score: request.safety_score ?? 0, verdict: request.safety_verdict || 'incomplete' } });
+                return respond({ ...result, request_id: request.id, status: request.status, observer: { status: request.observer_status || 'undetermined', severity: request.observer_severity || null, score: request.observer_score ?? 0, finding_count: request.observer_finding_count ?? 0, scanned_at: request.observer_scanned_at || null } });
             } catch (error) {
                 return respond({ error: error.message }, error.status || 500);
             }

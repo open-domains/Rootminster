@@ -12,6 +12,18 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { AdminHeader, AdminPage } from '@/components/AdminPageShell';
 
+
+const hostnameForRequest = (request) => `${request.subdomain}.${request.root_domain}`.toLowerCase();
+
+const observerVerdictFor = (request) => {
+  const status = request.observer_status || (request.observer_scanned_at ? 'clear' : 'undetermined');
+  const severity = String(request.observer_severity || status).toLowerCase();
+  if (status === 'flagged') return ['critical', 'high'].includes(severity) ? 'high_risk' : 'review';
+  return status === 'clear' ? 'clear' : 'incomplete';
+};
+
+const observerScoreFor = (request) => Number(request.observer_score) || 0;
+
 function RequestCard({ request, onReview, userNames = {} }) {
   const { t } = useTranslation();
   return (
@@ -36,8 +48,8 @@ function RequestCard({ request, onReview, userNames = {} }) {
       </div>
 
       <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-        <span className="text-[11px] text-muted-foreground">Automated safety</span>
-        <SafetyBadge verdict={request._safety?.verdict || request.safety_verdict} score={request._safety?.score ?? request.safety_score} overridden={request._safety?.overridden || request.safety_overridden} />
+        <span className="text-[11px] text-muted-foreground">Observer screening</span>
+        <SafetyBadge verdict={observerVerdictFor(request)} score={observerScoreFor(request)} />
       </div>
 
       <Button size="sm" onClick={() => onReview(request)} className="w-full h-8 text-xs gap-1.5">
@@ -69,7 +81,8 @@ export default function AdminRequests() {
   const { t } = useTranslation();
   const [tab, setTab] = useState('subdomain');
   const [requests, setRequests] = useState([]);
-  const [safetyAssessments, setSafetyAssessments] = useState([]);
+  const [observerFindings, setObserverFindings] = useState([]);
+  const [observerError, setObserverError] = useState('');
   const [dnsIssues, setDnsIssues] = useState([]);
   const [userNames, setUserNames] = useState({});
   const [statusFilter, setStatusFilter] = useState('all');
@@ -83,16 +96,17 @@ export default function AdminRequests() {
   const load = async () => {
     setLoading(true);
     try {
-      const [u, reqs, dnsRecs, assessments] = await Promise.all([
+      const [u, reqs, dnsRecs, observerResponse] = await Promise.all([
         rootminster.auth.me(),
         rootminster.entities.SubdomainRequest.list('-created_date', 200),
         rootminster.entities.DnsRecord.filter({ managed: true, dns_verified: false }),
-        rootminster.entities.SafetyAssessment.list('-created_date', 1000),
+        rootminster.observer.findings().catch(err => ({ findings: [], observer_error: err.message || 'Could not load Observer findings' })),
       ]);
       setUser(u);
       setRequests(reqs);
       setDnsIssues(dnsRecs);
-      setSafetyAssessments(assessments);
+      setObserverFindings(observerResponse.findings || []);
+      setObserverError(observerResponse.observer_error || '');
       try {
         const users = await rootminster.entities.User.list();
         const map = {};
@@ -127,26 +141,29 @@ export default function AdminRequests() {
 
   useEffect(() => { load(); }, []);
 
-  const assessmentByRequest = new Map();
-  safetyAssessments.forEach((assessment) => {
-    if (!assessmentByRequest.has(assessment.request_id)) assessmentByRequest.set(assessment.request_id, assessment);
+  const observerFindingsByHostname = new Map();
+  observerFindings.forEach((finding) => {
+    const hostname = String(finding.hostname || '').toLowerCase();
+    if (!hostname) return;
+    const current = observerFindingsByHostname.get(hostname) || [];
+    current.push(finding);
+    observerFindingsByHostname.set(hostname, current);
   });
 
-  const groupRequests = (reqs) => groupSubdomainRequests(reqs.map(r => ({ ...r, _safety: assessmentByRequest.get(r.id) || null }))).map(group => {
-    const highest = [...group._requests].sort((a, b) => Number(b._safety?.score ?? b.safety_score ?? 0) - Number(a._safety?.score ?? a.safety_score ?? 0))[0];
-    return { ...group, _safety: highest._safety, safety_score: highest.safety_score, safety_verdict: highest.safety_verdict };
+  const groupRequests = (reqs) => groupSubdomainRequests(reqs).map(group => {
+    const findings = observerFindingsByHostname.get(hostnameForRequest(group)) || [];
+    const highest = [...group._requests].sort((a, b) => observerScoreFor(b) - observerScoreFor(a))[0];
+    return { ...group, ...highest, _observerFindings: findings };
   });
   const allGroups = groupRequests(requests);
   const grouped = allGroups.filter(r => statusFilter === 'all' || (statusFilter === 'pending' ? ['pending', 'user_responded'].includes(r.status) : r.status === statusFilter));
   const riskFiltered = riskFilter === 'all' ? grouped : grouped.filter((request) => {
-    const assessment = request._safety;
-    if (riskFilter === 'overridden') return assessment?.overridden || request.safety_overridden;
-    if (riskFilter === 'incomplete') return !assessment || ['incomplete', 'disabled'].includes(assessment.verdict) || assessment.provider_status === 'failed';
-    return (assessment?.verdict || request.safety_verdict) === riskFilter;
+    if (riskFilter === 'incomplete') return observerVerdictFor(request) === 'incomplete';
+    return observerVerdictFor(request) === riskFilter;
   });
   const filtered = (search
     ? riskFiltered.filter(r => `${r.subdomain}.${r.root_domain} ${r.requester_email}`.toLowerCase().includes(search.toLowerCase()))
-    : riskFiltered).sort((a, b) => Number(b._safety?.score || b.safety_score || 0) - Number(a._safety?.score || a.safety_score || 0));
+    : riskFiltered).sort((a, b) => observerScoreFor(b) - observerScoreFor(a));
 
   const dnsFiltered = search
     ? dnsIssues.filter(r => `${r.name} ${r.owner_email} ${r.dns_mismatch_reason}`.toLowerCase().includes(search.toLowerCase()))
@@ -215,7 +232,6 @@ export default function AdminRequests() {
                 <option value="review">Needs review</option>
                 <option value="clear">Clear</option>
                 <option value="incomplete">Incomplete</option>
-                <option value="overridden">Staff overrides</option>
               </select>
               <div className="flex gap-1 flex-wrap">
               {['all', 'pending', 'approved', 'rejected', 'needs_info'].map(s => (
@@ -228,6 +244,12 @@ export default function AdminRequests() {
             </div>
           )}
       </div>
+
+      {observerError && !loading && (
+        <div role="alert" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
+          Live Observer findings could not be refreshed: {observerError}. Showing stored request status where available.
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-16">
