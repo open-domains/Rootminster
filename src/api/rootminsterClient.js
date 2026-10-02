@@ -173,6 +173,8 @@ export const rootminster = {
     async findings() { return request('/api/admin/observer/findings'); },
     async statuses() { return request('/api/admin/observer/statuses'); },
     async scanSubdomain(ownershipId) { return request('/api/admin/observer/scan-subdomain', { method: 'POST', body: { ownership_id: ownershipId } }); },
+    async scanRequest(requestId) { return request('/api/admin/observer/scan-request', { method: 'POST', body: { request_id: requestId } }); },
+    async dismissFinding(finding, reason = '') { return request('/api/admin/observer/findings/dismiss', { method: 'POST', body: { id: finding?.id, finding, reason } }); },
   },
   docker: {
     async projects() { return request('/api/admin/docker/projects'); },

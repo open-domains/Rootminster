@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   signingHeaders, observerScanUrl, scanObserverTarget, scanAllObserverTargets,
   scanObserverOwnershipTarget, fetchObserverFindings, mergeObserverFindings,
-  observerStatusesByHostname, loadObserverFindings,
+  observerStatusesByHostname, loadObserverFindings, selectObserverBatch,
 } from './observer.js';
 
 const observerSettings = {
@@ -27,6 +27,7 @@ test('scanObserverTarget posts a new request hostname to Observer internal URL',
   const calls = [];
   await scanObserverTarget({ full_name: 'new.example.test', preview_link: 'https://preview.example.test' }, {
     settings: observerSettings,
+    skipPersistence: true,
     fetchImpl: async (url, options) => {
       calls.push({ url, options });
       return { ok: true, json: async () => ({ ok: true }) };
@@ -41,7 +42,7 @@ test('scanObserverTarget posts a new request hostname to Observer internal URL',
   });
 });
 
-test('scanAllObserverTargets asks Observer to scan every Rootminster target', async () => {
+test('scanAllObserverTargets asks Observer to scan the next Rootminster batch', async () => {
   const calls = [];
   await scanAllObserverTargets({
     settings: observerSettings,
@@ -54,12 +55,24 @@ test('scanAllObserverTargets asks Observer to scan every Rootminster target', as
   assert.equal(calls.length, 1);
   assert.equal(calls[0].url, 'http://observer:8080/api/scan-all');
   assert.equal(calls[0].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { batch_size: 20 });
+});
+
+test('selectObserverBatch rotates stable hostname batches and wraps', () => {
+  const records = Array.from({ length: 5 }, (_, index) => ({ full_name: `site-${index + 1}.example.test` }));
+  const first = selectObserverBatch(records, 0, 2);
+  const second = selectObserverBatch(records, first.nextCursor, 2);
+  const third = selectObserverBatch(records, second.nextCursor, 2);
+  assert.deepEqual(first.records.map(item => item.full_name), ['site-1.example.test', 'site-2.example.test']);
+  assert.deepEqual(second.records.map(item => item.full_name), ['site-3.example.test', 'site-4.example.test']);
+  assert.deepEqual(third.records.map(item => item.full_name), ['site-5.example.test', 'site-1.example.test']);
 });
 
 test('scanObserverOwnershipTarget lets staff trigger Observer for a chosen active subdomain', async () => {
   const calls = [];
   const result = await scanObserverOwnershipTarget('owned-1', {
     settings: observerSettings,
+    skipPersistence: true,
     storeImpl: {
       get: async (entity, id) => {
         assert.equal(entity, 'SubdomainOwnership');
@@ -152,6 +165,7 @@ test('loadObserverFindings merges stored findings with live Observer findings', 
     settings: { enabled: true, observer_internal_url: 'http://observer:8080' },
     storeImpl: {
       list: async (entity, sort, limit) => {
+        if (entity === 'ObserverScanState') return [];
         assert.equal(entity, 'ObserverFinding');
         assert.equal(sort, '-created_date');
         assert.equal(limit, 10000);
@@ -171,7 +185,7 @@ test('loadObserverFindings merges stored findings with live Observer findings', 
 test('loadObserverFindings falls back to stored findings when live Observer is unavailable', async () => {
   const result = await loadObserverFindings({
     settings: { enabled: true, observer_internal_url: 'http://observer:8080' },
-    storeImpl: { list: async () => [{ hostname: 'stored.example.test', severity: 'medium' }] },
+    storeImpl: { list: async (entity) => entity === 'ObserverScanState' ? [] : [{ hostname: 'stored.example.test', severity: 'medium' }] },
     fetchImpl: async () => ({ ok: false, status: 503 }),
   });
 
