@@ -108,6 +108,7 @@ const AdminAbuseReports = lazy(() => import('@/pages/AdminAbuseReports'));
 const AdminModules = lazy(() => import('@/pages/AdminModules'));
 const AdminAccountDeletionRequests = lazy(() => import('@/pages/AdminAccountDeletionRequests'));
 const AdminReports = lazy(() => import('@/pages/AdminReports'));
+const AdminObserverFindings = lazy(() => import('@/pages/AdminObserverFindings'));
 const DockerEngine = lazy(() => import('@/pages/DockerEngine'));
 
 const AuthenticatedApp = () => {
@@ -198,6 +199,7 @@ const AuthenticatedApp = () => {
         {/* Staff + Admin: Abuse Reports */}
         <Route element={<RoleProtectedRoute allowedRoles={['admin', 'staff']} />}>
           <Route path="/admin-abuse-reports" element={<AdminAbuseReports />} />
+          <Route path="/admin-observer" element={<AdminObserverFindings />} />
         </Route>
 
         {/* Admin-only Routes */}

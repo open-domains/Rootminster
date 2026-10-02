@@ -46,6 +46,7 @@ const adminNav = [
   { to: '/admin-reports', icon: FileBarChart, label: 'Reports', adminOnly: true },
   { to: '/admin-account-deletions', icon: UserX, label: 'Account Deletions', adminOnly: true },
   { to: '/admin-abuse-reports', icon: AlertTriangle, label: 'Abuse Reports' },
+  { to: '/admin-observer', icon: Shield, label: 'Observer Findings' },
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
   { to: '/admin-email-logs', icon: Mail, label: 'Email Logs', adminOnly: true },
   { to: '/admin-donations', icon: Heart, label: 'Donations', adminOnly: true },

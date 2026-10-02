@@ -40,6 +40,14 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: false, account_id: '', bucket_name: '', access_key_id: '', secret_access_key: '', path_prefix: 'rootminster', frequency: 'daily', backup_hour_utc: 2, backup_weekday_utc: '0', retention_count: 30, max_storage_gb: 9, max_class_a_monthly: 900000, max_class_b_monthly: 9000000, notify_on_failure: true }),
   },
+  observer: {
+    name: 'Observer', description: 'Policy scanner integration for approved subdomains, findings and screenshot evidence.', defaultEnabled: false,
+    fields: [
+      { key: 'shared_secret', label: 'Observer shared secret', type: 'secret', required: true, description: 'Must match OBSERVER_SHARED_SECRET in Observer.' },
+      { key: 'observer_url', label: 'Observer base URL', type: 'url', required: true, description: 'Staff-facing Observer origin protected by Cloudflare Access.' },
+    ],
+    env: () => ({ enabled: Boolean(process.env.OBSERVER_SHARED_SECRET), shared_secret: process.env.OBSERVER_SHARED_SECRET || '', observer_url: process.env.OBSERVER_URL || 'https://observer.open-domains.com' }),
+  },
   glitchtip: {
     name: 'GlitchTip monitoring', description: 'Optional privacy-conscious browser and server error reporting with browser performance traces.', defaultEnabled: false,
     fields: [
