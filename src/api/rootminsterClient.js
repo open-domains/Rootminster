@@ -169,6 +169,9 @@ export const rootminster = {
     async importEnvironment() { return request('/api/admin/modules/import-environment', { method: 'POST', body: {} }); },
     async testGlitchTip() { return request('/api/admin/modules/glitchtip/test', { method: 'POST', body: {} }); },
   },
+  observer: {
+    async findings() { return request('/api/admin/observer/findings'); },
+  },
   docker: {
     async projects() { return request('/api/admin/docker/projects'); },
     async containers(projectName) { return request(`/api/admin/docker/projects/${encodeURIComponent(projectName)}/containers`); },
