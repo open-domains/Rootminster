@@ -50,6 +50,48 @@ function normaliseScreenshotUrl(settings, finding) {
   return new URL(raw, settings.observer_url).href;
 }
 
+export function observerScanUrl(settings, path) {
+  const base = String(settings.observer_internal_url || settings.observer_url || '').trim().replace(/\/$/, '');
+  if (!base) throw Object.assign(new Error('Observer internal URL is not configured'), { status: 503 });
+  return new URL(path, `${base}/`).href;
+}
+
+export function observerHostnameFor(record) {
+  return hostnameFor(record);
+}
+
+export async function scanObserverTarget(record, options = {}) {
+  const settings = options.settings || await getModuleConfig('observer', { fresh: true });
+  if (!settings.enabled) return { skipped: true, reason: 'observer_disabled' };
+  const hostname = hostnameFor(record);
+  if (!hostname) return { skipped: true, reason: 'missing_hostname' };
+  const fetchImpl = options.fetchImpl || fetch;
+  const payload = {
+    hostname,
+    url: record.preview_link || record.url || `https://${hostname}`,
+  };
+  const response = await fetchImpl(observerScanUrl(settings, '/api/scan'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw Object.assign(new Error(`Observer scan failed with HTTP ${response.status}`), { status: response.status });
+  return response.json ? response.json() : { ok: true };
+}
+
+export async function scanAllObserverTargets(options = {}) {
+  const settings = options.settings || await getModuleConfig('observer', { fresh: true });
+  if (!settings.enabled) return { skipped: true, reason: 'observer_disabled' };
+  const fetchImpl = options.fetchImpl || fetch;
+  const response = await fetchImpl(observerScanUrl(settings, '/api/scan-all'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) throw Object.assign(new Error(`Observer scan-all failed with HTTP ${response.status}`), { status: response.status });
+  return response.json ? response.json() : { ok: true };
+}
+
 export async function registerObserverRoutes(app) {
   app.post('/internal/observer/subdomains', { config: { rawBody: true } }, async (request, reply) => {
     try {

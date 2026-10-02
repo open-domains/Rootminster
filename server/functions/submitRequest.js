@@ -4,6 +4,7 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { screenRequest } from '../lib/safety-screening.js';
+import { scanObserverTarget } from '../observer.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
 const SINGLE_VALUE_TYPES = ['CNAME'];
@@ -296,6 +297,16 @@ export default async function (req) {
         }
     }
     const highestRisk = screened.sort((a, b) => Number(b.score) - Number(a.score))[0];
+    try {
+        await scanObserverTarget(created[0]);
+    }
+    catch (error) {
+        await platform.asServiceRole.entities.AuditLog.create({
+            actor_email: 'system@rootminster.local', actor_role: 'system',
+            action: 'observer_scan_failed', entity_type: 'SubdomainRequest', entity_id: created[0].id,
+            description: `Observer scan failed for ${subdomain}.${root_domain}: ${error.message}`
+        }).catch(() => {});
+    }
     // Discord notification
     await sendDiscord(platform, [
         { name: 'Subdomain', value: String(subdomain + '.' + root_domain) },
