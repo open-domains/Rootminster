@@ -4,7 +4,7 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { screenRequest } from '../lib/safety-screening.js';
-import { scanObserverTarget } from '../observer.js';
+import { scanObserverRequestTarget } from '../observer.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
 const SINGLE_VALUE_TYPES = ['CNAME'];
@@ -298,7 +298,14 @@ export default async function (req) {
     }
     const highestRisk = screened.sort((a, b) => Number(b.score) - Number(a.score))[0];
     try {
-        await scanObserverTarget(created[0]);
+        const observerResult = await scanObserverRequestTarget(created[0].id);
+        Object.assign(created[0], {
+            observer_status: observerResult.observer_status?.status,
+            observer_severity: observerResult.observer_status?.severity,
+            observer_score: observerResult.observer_status?.score,
+            observer_finding_count: observerResult.observer_status?.finding_count,
+            observer_scanned_at: observerResult.observer_status?.scanned_at,
+        });
     }
     catch (error) {
         await platform.asServiceRole.entities.AuditLog.create({
@@ -314,7 +321,8 @@ export default async function (req) {
         { name: 'Values', value: valueList.join(', ') },
         { name: 'Requested By', value: String(user.email) },
         { name: 'Status', value: 'Pending Review' },
-        { name: 'Safety', value: highestRisk ? `${highestRisk.verdict} (${highestRisk.score}/100)` : 'Screening incomplete' }
+        { name: 'Safety', value: highestRisk ? `${highestRisk.verdict} (${highestRisk.score}/100)` : 'Screening incomplete' },
+        { name: 'Observer', value: created[0].observer_status ? `${created[0].observer_status}${created[0].observer_score !== undefined ? ` (${created[0].observer_score}/100)` : ''}` : 'Scan pending or unavailable' }
     ], 'New Subdomain Request', 0x6366f1);
     await platform.asServiceRole.entities.AuditLog.create({
         actor_email: user.email, actor_role: user.role || 'user',

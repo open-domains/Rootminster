@@ -87,6 +87,13 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const previewUrl = normalizeUrl(request.preview_link);
   const safetyAssessments = records.map((record) => record._safety).filter(Boolean).sort((a, b) => Number(b.score) - Number(a.score));
   const safety = safetyAssessments[0] || null;
+  const observerStatus = request.observer_status || (request.observer_scanned_at ? 'clear' : 'undetermined');
+  const observerSeverity = request.observer_severity || observerStatus;
+  const observerScore = request.observer_score ?? 0;
+  const observerFindingCount = Number(request.observer_finding_count) || 0;
+  const observerVerdict = observerStatus === 'flagged'
+    ? (['critical', 'high'].includes(String(observerSeverity).toLowerCase()) ? 'high_risk' : 'review')
+    : observerStatus === 'clear' ? 'clear' : 'incomplete';
 
   const openExternal = (url) => {
     if (externalWarning) {
@@ -136,12 +143,18 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     }
     setSafetyLoading(true);
     try {
-      await Promise.all(requestRows.map((record) => rootminster.functions.invoke('manageSafetyAssessment', {
-        action: kind,
-        request_id: record.id,
-        ...(kind === 'override' ? { verdict: overrideVerdict, reason: overrideReason.trim() } : {}),
-      })));
-      toast.success(kind === 'rerun' ? 'Safety screening completed.' : 'Safety verdict overridden.');
+      if (kind === 'rerun') {
+        await Promise.all(requestRows.map((record) => rootminster.observer.scanRequest(record.id)));
+        toast.success('Observer scan completed.');
+      } else {
+        await Promise.all(requestRows.map((record) => rootminster.functions.invoke('manageSafetyAssessment', {
+          action: kind,
+          request_id: record.id,
+          verdict: overrideVerdict,
+          reason: overrideReason.trim(),
+        })));
+        toast.success('Safety verdict overridden.');
+      }
       await onSuccess?.();
       onClose();
     } catch (error) {
@@ -235,30 +248,21 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
               <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                 <div className="flex items-center gap-2">
                   <ShieldAlert size={15} className="text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Automated safety screening</span>
+                  <span className="text-sm font-medium text-foreground">Observer automated screening</span>
                 </div>
-                <SafetyBadge verdict={safety?.verdict || request.safety_verdict} score={safety?.score ?? request.safety_score} overridden={safety?.overridden || request.safety_overridden} />
+                <SafetyBadge verdict={observerVerdict} score={observerScore} />
               </div>
               <div className="space-y-4 p-4">
                 <div className="grid gap-2 text-xs sm:grid-cols-3">
-                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Score</p><p className="mt-1 font-semibold text-foreground">{safety?.score ?? request.safety_score ?? 0}/100</p></div>
-                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Ruleset</p><p className="mt-1 font-mono text-foreground">{safety?.ruleset_version || request.safety_ruleset_version || '—'}</p></div>
-                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Provider</p><p className="mt-1 text-foreground">{safety?.provider_status || request.safety_provider_status || 'not configured'}</p></div>
+                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Observer status</p><p className="mt-1 font-semibold capitalize text-foreground">{observerStatus}</p></div>
+                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Severity</p><p className="mt-1 font-mono capitalize text-foreground">{observerSeverity || '—'}</p></div>
+                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Findings</p><p className="mt-1 text-foreground">{observerFindingCount} · {observerScore}/100</p></div>
                 </div>
-                {safety?.signals?.length ? (
-                  <div className="space-y-2">
-                    {safety.signals.map((item, index) => (
-                      <div key={`${item.code}-${index}`} className="flex items-start justify-between gap-3 rounded-md border border-border px-3 py-2 text-xs">
-                        <div><p className="font-medium text-foreground">{item.label}</p>{item.evidence && <p className="mt-0.5 break-all text-muted-foreground">{item.evidence}</p>}</div>
-                        <span className="shrink-0 font-mono text-amber-300">+{item.score}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : <p className="text-xs text-muted-foreground">No detailed risk signals were recorded.</p>}
+                <p className="text-xs text-muted-foreground">Observer is triggered automatically for every new request. Approved subdomains not yet scanned by the daily rotation show as undetermined until Rootminster gives them to Observer.</p>
                 {safety?.overridden && <div className="rounded-md border border-primary/25 bg-primary/5 p-3 text-xs"><p className="font-medium text-primary">Overridden by {safety.overridden_by}</p><p className="mt-1 text-muted-foreground">{safety.override_reason}</p></div>}
                 <div className="space-y-3 border-t border-border pt-4">
                   <Button type="button" size="sm" variant="outline" disabled={safetyLoading} onClick={() => handleSafetyAction('rerun')} className="gap-2">
-                    {safetyLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-run screening
+                    {safetyLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-run Observer scan
                   </Button>
                   <div className="grid gap-2 sm:grid-cols-[150px_1fr_auto]">
                     <select value={overrideVerdict} onChange={(event) => setOverrideVerdict(event.target.value)} className="h-9 rounded-md border border-border bg-background px-2 text-xs text-foreground">

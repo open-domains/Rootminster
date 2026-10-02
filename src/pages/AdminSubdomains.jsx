@@ -37,6 +37,13 @@ function StatusPill({ status }) {
 function ObserverStatusPill({ status }) {
   if (!status) {
     return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-500/25 bg-slate-500/10 px-2 py-0.5 text-xs font-medium text-slate-400">
+        <ShieldAlert size={11} /> Undetermined
+      </span>
+    );
+  }
+  if (status.status === 'clear' || status.severity === 'clear') {
+    return (
       <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-400">
         <ShieldCheck size={11} /> Clear
       </span>
@@ -357,7 +364,7 @@ export default function AdminSubdomains() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-sm font-semibold text-foreground">Observer scan</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">Trigger Observer to scan this subdomain for policy issues. Current reported status: {selectedItem.observerStatus ? `${selectedItem.observerStatus.severity} finding` : 'clear'}.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Trigger Observer to scan this subdomain for policy issues. Current reported status: {selectedItem.observerStatus ? (selectedItem.observerStatus.status === 'clear' ? 'clear' : `${selectedItem.observerStatus.severity} finding`) : 'undetermined'}.</p>
                   </div>
                   <Button
                     type="button"
