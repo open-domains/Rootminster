@@ -19,7 +19,6 @@ const DATASETS = [
   { id: 'requests', entity: 'SubdomainRequest', label: 'Requests', description: 'Subdomain request workflow and outcomes', fields: ['full_name', 'subdomain', 'root_domain', 'requester_email', 'status', 'created_date'] },
   { id: 'dns', entity: 'DnsRecord', label: 'DNS records', description: 'DNS inventory and record types', fields: ['name', 'type', 'record_type', 'value', 'record_value', 'owner_email', 'created_date'] },
   { id: 'abuse', entity: 'AbuseReport', label: 'Abuse reports', description: 'Moderation and abuse case activity', fields: ['domain', 'subdomain', 'category', 'status', 'reporter_email', 'created_date'] },
-  { id: 'safety', entity: 'SafetyAssessment', label: 'Safety assessments', description: 'Risk and review outcomes', fields: ['domain', 'subdomain', 'status', 'risk_level', 'decision', 'created_date'] },
   { id: 'donations', entity: 'Donation', label: 'Donations', description: 'Donation activity and status', fields: ['email', 'amount', 'currency', 'status', 'created_date'] },
   { id: 'email', entity: 'EmailLog', label: 'Email logs', description: 'Outbound email delivery history', fields: ['to', 'recipient', 'subject', 'status', 'created_date'] },
   { id: 'audit', entity: 'AuditLog', label: 'Audit logs', description: 'Administrative and security-sensitive actions', fields: ['action', 'actor_email', 'target', 'entity_type', 'created_date'] },
@@ -29,7 +28,7 @@ const DATASETS = [
 const PRESETS = {
   executive: ['users', 'domains', 'subdomains', 'requests', 'abuse'],
   operations: ['domains', 'subdomains', 'requests', 'dns', 'sync'],
-  security: ['users', 'abuse', 'safety', 'audit', 'email'],
+  security: ['users', 'abuse', 'audit', 'email'],
   full: DATASETS.map(d => d.id),
 };
 

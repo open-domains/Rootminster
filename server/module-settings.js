@@ -155,15 +155,6 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: config.discordBot.enabled, application_id: config.discordBot.applicationId, public_key: config.discordBot.publicKey, bot_token: config.discordBot.token, guild_id: config.discordBot.guildId }),
   },
-  safety: {
-    name: 'Automated safety screening', description: 'Deterministic screening with an optional reputation provider.', defaultEnabled: true,
-    fields: [
-      { key: 'provider_url', label: 'Reputation provider URL', type: 'url' },
-      { key: 'provider_token', label: 'Provider bearer token', type: 'secret' },
-      { key: 'provider_timeout_ms', label: 'Provider timeout (ms)', type: 'number' },
-    ],
-    env: () => ({ enabled: config.safety.enabled, provider_url: config.safety.providerUrl, provider_token: config.safety.providerToken, provider_timeout_ms: config.safety.providerTimeoutMs }),
-  },
   mcp: {
     name: 'MCP server', description: 'Role-aware ChatGPT and Claude account tools.', defaultEnabled: true,
     fields: [], env: () => ({ enabled: config.mcpEnabled }),

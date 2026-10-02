@@ -74,8 +74,13 @@ export function createDiscordRequests({ database = store, invoke = invokeInterna
       { name: 'Conversation (newest first)', value: clip(newest.slice(offset, offset + 3).map(comment => `${comment.is_internal ? '[Internal] ' : ''}${safe(comment.author_email)}: ${safe(comment.message).slice(0, 220)}`).join('\n\n') || 'No messages yet.', 1000) },
     ];
     if (staff(actor)) {
-      const risk = [...bundle._requests].sort((a, b) => Number(b.safety_score || 0) - Number(a.safety_score || 0))[0];
-      fields.push({ name: 'Requested by', value: safe(bundle.requester_email) }, { name: 'Safety screening', value: `${risk.safety_verdict || 'incomplete'} · ${Number(risk.safety_score) || 0}/100${risk.safety_overridden ? ' · staff override' : ''}` });
+      const risk = [...bundle._requests].sort((a, b) => Number(b.observer_score || 0) - Number(a.observer_score || 0))[0];
+      const status = risk.observer_status || (risk.observer_scanned_at ? 'clear' : 'undetermined');
+      const findings = Number(risk.observer_finding_count) || 0;
+      fields.push(
+        { name: 'Requested by', value: safe(bundle.requester_email) },
+        { name: 'Observer automated screening', value: `${status} · ${Number(risk.observer_score) || 0}/100${findings ? ` · ${findings} finding${findings === 1 ? '' : 's'}` : ''}` },
+      );
     }
     if (bundle.rejection_reason) fields.push({ name: 'Rejection reason', value: clip(safe(bundle.rejection_reason), 500) });
     return discordMessage([notice, confirmation && open ? 'Confirm approval to create all DNS records in this request.' : '', conflict ? `Cannot approve: ${conflict}` : ''].filter(Boolean).join('\n') || 'Request details', controls, [{ title: clip(requestHostname(bundle), 256), description: `Status: **${bundle.status}**\nRequest ID: ${bundle.id}`, color: bundle.status === 'approved' ? 0x16a34a : 0x2563eb, fields, footer: { text: 'Long values and messages are shortened here. Full details are available on the dashboard.' } }]);

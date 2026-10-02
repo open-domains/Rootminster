@@ -3,7 +3,6 @@ import { withRequestLock } from '../lib/request-bundles.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
-import { screenRequest } from '../lib/safety-screening.js';
 import { scanObserverRequestTarget } from '../observer.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
@@ -273,30 +272,6 @@ export default async function (req) {
     const created = [request];
     const typeList = recordList.map(r => r.record_type);
     const valueList = recordList.map(r => r.record_value);
-    const screened = [];
-    for (const request of created) {
-        try {
-            const assessment = await screenRequest(platform, request, user);
-            Object.assign(request, {
-                safety_assessment_id: assessment.id,
-                safety_score: assessment.score,
-                safety_verdict: assessment.verdict,
-                safety_screened_at: assessment.screened_at,
-                safety_ruleset_version: assessment.ruleset_version,
-            });
-            screened.push(assessment);
-        }
-        catch (_) {
-            await platform.asServiceRole.entities.SubdomainRequest.update(request.id, {
-                safety_score: 0,
-                safety_verdict: 'incomplete',
-                safety_screened_at: new Date().toISOString(),
-            }).catch(() => {});
-            request.safety_score = 0;
-            request.safety_verdict = 'incomplete';
-        }
-    }
-    const highestRisk = screened.sort((a, b) => Number(b.score) - Number(a.score))[0];
     try {
         const observerResult = await scanObserverRequestTarget(created[0].id);
         Object.assign(created[0], {
@@ -321,8 +296,7 @@ export default async function (req) {
         { name: 'Values', value: valueList.join(', ') },
         { name: 'Requested By', value: String(user.email) },
         { name: 'Status', value: 'Pending Review' },
-        { name: 'Safety', value: highestRisk ? `${highestRisk.verdict} (${highestRisk.score}/100)` : 'Screening incomplete' },
-        { name: 'Observer', value: created[0].observer_status ? `${created[0].observer_status}${created[0].observer_score !== undefined ? ` (${created[0].observer_score}/100)` : ''}` : 'Scan pending or unavailable' }
+        { name: 'Observer automated screening', value: created[0].observer_status ? `${created[0].observer_status}${created[0].observer_score !== undefined ? ` (${created[0].observer_score}/100)` : ''}${created[0].observer_finding_count ? ` · ${created[0].observer_finding_count} finding${created[0].observer_finding_count === 1 ? '' : 's'}` : ''}` : 'Scan pending or unavailable' }
     ], 'New Subdomain Request', 0x6366f1);
     await platform.asServiceRole.entities.AuditLog.create({
         actor_email: user.email, actor_role: user.role || 'user',
