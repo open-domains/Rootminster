@@ -158,6 +158,26 @@ test('reconciliation claims strongly linked legacy DNS rows before status evalua
   assert.equal(entities.SubdomainOwnership.rows.find(row => row.id === 'parent-legacy').status, 'active');
 });
 
+test('reconciliation does not recreate cleaned-up approved namespaces without DNS records', async () => {
+  const { platform, entities } = makePlatform({
+    requests: [
+      {
+        id: 'request-empty', status: 'approved', requester_id: 'u1', requester_email: 'u@example.com',
+        subdomain: 'empty', root_domain: 'is-local.org', full_name: 'empty.is-local.org',
+      },
+    ],
+    domains: [{ id: 'domain1', name: 'is-local.org', zone_id: 'zone1' }],
+  });
+
+  const result = await reconcileSubdomainOwnerships(platform, {
+    now: new Date('2026-09-20T12:00:00.000Z'),
+    auditActor: null,
+  });
+
+  assert.equal(result.stats.ownerships_created, 0);
+  assert.equal(entities.SubdomainOwnership.rows.length, 0);
+});
+
 test('reconciliation repairs false suspension and removes proven stray child ownership', async () => {
   const { platform, entities } = makePlatform({
     ownerships: [
