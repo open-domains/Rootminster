@@ -285,6 +285,7 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     const domain = domainByName.get(normalizeName(request.root_domain));
     const hasRecords = liveRecords.some(record => record.owner_id === request.requester_id &&
       (hostnameWithin(record.name, fullName) || linkedNamespaceByRecordId.get(record.id) === fullName));
+    if (!hasRecords) continue;
     const rootDomain = normalizeName(request.root_domain);
     const created = await entities.SubdomainOwnership.create({
       full_name: fullName,
@@ -293,10 +294,10 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
       zone_id: domain?.zone_id || request.zone_id || '',
       owner_email: request.requester_email,
       owner_id: request.requester_id,
-      status: hasRecords ? 'active' : 'suspended',
-      suspended_at: hasRecords ? null : nowIso,
-      suspension_reason: hasRecords ? '' : 'No DNS records remain',
-      ...(hasRecords ? { last_record_added_at: nowIso } : {}),
+      status: 'active',
+      suspended_at: null,
+      suspension_reason: '',
+      last_record_added_at: nowIso,
     });
     ownerships.push(created);
     stats.ownerships_created++;
