@@ -19,7 +19,6 @@ Defined modules include:
 - `r2_backup`
 - `glitchtip`
 - `disposable_email`
-- `phishing`
 - `branding`
 - `cloudflare`
 - `email`

@@ -123,7 +123,7 @@ function safeReturnTo(value) {
 
 async function upsertOauthUser(email, name) {
   const normalizedEmail = String(email).trim().toLowerCase();
-  const disposable = disposableEmailResult(normalizedEmail, await getModuleConfig('disposable_email'));
+  const disposable = await disposableEmailResult(normalizedEmail, await getModuleConfig('disposable_email'));
   if (disposable.disposable) throw Object.assign(new Error('Temporary email addresses are not accepted'), { status: 400 });
   const existing = await pool.query('SELECT status FROM users WHERE email = $1', [normalizedEmail]);
   if (existing.rows[0]?.status === 'disabled') {
@@ -152,7 +152,7 @@ export async function registerAuthRoutes(app) {
     const password = String(request.body?.password || '');
     if (!firstName || firstName.length > 80) return reply.code(400).send({ error: 'Enter your first name (80 characters or fewer)' });
     if (!emailPattern.test(email)) return reply.code(400).send({ error: 'Enter a valid email address' });
-    const disposable = disposableEmailResult(email, await getModuleConfig('disposable_email'));
+    const disposable = await disposableEmailResult(email, await getModuleConfig('disposable_email'));
     if (disposable.disposable) return reply.code(400).send({ error: 'Temporary email addresses are not accepted' });
     if (password.length < 10) return reply.code(400).send({ error: 'Password must be at least 10 characters' });
     const existing = await pool.query('SELECT id, status FROM users WHERE email = $1', [email]);

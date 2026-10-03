@@ -69,16 +69,11 @@ export const MODULE_DEFINITIONS = Object.freeze({
   },
   disposable_email: {
     name: 'Disposable Email Detection', description: 'Block registrations from known temporary email services and administrator-supplied domains.', defaultEnabled: false,
-    fields: [{ key: 'additional_domains', label: 'Additional blocked domains (comma separated)', type: 'text' }],
-    env: () => ({ enabled: false, additional_domains: '' }),
-  },
-  phishing: {
-    name: 'Phishing Detector', description: 'Add credential-bait, impersonation and suspicious-link signals to request safety screening.', defaultEnabled: false,
     fields: [
-      { key: 'protected_brands', label: 'Protected brands (comma separated)', type: 'text' },
-      { key: 'score_weight', label: 'Maximum phishing score', type: 'number' },
+      { key: 'source_url', label: 'Disposable domain source URL', type: 'url', required: true },
+      { key: 'additional_domains', label: 'Additional blocked domains (comma separated)', type: 'text' },
     ],
-    env: () => ({ enabled: false, protected_brands: '', score_weight: 40 }),
+    env: () => ({ enabled: false, source_url: 'https://raw.githubusercontent.com/eramitgupta/disposable-email/refs/heads/main/disposable_email.json', additional_domains: '' }),
   },
   branding: {
     name: 'Branding Manager', description: 'Customize the platform name, logo, accent color and support link.', defaultEnabled: false,
