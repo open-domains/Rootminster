@@ -1,6 +1,8 @@
 import { authenticateRequest } from './auth.js';
 import { pool } from './database.js';
 import { sendEmail } from './mail.js';
+import { store } from './store.js';
+import { accountExportFileName, deletionRequiresManualReview, publicAccountExport } from './account-privacy.js';
 import { deleteUserAccounts } from './lib/admin-user-deletion.js';
 
 function escapeHtml(value) {
@@ -96,6 +98,22 @@ async function userCaseSnapshot(user) {
     groups[row.entity_type].push(record);
   }
 
+  const requestIds = [...(groups.SubdomainRequest || []), ...(groups.EditRequest || [])].map((record) => String(record.id));
+  const comments = await pool.query(
+    `SELECT id, data, created_at, updated_at
+     FROM entity_records
+     WHERE entity_type = 'RequestComment'
+       AND (lower(data->>'author_email') = $1 OR data->>'request_id' = ANY($2::text[]))
+     ORDER BY created_at DESC`,
+    [email, requestIds],
+  );
+  groups.RequestComment = comments.rows.map((row) => ({
+    id: row.id,
+    ...(row.data || {}),
+    created_date: row.created_at?.toISOString?.() || row.created_at,
+    updated_date: row.updated_at?.toISOString?.() || row.updated_at,
+  }));
+
   return {
     generated_at: new Date().toISOString(),
     account: {
@@ -117,6 +135,7 @@ async function userCaseSnapshot(user) {
     dns_records: groups.DnsRecord || [],
     requests: groups.SubdomainRequest || [],
     edit_requests: groups.EditRequest || [],
+    request_comments: groups.RequestComment || [],
     donations: groups.Donation || [],
     abuse_reports: groups.AbuseReport || [],
     api_tokens: (groups.ApiToken || []).map(({ token_hash: _hash, ...item }) => item),
@@ -145,6 +164,18 @@ async function currentUserRow(userId) {
   };
 }
 
+async function auditPrivacyAction(user, action, description) {
+  await store.create('AuditLog', {
+    actor_id: user.id,
+    actor_email: user.email,
+    actor_role: user.role,
+    action,
+    entity_type: 'User',
+    entity_id: user.id,
+    description,
+  }, user);
+}
+
 async function notifyOutcome(requestRow, outcome, reason = '') {
   const approved = outcome === 'approved';
   const subject = approved ? 'Your Open Domains account deletion request was approved' : 'Your Open Domains account deletion request was not approved';
@@ -168,6 +199,17 @@ async function notifyOutcome(requestRow, outcome, reason = '') {
 
 export async function registerAccountDeletionRoutes(app) {
   await ensureDeletionTable();
+
+  app.get('/api/account/export', { config: { rateLimit: { max: 5, timeWindow: '1 hour' } } }, async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) return;
+    const snapshot = await userCaseSnapshot(user);
+    const body = publicAccountExport(user, snapshot);
+    await auditPrivacyAction(user, 'account_data_exported', 'User downloaded their Open Domains account data export');
+    return reply
+      .header('Content-Disposition', `attachment; filename="${accountExportFileName(user)}"`)
+      .send(body);
+  });
 
   app.get('/api/account-deletion-request', async (request, reply) => {
     const user = await requireUser(request, reply);
@@ -193,6 +235,26 @@ export async function registerAccountDeletionRoutes(app) {
     if (existing.rowCount) return reply.code(409).send({ error: 'You already have a pending account deletion request' });
 
     const snapshot = await userCaseSnapshot(user);
+    if (!deletionRequiresManualReview(snapshot)) {
+      const autoActor = { id: null, email: 'account-deletion-auto@open-domains.local', role: 'system' };
+      const inserted = await pool.query(
+        `INSERT INTO account_deletion_requests(user_id, user_email, user_name, user_role, reason, status, requested_at, decided_at, decided_by_email, decision_reason, snapshot)
+         VALUES ($1, $2, $3, $4, $5, 'approved', now(), now(), $6, $7, $8::jsonb)
+         RETURNING *`,
+        [user.id, user.email, user.full_name || '', user.role, reason, autoActor.email, 'Automatically approved because the account has no active subdomains.', JSON.stringify(snapshot)],
+      );
+      const deletionRequest = inserted.rows[0];
+      const summary = await deleteUserAccounts([user.id], autoActor);
+      await pool.query(
+        `UPDATE account_deletion_requests
+         SET deletion_summary = $2::jsonb, updated_at = now()
+         WHERE id = $1`,
+        [deletionRequest.id, JSON.stringify(summary)],
+      );
+      await notifyOutcome(deletionRequest, 'approved');
+      return reply.code(201).send({ request: { ...deletionRequest, deletion_summary: summary }, auto_approved: true });
+    }
+
     const result = await pool.query(
       `INSERT INTO account_deletion_requests(user_id, user_email, user_name, user_role, reason, snapshot)
        VALUES ($1, $2, $3, $4, $5, $6::jsonb)

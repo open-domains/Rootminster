@@ -40,7 +40,8 @@ export default function PrivacyPolicy() {
           <p>We may also disclose information when required by law or necessary to protect users and the service. DNS records are public by design and can be queried by anyone.</p>
         </Section>
         <Section title="5. Retention and deletion">
-          <p>We retain account and request data while needed to provide the service and meet security, legal and operational requirements. Retention periods can vary by data type and deployment settings. Administrators can delete an account and its related domains; backups and security logs may expire on a separate schedule.</p>
+          <p>We retain account and request data while needed to provide the service and meet security, legal and operational requirements. Retention periods can vary by data type and deployment settings. You can export your account data from Settings. You can also request account deletion from Settings: requests for accounts without active subdomains may be approved automatically, while accounts with subdomains require staff review so mistakes can be cancelled and illegal, abusive or risky subdomains can be assessed before public DNS is removed.</p>
+          <p>Backups, security logs and deletion tombstones may expire on separate schedules or be retained where needed for security, abuse prevention, dispute handling or legal compliance.</p>
         </Section>
         <Section title="6. Cookies and browser storage">
           <p>Essential storage supports authentication, security and preferences. Optional analytics storage is used only after consent. You can reject or withdraw analytics consent at any time without losing access to core features.</p>

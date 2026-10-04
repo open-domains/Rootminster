@@ -155,6 +155,10 @@ export const rootminster = {
     async publish(id, confirmation) { const result = await request(`/api/admin/terms/${encodeURIComponent(id)}/publish`, { method: 'POST', body: { confirmation } }); return result.terms; },
     async deleteDraft(id) { return request(`/api/admin/terms/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
   },
+  accountData: {
+    exportUrl() { return '/api/account/export'; },
+    async export() { return request('/api/account/export'); },
+  },
   accountDeletion: {
     async getMine() { return request('/api/account-deletion-request'); },
     async request(reason = '') { return request('/api/account-deletion-request', { method: 'POST', body: { reason } }); },
