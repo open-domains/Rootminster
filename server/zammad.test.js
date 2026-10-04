@@ -26,7 +26,9 @@ test('Zammad ticket payload includes authenticated Rootminster user context', ()
   assert.equal(payload.title, '[DNS] Records are not provisioning');
   assert.equal(payload.group, 'DNS / Subdomains');
   assert.equal(payload.customer, 'owner@example.com');
-  assert.equal(payload.article.type, 'web');
+  assert.equal(payload.article.type, 'email');
+  assert.equal(payload.article.sender, 'Customer');
+  assert.equal(payload.article.from, 'owner@example.com');
   assert.match(payload.article.body, /Rootminster user/);
   assert.match(payload.article.body, /user-123/);
   assert.match(payload.article.body, /owner@example.com/);
@@ -46,6 +48,9 @@ test('Zammad ticket payload supports public reporters without leaking empty cont
   assert.equal(payload.title, '[Privacy] Delete my data');
   assert.equal(payload.group, 'Privacy / Legal');
   assert.equal(payload.customer, 'privacy@example.com');
+  assert.equal(payload.article.type, 'email');
+  assert.equal(payload.article.sender, 'Customer');
+  assert.equal(payload.article.from, 'privacy@example.com');
   assert.match(payload.article.body, /Privacy User/);
   assert.doesNotMatch(payload.article.body, /Rootminster user/);
 });
