@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { User, Shield, BellOff, KeyRound, HeartHandshake, CheckCircle2, Trash2 } from 'lucide-react';
+import { User, Shield, BellOff, KeyRound, HeartHandshake, CheckCircle2, Trash2, Download } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import CarbonAd from '@/components/CarbonAd';
 import DonationWidget from '@/components/DonationWidget';
@@ -31,6 +31,7 @@ export default function Settings() {
   const [deletionRequest, setDeletionRequest] = useState(null);
   const [deletionReason, setDeletionReason] = useState('');
   const [deletionBusy, setDeletionBusy] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
   const requestedSection = searchParams.get('section');
   const [active, setActive] = useState(['profile', 'security', 'api', 'support', 'privacy'].includes(requestedSection) ? requestedSection : 'profile');
 
@@ -61,17 +62,44 @@ export default function Settings() {
   }, []);
 
   const submitDeletionRequest = async () => {
-    if (!window.confirm('Send an account deletion request for admin review? Your account will remain active unless the request is approved.')) return;
+    if (!window.confirm('Request permanent account deletion? Accounts without active subdomains are deleted automatically. Accounts with subdomains stay pending for review so you can cancel mistakes and staff can check legal or abuse concerns.')) return;
     setDeletionBusy(true);
     try {
       const result = await rootminster.accountDeletion.request(deletionReason);
+      if (result.auto_approved) {
+        toast.success('Your account was deleted because it had no active subdomains.');
+        await rootminster.auth.logout('/');
+        return;
+      }
       setDeletionRequest(result.request);
       setDeletionReason('');
-      toast.success('Account deletion request submitted');
+      toast.success('Account deletion request submitted for review');
     } catch (error) {
       toast.error(error.message || 'Could not submit deletion request');
     } finally {
       setDeletionBusy(false);
+    }
+  };
+
+  const exportMyData = async () => {
+    setExportingData(true);
+    try {
+      const data = await rootminster.accountData.export();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const emailSegment = String(user?.email || 'account').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'account';
+      link.href = url;
+      link.download = `open-domains-data-${emailSegment}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Your data export has downloaded');
+    } catch (error) {
+      toast.error(error.message || 'Could not export your data');
+    } finally {
+      setExportingData(false);
     }
   };
 
@@ -229,10 +257,24 @@ export default function Settings() {
           )}
 
           {active === 'privacy' && user && (
-            <section className="overflow-hidden rounded-lg border border-destructive/30 bg-card">
+            <>
+              <section className="overflow-hidden rounded-lg border border-border bg-card">
+                <div className="border-b border-border px-5 py-4">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Download size={14} /> Export my data</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Download a JSON copy of your account, subdomains, DNS records, requests, comments, donations, abuse reports, API token metadata and trusted-device metadata.</p>
+                </div>
+                <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">Secret values such as password hashes, API token hashes and trusted-device tokens are never included.</p>
+                  <Button variant="outline" onClick={exportMyData} disabled={exportingData} className="shrink-0">
+                    <Download size={14} /> {exportingData ? 'Preparing export…' : 'Export my data'}
+                  </Button>
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-lg border border-destructive/30 bg-card">
               <div className="border-b border-border px-5 py-4">
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Trash2 size={14} className="text-destructive" /> Account deletion</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">Request permanent deletion of your account. An administrator will review the request before anything is removed.</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Accounts with no active subdomains are deleted automatically after confirmation. Accounts with subdomains require staff review so you can cancel mistakes and staff can review legal or abuse concerns.</p>
               </div>
               <div className="space-y-4 p-5">
                 {deletionView.hasPendingRequest ? (
@@ -274,7 +316,8 @@ export default function Settings() {
                   </>
                 )}
               </div>
-            </section>
+              </section>
+            </>
           )}
 
           {publicConfig.features.donations && active === 'support' && user && (
