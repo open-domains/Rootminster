@@ -20,12 +20,16 @@ export default function Contact() {
     e.preventDefault();
     setSending(true);
     try {
-      await rootminster.integrations.Core.SendEmail({
-        to: 'hello@open-domains.net',
-        subject: `[Contact] ${form.subject}`,
-        body: `<p><strong>From:</strong> ${form.name} (${form.email})</p><p><strong>Message:</strong></p><p>${form.message.replace(/\n/g, '<br>')}</p>`
+      const result = await rootminster.support.createTicket({
+        category: 'general',
+        name: form.name,
+        email: form.email,
+        subject: form.subject,
+        message: form.message,
+        context: { path: '/contact' },
       });
-      toast.success('Message sent! We\'ll get back to you within 1–2 business days.');
+      const number = result.ticket?.number ? ` Ticket #${result.ticket.number}.` : '';
+      toast.success(`Ticket created.${number} We'll get back to you within 1–2 business days.`);
       setForm({ name: '', email: '', subject: '', message: '' });
     } catch { toast.error('Failed to send. Please try again.'); }
     finally { setSending(false); }

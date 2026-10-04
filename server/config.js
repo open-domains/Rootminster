@@ -98,6 +98,8 @@ export const config = Object.freeze({
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
   githubClientId: process.env.GITHUB_CLIENT_ID || '',
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  oidcPrivateKey: process.env.OIDC_PRIVATE_KEY || process.env.ROOTMINSTER_OIDC_PRIVATE_KEY || '',
+  oidcKeyId: process.env.OIDC_KEY_ID || process.env.ROOTMINSTER_OIDC_KEY_ID || 'rootminster-oidc',
   discordBot: {
     enabled: boolean('DISCORD_BOT_ENABLED', false),
     applicationId: process.env.DISCORD_APPLICATION_ID || '',

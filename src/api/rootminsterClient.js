@@ -195,6 +195,9 @@ export const rootminster = {
     async delete(id) { return request(`/api/admin/backups/${encodeURIComponent(id)}`, { method: 'DELETE' }); },
     downloadUrl(id) { return `/api/admin/backups/${encodeURIComponent(id)}/download`; },
   },
+  support: {
+    async createTicket(data) { return request('/api/support/tickets', { method: 'POST', body: data }); },
+  },
   functions: {
     async invoke(name, data = {}) {
       const result = await request(`/api/functions/${encodeURIComponent(name)}`, {

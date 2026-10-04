@@ -1,6 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
 import { getModuleConfig } from '../module-settings.js';
+import { createZammadTicket } from '../zammad.js';
 function escapeHtml(value) {
     return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 }
@@ -39,6 +40,23 @@ export default async function (req) {
             reporter_email: reporter_email || "",
             status: "open",
         });
+        let actor = null;
+        try {
+            actor = await platform.auth.me();
+        }
+        catch (_) { }
+        try {
+            await createZammadTicket({
+                category: 'abuse',
+                subject: `${abuse_type}: ${subdomain}`,
+                message: `${description}${evidence ? `\n\nEvidence:\n${evidence}` : ''}`,
+                email: reporter_email || undefined,
+                context: { abuse_report_id: report.id, subdomain, abuse_type, path: '/report-abuse' },
+            }, actor);
+        }
+        catch (_) {
+            // Non-fatal — the Rootminster abuse report is already saved.
+        }
         const safeSubdomain = escapeHtml(subdomain);
         const safeType = escapeHtml(abuse_type);
         const safeReporter = escapeHtml(reporter_email || 'Anonymous');
