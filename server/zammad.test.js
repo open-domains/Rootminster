@@ -21,7 +21,7 @@ test('Zammad ticket payload includes authenticated Rootminster user context', ()
       hostname: 'demo.is-cool.dev',
       path: '/my-requests',
     },
-  }, { group: 'DNS / Subdomains' });
+  }, { group: 'DNS / Subdomains', support_email: 'support@example.com' });
 
   assert.equal(payload.title, '[DNS] Records are not provisioning');
   assert.equal(payload.group, 'DNS / Subdomains');
@@ -29,6 +29,7 @@ test('Zammad ticket payload includes authenticated Rootminster user context', ()
   assert.equal(payload.article.type, 'email');
   assert.equal(payload.article.sender, 'Customer');
   assert.equal(payload.article.from, 'owner@example.com');
+  assert.equal(payload.article.to, 'support@example.com');
   assert.match(payload.article.body, /Rootminster user/);
   assert.match(payload.article.body, /user-123/);
   assert.match(payload.article.body, /owner@example.com/);
@@ -43,7 +44,7 @@ test('Zammad ticket payload supports public reporters without leaking empty cont
     message: 'Please help with a privacy request.',
     name: 'Privacy User',
     email: 'privacy@example.com',
-  }, { group: 'Privacy / Legal' });
+  }, { group: 'Privacy / Legal', support_email: 'support@example.com' });
 
   assert.equal(payload.title, '[Privacy] Delete my data');
   assert.equal(payload.group, 'Privacy / Legal');
@@ -51,6 +52,7 @@ test('Zammad ticket payload supports public reporters without leaking empty cont
   assert.equal(payload.article.type, 'email');
   assert.equal(payload.article.sender, 'Customer');
   assert.equal(payload.article.from, 'privacy@example.com');
+  assert.equal(payload.article.to, 'support@example.com');
   assert.match(payload.article.body, /Privacy User/);
   assert.doesNotMatch(payload.article.body, /Rootminster user/);
 });
@@ -60,7 +62,14 @@ test('Zammad ticket creation creates a missing customer before retrying', async 
   const fetchImpl = async (url, options) => {
     const body = options?.body ? JSON.parse(options.body) : null;
     requests.push({ url, method: options?.method || 'GET', body });
+    if (url.endsWith('/api/v1/groups')) {
+      return Response.json([{ id: 2, name: 'General Support', email_address_id: 10 }], { status: 200 });
+    }
+    if (url.endsWith('/api/v1/email_addresses')) {
+      return Response.json([{ id: 10, email: 'support@example.com', active: true }], { status: 200 });
+    }
     if (url.endsWith('/api/v1/tickets') && requests.filter(r => r.url.endsWith('/api/v1/tickets')).length === 1) {
+      assert.equal(body.article.to, 'support@example.com');
       return Response.json({ error: 'No lookup value found for customer: "new-user@example.com"' }, { status: 422 });
     }
     if (url.endsWith('/api/v1/users')) {
@@ -93,8 +102,49 @@ test('Zammad ticket creation creates a missing customer before retrying', async 
 
   assert.equal(ticket.id, 77);
   assert.deepEqual(requests.map(r => `${r.method} ${new URL(r.url).pathname}`), [
+    'GET /api/v1/groups',
+    'GET /api/v1/email_addresses',
     'POST /api/v1/tickets',
     'POST /api/v1/users',
+    'POST /api/v1/tickets',
+  ]);
+});
+
+test('Zammad ticket creation resolves the recipient from the configured group email address', async () => {
+  const requests = [];
+  const fetchImpl = async (url, options) => {
+    const body = options?.body ? JSON.parse(options.body) : null;
+    requests.push({ url, method: options?.method || 'GET', body });
+    if (url.endsWith('/api/v1/groups')) {
+      return Response.json([{ id: 7, name: 'Privacy / Legal', email_address_id: 12 }], { status: 200 });
+    }
+    if (url.endsWith('/api/v1/email_addresses')) {
+      return Response.json([{ id: 12, email: 'privacy-support@example.com', active: true }], { status: 200 });
+    }
+    if (url.endsWith('/api/v1/tickets')) {
+      assert.equal(body.article.to, 'privacy-support@example.com');
+      assert.equal(body.article.sender, 'Customer');
+      return Response.json({ id: 88, number: '88088', title: body.title }, { status: 201 });
+    }
+    throw new Error(`Unexpected URL ${url}`);
+  };
+
+  const ticket = await createZammadTicketWithSettings({
+    category: 'privacy',
+    subject: 'Privacy help',
+    message: 'Please help.',
+    name: 'Privacy User',
+    email: 'privacy-user@example.com',
+  }, null, {
+    api_url: 'https://support.example.test',
+    api_token: 'secret-token',
+    default_group: 'Privacy / Legal',
+  }, fetchImpl);
+
+  assert.equal(ticket.id, 88);
+  assert.deepEqual(requests.map(r => `${r.method} ${new URL(r.url).pathname}`), [
+    'GET /api/v1/groups',
+    'GET /api/v1/email_addresses',
     'POST /api/v1/tickets',
   ]);
 });
