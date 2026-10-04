@@ -71,7 +71,7 @@ export function buildZammadTicketPayload(input = {}, settings = {}) {
     article: {
       subject,
       body: bodySections.join('\n'),
-      type: 'web',
+      type: 'email',
       internal: false,
     },
   };
