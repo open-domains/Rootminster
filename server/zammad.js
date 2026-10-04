@@ -40,6 +40,7 @@ export function buildZammadTicketPayload(input = {}, settings = {}) {
   const message = cleanText(input.message, 10_000);
   const user = input.user || null;
   const reporterEmail = user?.email || cleanEmail(input.email);
+  const recipientEmail = cleanEmail(settings.support_email || settings.email_address || settings.recipient_email || settings.to);
   if (!subject || !message || !reporterEmail) throw Object.assign(new Error('Subject, message, and email are required'), { status: 400 });
   const context = input.context && typeof input.context === 'object' ? input.context : {};
   const bodySections = [
@@ -74,22 +75,38 @@ export function buildZammadTicketPayload(input = {}, settings = {}) {
       type: 'email',
       sender: 'Customer',
       from: reporterEmail,
+      ...(recipientEmail ? { to: recipientEmail } : {}),
       internal: false,
     },
   };
 }
 
-async function zammadRequest(apiUrl, apiToken, path, body, fetchImpl) {
-  const response = await fetchImpl(`${apiUrl}${path}`, {
-    method: 'POST',
+async function zammadRequest(apiUrl, apiToken, path, body, fetchImpl, method = 'POST') {
+  const options = {
+    method,
     headers: {
       Authorization: `Token token=${apiToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
-  });
+  };
+  if (body !== undefined) options.body = JSON.stringify(body);
+  const response = await fetchImpl(`${apiUrl}${path}`, options);
   const data = await response.json().catch(() => ({}));
   return { response, data };
+}
+
+async function resolveZammadGroupEmail(apiUrl, apiToken, groupName, fetchImpl) {
+  const { response: groupsResponse, data: groups } = await zammadRequest(apiUrl, apiToken, '/api/v1/groups', undefined, fetchImpl, 'GET');
+  if (!groupsResponse.ok || !Array.isArray(groups)) return '';
+
+  const group = groups.find(item => item?.name === groupName);
+  if (!group?.email_address_id) return '';
+
+  const { response: addressesResponse, data: addresses } = await zammadRequest(apiUrl, apiToken, '/api/v1/email_addresses', undefined, fetchImpl, 'GET');
+  if (!addressesResponse.ok || !Array.isArray(addresses)) return '';
+
+  const address = addresses.find(item => item?.id === group.email_address_id && item?.active !== false);
+  return cleanEmail(address?.email);
 }
 
 async function ensureZammadCustomer(apiUrl, apiToken, payload, input, user, fetchImpl) {
@@ -112,7 +129,9 @@ export async function createZammadTicketWithSettings(input, user, settings, fetc
   if (!settings.api_url || !settings.api_token) throw Object.assign(new Error('Zammad integration is not configured'), { status: 503 });
   const apiUrl = String(settings.api_url).replace(/\/$/, '');
   const apiToken = settings.api_token;
-  const payload = buildZammadTicketPayload({ ...input, user }, { group: settings.default_group || 'General Support' });
+  const group = settings.default_group || 'General Support';
+  const supportEmail = cleanEmail(settings.support_email || settings.email_address || settings.recipient_email || settings.to) || await resolveZammadGroupEmail(apiUrl, apiToken, group, fetchImpl);
+  const payload = buildZammadTicketPayload({ ...input, user }, { group, support_email: supportEmail });
   let { response, data } = await zammadRequest(apiUrl, apiToken, '/api/v1/tickets', payload, fetchImpl);
   if (missingCustomerError(response.status, data)) {
     await ensureZammadCustomer(apiUrl, apiToken, payload, input, user, fetchImpl);
