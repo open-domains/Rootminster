@@ -309,12 +309,14 @@ CREATE TABLE IF NOT EXISTS mcp_oauth_codes (
   code_challenge text NOT NULL,
   resource text,
   scope text NOT NULL DEFAULT 'rootminster',
+  nonce text,
   mfa_verified_at timestamptz,
   expires_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE mcp_oauth_codes ADD COLUMN IF NOT EXISTS mfa_verified_at timestamptz;
+ALTER TABLE mcp_oauth_codes ADD COLUMN IF NOT EXISTS nonce text;
 
 CREATE TABLE IF NOT EXISTS mcp_oauth_consents (
   token_hash text PRIMARY KEY,

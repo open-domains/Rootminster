@@ -14,7 +14,7 @@ const FUNCTION_NAMES = new Set([
   'githubMigrateVerify', 'manageDnsRecord', 'postComment', 'publicApi',
   'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
-  'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest',
+  'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest', 'submitSupportTicket',
   'syncCloudflare', 'twoFactorAuth', 'updateDnsRecord', 'verifyDnsRecords',
   'weeklyStatsDiscord',
 ]);

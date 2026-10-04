@@ -6,6 +6,7 @@ import { config } from './config.js';
 import { pool } from './database.js';
 import { invokeInternal } from './function-runner.js';
 import { getModuleConfig } from './module-settings.js';
+import { jwksFromPrivateKey, oidcDiscoveryMetadata, oidcUserInfoFromUser, scopeIncludesOpenId, signOidcIdToken } from './oidc.js';
 import { randomToken, sha256 } from './security.js';
 import { serializeUser, store } from './store.js';
 
@@ -102,7 +103,7 @@ function validateAuthorizeRequest(query, client) {
   return null;
 }
 
-async function issueTokens({ clientId, userId, resource, scope, mfaVerifiedAt = null }) {
+async function issueTokens({ clientId, userId, resource, scope, mfaVerifiedAt = null, nonce = '' }) {
   const accessToken = `rmcp_at_${randomToken(32)}`;
   const refreshToken = `rmcp_rt_${randomToken(32)}`;
   await pool.query(
@@ -112,7 +113,7 @@ async function issueTokens({ clientId, userId, resource, scope, mfaVerifiedAt = 
      ) VALUES ($1, $2, $3, $4, $5, $6, now() + interval '1 hour', now() + interval '30 days', $7)`,
     [clientId, userId, sha256(accessToken), sha256(refreshToken), resource || MCP_RESOURCE, scope || 'rootminster', mfaVerifiedAt],
   );
-  return {
+  const response = {
     access_token: accessToken,
     token_type: 'Bearer',
     expires_in: 3600,
@@ -120,6 +121,12 @@ async function issueTokens({ clientId, userId, resource, scope, mfaVerifiedAt = 
     scope: scope || 'rootminster',
     resource: resource || MCP_RESOURCE,
   };
+  if (scopeIncludesOpenId(scope)) {
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    const user = serializeUser(userResult.rows[0]);
+    response.id_token = signOidcIdToken({ issuer: config.appUrl, audience: clientId, nonce, user, privateKeyPem: config.oidcPrivateKey, keyId: config.oidcKeyId });
+  }
+  return response;
 }
 
 async function authenticateMcp(request) {
@@ -297,6 +304,7 @@ async function handleMcp(request, reply) {
 }
 
 export async function registerMcpRoutes(app) {
+  app.get('/.well-known/openid-configuration', { preHandler: requireMcpModule }, async () => oidcDiscoveryMetadata(config.appUrl));
   app.get('/.well-known/oauth-protected-resource', { preHandler: requireMcpModule }, async () => ({
     resource: MCP_RESOURCE,
     authorization_servers: [config.appUrl],
@@ -310,16 +318,17 @@ export async function registerMcpRoutes(app) {
     scopes_supported: ['rootminster'],
   }));
   app.get('/.well-known/oauth-authorization-server', { preHandler: requireMcpModule }, async () => ({
-    issuer: config.appUrl,
-    authorization_endpoint: `${config.appUrl}/oauth/authorize`,
-    token_endpoint: `${config.appUrl}/oauth/token`,
+    ...oidcDiscoveryMetadata(config.appUrl),
     registration_endpoint: `${config.appUrl}/oauth/register`,
-    response_types_supported: ['code'],
-    grant_types_supported: ['authorization_code', 'refresh_token'],
-    code_challenge_methods_supported: ['S256'],
-    token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
-    scopes_supported: ['rootminster'],
   }));
+
+  app.get('/oauth/jwks', { preHandler: requireMcpModule }, async () => jwksFromPrivateKey(config.oidcPrivateKey, config.oidcKeyId));
+
+  app.get('/oauth/userinfo', { preHandler: requireMcpModule }, async (request, reply) => {
+    const user = await authenticateMcp(request);
+    if (!user) return reply.header('WWW-Authenticate', 'Bearer scope="openid email profile"').code(401).send({ error: 'Unauthorized' });
+    return oidcUserInfoFromUser(user);
+  });
 
   app.post('/oauth/register', { preHandler: requireMcpModule, config: { rateLimit: { max: 20, timeWindow: '1 hour' } } }, async (request, reply) => {
     const redirectUris = request.body?.redirect_uris;
@@ -361,7 +370,7 @@ export async function registerMcpRoutes(app) {
     }
     const consentToken = randomToken(32);
     const requestData = Object.fromEntries(
-      ['client_id', 'redirect_uri', 'response_type', 'state', 'code_challenge', 'code_challenge_method', 'resource', 'scope']
+      ['client_id', 'redirect_uri', 'response_type', 'state', 'code_challenge', 'code_challenge_method', 'resource', 'scope', 'nonce']
         .map((key) => [key, query[key] || '']),
     );
     await pool.query(
@@ -395,9 +404,9 @@ export async function registerMcpRoutes(app) {
     if (String(request.body?.decision || '') !== 'allow') return reply.redirect(redirectWithParams(body.redirect_uri, { error: 'access_denied', state: body.state }));
     const code = `rmcp_code_${randomToken(32)}`;
     await pool.query(
-      `INSERT INTO mcp_oauth_codes(code_hash, client_id, user_id, redirect_uri, code_challenge, resource, scope, expires_at, mfa_verified_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '10 minutes', now())`,
-      [sha256(code), body.client_id, user.id, body.redirect_uri, body.code_challenge, body.resource || MCP_RESOURCE, body.scope || 'rootminster'],
+      `INSERT INTO mcp_oauth_codes(code_hash, client_id, user_id, redirect_uri, code_challenge, resource, scope, nonce, expires_at, mfa_verified_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now() + interval '10 minutes', now())`,
+      [sha256(code), body.client_id, user.id, body.redirect_uri, body.code_challenge, body.resource || MCP_RESOURCE, body.scope || 'rootminster', body.nonce || ''],
     );
     return reply.redirect(redirectWithParams(body.redirect_uri, { code, state: body.state }));
   });
@@ -419,7 +428,7 @@ export async function registerMcpRoutes(app) {
       if (!saved) return oauthError(reply, 400, 'invalid_grant', 'Invalid or expired authorization code');
       const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
       if (!verifier || challenge !== saved.code_challenge) return oauthError(reply, 400, 'invalid_grant', 'PKCE verification failed');
-      return issueTokens({ clientId: saved.client_id, userId: saved.user_id, resource: saved.resource, scope: saved.scope, mfaVerifiedAt: saved.mfa_verified_at });
+      return issueTokens({ clientId: saved.client_id, userId: saved.user_id, resource: saved.resource, scope: saved.scope, mfaVerifiedAt: saved.mfa_verified_at, nonce: saved.nonce });
     }
     if (body.grant_type === 'refresh_token') {
       const client = await authenticateOauthClient(request, body);
