@@ -21,6 +21,19 @@ function line(label, value) {
   return cleaned ? `${label}: ${cleaned}` : '';
 }
 
+function splitName(nameOrEmail) {
+  const cleaned = cleanText(nameOrEmail, 200);
+  const fallback = cleaned.includes('@') ? cleaned.split('@')[0] : cleaned;
+  const parts = (cleaned || fallback || 'OpenDomains User').split(/\s+/).filter(Boolean);
+  if (parts.length > 1) return { firstname: parts.slice(0, -1).join(' '), lastname: parts.at(-1) };
+  return { firstname: parts[0] || 'OpenDomains', lastname: 'User' };
+}
+
+function missingCustomerError(status, data) {
+  const message = String(data?.error || data?.message || '');
+  return status === 422 && /No lookup value found.*customer/i.test(message);
+}
+
 export function buildZammadTicketPayload(input = {}, settings = {}) {
   const category = CATEGORY_LABELS[String(input.category || 'general').toLowerCase()] || CATEGORY_LABELS.general;
   const subject = cleanText(input.subject, 200);
@@ -64,23 +77,53 @@ export function buildZammadTicketPayload(input = {}, settings = {}) {
   };
 }
 
+async function zammadRequest(apiUrl, apiToken, path, body, fetchImpl) {
+  const response = await fetchImpl(`${apiUrl}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Token token=${apiToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => ({}));
+  return { response, data };
+}
+
+async function ensureZammadCustomer(apiUrl, apiToken, payload, input, user, fetchImpl) {
+  const email = payload.customer;
+  const { firstname, lastname } = splitName(user?.full_name || input.name || email);
+  const { response, data } = await zammadRequest(apiUrl, apiToken, '/api/v1/users', {
+    email,
+    login: email,
+    firstname,
+    lastname,
+    roles: ['Customer'],
+  }, fetchImpl);
+  if (!response.ok && response.status !== 422) {
+    throw Object.assign(new Error(data.error || data.message || 'Zammad customer creation failed'), { status: response.status, data });
+  }
+}
+
+export async function createZammadTicketWithSettings(input, user, settings, fetchImpl = fetch) {
+  if (!settings.enabled && settings.enabled !== undefined) throw Object.assign(new Error('Zammad integration is not configured'), { status: 503 });
+  if (!settings.api_url || !settings.api_token) throw Object.assign(new Error('Zammad integration is not configured'), { status: 503 });
+  const apiUrl = String(settings.api_url).replace(/\/$/, '');
+  const apiToken = settings.api_token;
+  const payload = buildZammadTicketPayload({ ...input, user }, { group: settings.default_group || 'General Support' });
+  let { response, data } = await zammadRequest(apiUrl, apiToken, '/api/v1/tickets', payload, fetchImpl);
+  if (missingCustomerError(response.status, data)) {
+    await ensureZammadCustomer(apiUrl, apiToken, payload, input, user, fetchImpl);
+    ({ response, data } = await zammadRequest(apiUrl, apiToken, '/api/v1/tickets', payload, fetchImpl));
+  }
+  if (!response.ok) throw Object.assign(new Error(data.error || data.message || 'Zammad ticket creation failed'), { status: response.status, data });
+  return data;
+}
+
 export async function createZammadTicket(input, user = null) {
   const { getModuleConfig } = await import('./module-settings.js');
   const settings = await getModuleConfig('zammad');
-  if (!settings.enabled || !settings.api_url || !settings.api_token) throw Object.assign(new Error('Zammad integration is not configured'), { status: 503 });
-  const apiUrl = String(settings.api_url).replace(/\/$/, '');
-  const payload = buildZammadTicketPayload({ ...input, user }, { group: settings.default_group || 'General Support' });
-  const response = await fetch(`${apiUrl}/api/v1/tickets`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Token token=${settings.api_token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw Object.assign(new Error(data.error || data.message || 'Zammad ticket creation failed'), { status: response.status, data });
-  return data;
+  return createZammadTicketWithSettings(input, user, settings);
 }
 
 export async function registerZammadRoutes(app) {
