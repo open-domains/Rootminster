@@ -1,9 +1,12 @@
 const TRANSLATION_DOM_ERROR = /Failed to execute '(?:removeChild|insertBefore)' on 'Node':/i;
 const TURNSTILE_INTERNAL_ERROR = /(?:TurnstileError|Cloudflare Turnstile).*(?:Error: 3000(?:10|30)\b|Nothing to reset found for provided container)/i;
 const NETWORK_ERROR = /^(?:TypeError:\s*)?(?:NetworkError when attempting to fetch resource\.?|Load failed|Failed to fetch)$/i;
+const CHUNK_LOAD_ERROR = /(?:Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Loading chunk \d+ failed|ChunkLoadError|not a valid JavaScript MIME type)/i;
 const EXTENSION_FETCH_ERROR = /^(?:TypeError:\s*)?Failed to fetch \([^)]+\)$/i;
 const EXTENSION_FRAME = /^(?:chrome|moz|safari-web)-extension:\/\//i;
+const DOCUMENT_PATH = /^\/(?:[A-Za-z0-9._~!$&'()*+,;=:@%-]+)?$/;
 const WALLET_GLOBAL_ERROR = /window\.ethereum\.selectedAddress\s*=\s*undefined/i;
+const FIREFOX_HELPER_GLOBAL_ERROR = /(?:\b__firefox__\b|window\.__firefox__\.)/i;
 
 function exceptionValues(event) {
   return event?.exception?.values || [];
@@ -23,6 +26,10 @@ export function shouldIgnoreClientErrorEvent(event) {
   if (messages.some((message) => WALLET_GLOBAL_ERROR.test(message))
       && frames.length
       && frames.every((frame) => (frame?.filename || frame?.abs_path || '') === '/' && frame?.function === 'global code')) return true;
+  if (messages.some((message) => FIREFOX_HELPER_GLOBAL_ERROR.test(message))
+      && frames.length
+      && frames.every((frame) => DOCUMENT_PATH.test(frame?.filename || frame?.abs_path || '') && frame?.function === 'global code')) return true;
+  if (messages.some((message) => CHUNK_LOAD_ERROR.test(message))) return true;
 
   const stackless = !values.some((value) => value?.stacktrace?.frames?.length);
   return stackless && messages.some((message) => NETWORK_ERROR.test(message));
