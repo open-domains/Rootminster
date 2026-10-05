@@ -54,3 +54,21 @@ test('filters injected wallet-provider globals without hiding app Ethereum error
     { filename: '/assets/index.js', function: 'connectWallet' },
   ])), false);
 });
+
+test('filters injected Firefox helper globals on document pages', () => {
+  assert.equal(shouldIgnoreClientErrorEvent(event("Can't find variable: __firefox__", [
+    { filename: '/login', function: 'global code' },
+  ])), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event("undefined is not an object (evaluating 'window.__firefox__.reader')", [
+    { filename: '/', function: 'global code' },
+  ])), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event("undefined is not an object (evaluating 'window.__firefox__.reader')", [
+    { filename: '/assets/index.js', function: 'renderLogin' },
+  ])), false);
+});
+
+test('filters chunk load errors because lazy routes trigger a guarded reload', () => {
+  assert.equal(shouldIgnoreClientErrorEvent(event('Failed to fetch dynamically imported module: https://open-domains.com/assets/Landing-sppzqlU9.js')), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event('Importing a module script failed.')), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event('Loading chunk 5 failed.')), true);
+});
