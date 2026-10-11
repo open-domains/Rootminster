@@ -61,6 +61,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const [rejectionReason, setRejectionReason] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
+  const reviewGateFrameRef = useRef(null);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -75,19 +76,53 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     setReviewGateMet(false);
   }, [open, request]);
 
-  const updateReviewGate = useCallback(() => {
+  const evaluateReviewGate = useCallback(() => {
     const node = scrollRef.current;
-    if (!node) return;
+    if (!node) return false;
     const hasNoScroll = node.scrollHeight <= node.clientHeight + 8;
     const reachedReviewControls = node.scrollTop + node.clientHeight >= node.scrollHeight - 64;
-    if (hasNoScroll || reachedReviewControls) setReviewGateMet(true);
+    const gateMet = hasNoScroll || reachedReviewControls;
+    setReviewGateMet(gateMet);
+    return gateMet;
   }, []);
+
+  const scheduleReviewGateEvaluation = useCallback(() => {
+    if (reviewGateFrameRef.current) cancelAnimationFrame(reviewGateFrameRef.current);
+    reviewGateFrameRef.current = requestAnimationFrame(() => {
+      reviewGateFrameRef.current = null;
+      evaluateReviewGate();
+    });
+  }, [evaluateReviewGate]);
 
   useEffect(() => {
     if (!open || !request) return undefined;
-    const frame = requestAnimationFrame(updateReviewGate);
-    return () => cancelAnimationFrame(frame);
-  }, [open, request, updateReviewGate]);
+    const node = scrollRef.current;
+    if (!node) return undefined;
+
+    const observeChildren = (observer) => {
+      observer.observe(node);
+      Array.from(node.children).forEach((child) => observer.observe(child));
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleReviewGateEvaluation);
+    observeChildren(resizeObserver);
+    const mutationObserver = new MutationObserver(() => {
+      resizeObserver.disconnect();
+      observeChildren(resizeObserver);
+      scheduleReviewGateEvaluation();
+    });
+    mutationObserver.observe(node, { childList: true, subtree: true });
+    scheduleReviewGateEvaluation();
+
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      if (reviewGateFrameRef.current) {
+        cancelAnimationFrame(reviewGateFrameRef.current);
+        reviewGateFrameRef.current = null;
+      }
+    };
+  }, [open, request, scheduleReviewGateEvaluation]);
 
   if (!request) return null;
 
@@ -120,6 +155,10 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   };
 
   const handleApprove = async () => {
+    if (!evaluateReviewGate()) {
+      toast.error('Read the full review context before approving this request.');
+      return;
+    }
     setLoading(true);
     try {
       await rootminster.functions.invoke('approveRequest', { request_id: request.id, admin_notes: adminNotes });
@@ -134,6 +173,10 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   };
 
   const handleReject = async () => {
+    if (!evaluateReviewGate()) {
+      toast.error('Read the full review context before rejecting this request.');
+      return;
+    }
     setLoading(true);
     try {
       await rootminster.functions.invoke('rejectRequest', { request_id: request.id, rejection_reason: rejectionReason, admin_notes: adminNotes });
@@ -172,7 +215,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
             <DialogTitle className="text-base">{t('reviewRequest.title')}</DialogTitle>
           </DialogHeader>
 
-          <div ref={scrollRef} onScroll={updateReviewGate} className="flex-1 space-y-4 overflow-y-auto px-6 py-5 review-modal-scroll" style={{ scrollbarGutter: 'stable' }}>
+          <div ref={scrollRef} onScroll={evaluateReviewGate} className="flex-1 space-y-4 overflow-y-auto px-6 py-5 review-modal-scroll" style={{ scrollbarGutter: 'stable' }}>
             <div className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                 <Info size={15} className="text-muted-foreground" />
@@ -356,7 +399,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
                 </Button>
                 <Button
                   onClick={action === 'approve' ? handleApprove : handleReject}
-                  disabled={loading || (action === 'approve' && !!compatibilityError) || (action === 'reject' && !rejectionReason)}
+                  disabled={loading || !reviewGateMet || (action === 'approve' && !!compatibilityError) || (action === 'reject' && !rejectionReason)}
                   variant={action === 'approve' ? 'default' : 'destructive'}
                   className={action === 'approve' ? 'flex-1 bg-emerald-600 hover:bg-emerald-500 text-white' : 'flex-1'}
                 >
