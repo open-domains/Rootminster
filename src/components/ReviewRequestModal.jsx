@@ -1,5 +1,5 @@
 import { groupSubdomainRequests, recordSetError } from '../../shared/subdomain-requests.js';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -38,6 +38,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const [externalWarning, setExternalWarning] = useState(true);
   const [pendingUrl, setPendingUrl] = useState(null);
   const [safetyLoading, setSafetyLoading] = useState(false);
+  const [reviewGateMet, setReviewGateMet] = useState(false);
 
   useEffect(() => {
     rootminster.auth.me().then(setCurrentUser).catch(() => {});
@@ -71,7 +72,22 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     setAction(null);
     setAdminNotes('');
     setRejectionReason('');
+    setReviewGateMet(false);
   }, [open, request]);
+
+  const updateReviewGate = useCallback(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+    const hasNoScroll = node.scrollHeight <= node.clientHeight + 8;
+    const reachedReviewControls = node.scrollTop + node.clientHeight >= node.scrollHeight - 64;
+    if (hasNoScroll || reachedReviewControls) setReviewGateMet(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !request) return undefined;
+    const frame = requestAnimationFrame(updateReviewGate);
+    return () => cancelAnimationFrame(frame);
+  }, [open, request, updateReviewGate]);
 
   if (!request) return null;
 
@@ -156,7 +172,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
             <DialogTitle className="text-base">{t('reviewRequest.title')}</DialogTitle>
           </DialogHeader>
 
-          <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto px-6 py-5 review-modal-scroll" style={{ scrollbarGutter: 'stable' }}>
+          <div ref={scrollRef} onScroll={updateReviewGate} className="flex-1 space-y-4 overflow-y-auto px-6 py-5 review-modal-scroll" style={{ scrollbarGutter: 'stable' }}>
             <div className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                 <Info size={15} className="text-muted-foreground" />
@@ -316,14 +332,19 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
               onStatusChange={setConversationStatus}
             />
 
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-200">
+              <p className="font-medium">Required review step</p>
+              <p className="mt-1">Approval and rejection controls are enabled only after staff scroll through the request details, DNS records, project description, Observer screening and conversation context.</p>
+            </div>
+
             {compatibilityError && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{compatibilityError} Ask the requester to submit a corrected request after this one is rejected.</p>}
             {pendingRecords.length === 0 ? null : !action ? (
               <div className="flex gap-3 pt-2">
-                <Button onClick={() => setAction('reject')} variant="outline"
+                <Button disabled={!reviewGateMet} onClick={() => setAction('reject')} variant="outline"
                   className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10">
                   <XCircle size={16} className="mr-2" /> {t('reviewRequest.reject')}
                 </Button>
-                <Button disabled={!!compatibilityError} onClick={() => setAction('approve')}
+                <Button disabled={!reviewGateMet || !!compatibilityError} onClick={() => setAction('approve')}
                   className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
                   <CheckCircle size={16} className="mr-2" /> {pendingRecords.length > 1 ? t('reviewRequest.approveAll', { count: pendingRecords.length }) : t('reviewRequest.approve')}
                 </Button>

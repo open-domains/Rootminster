@@ -25,35 +25,31 @@ const observerVerdictFor = (request) => {
 const observerScoreFor = (request) => Number(request.observer_score) || 0;
 
 function RequestCard({ request, onReview, userNames = {} }) {
-  const { t } = useTranslation();
   return (
-    <div className="flex min-w-0 flex-col gap-3 overflow-hidden rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/20">
-      <div className="flex items-start justify-between gap-2 min-w-0">
-        <div className="min-w-0 flex-1 overflow-hidden">
+    <div className="grid min-w-0 gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/20 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_150px_130px] md:items-center">
+      <div className="min-w-0 overflow-hidden">
           <p className="font-mono text-primary text-sm font-medium truncate">
             {request.subdomain}.{request.root_domain}
           </p>
           <p className="text-muted-foreground text-xs mt-0.5 truncate" title={request.requester_email}>{userNames[request.requester_email] || request.requester_email}</p>
-        </div>
-        <StatusBadge status={request.status} />
       </div>
 
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1 min-w-0">
+      <div className="min-w-0">
+        <div className="flex flex-wrap gap-1">
           {request._records?.map((r, i) => (
             <span key={i} className="font-mono text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{r.record_type}</span>
           ))}
         </div>
-        <span className="text-muted-foreground text-xs shrink-0">{request.created_date ? format(new Date(request.created_date), 'MMM d, yyyy') : '—'}</span>
+        <span className="mt-1 block text-muted-foreground text-xs shrink-0">{request.created_date ? format(new Date(request.created_date), 'MMM d, yyyy') : '—'}</span>
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-        <span className="text-[11px] text-muted-foreground">Observer screening</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusBadge status={request.status} />
         <SafetyBadge verdict={observerVerdictFor(request)} score={observerScoreFor(request)} />
       </div>
 
-      <Button size="sm" onClick={() => onReview(request)} className="w-full h-8 text-xs gap-1.5">
-        <Eye size={13} /> {t('adminRequests.reviewRequest')}
+      <Button size="sm" onClick={() => onReview(request)} className="h-8 w-full text-xs gap-1.5 md:w-auto">
+        <Eye size={13} /> Open review
       </Button>
     </div>
   );
@@ -259,7 +255,7 @@ export default function AdminRequests() {
         filtered.length === 0 ? (
           <p className="text-center text-muted-foreground py-16">{t('adminRequests.noSubdomain')}</p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-2">
             {filtered.map(r => <RequestCard key={r.id} request={r} onReview={setSelected} userNames={userNames} />)}
           </div>
         )
