@@ -120,3 +120,14 @@ test('account names use full_name and validate profile updates', async () => {
   assert.match(settings, /updateMe\(\{ full_name: fullName \}\)/);
   assert.doesNotMatch(settings, /display_name|settings\.displayName/);
 });
+
+test('OAuth sign-in does not inherit credentials from an unverified pre-registration', async () => {
+  const auth = await source('./auth.js');
+  const upsert = auth.slice(auth.indexOf('async function upsertOauthUser'), auth.indexOf('export async function registerAuthRoutes'));
+  assert.match(upsert, /FOR UPDATE/);
+  assert.match(upsert, /if \(row && !row\.email_verified_at\)/);
+  assert.match(upsert, /password_hash = NULL, totp_secret = NULL, totp_enabled = false/);
+  for (const table of ['sessions', 'email_verifications', 'password_resets', 'webauthn_credentials']) {
+    assert.match(upsert, new RegExp(`DELETE FROM ${table} WHERE user_id = \\$1`));
+  }
+});
