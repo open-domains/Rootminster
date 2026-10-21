@@ -10,28 +10,25 @@ export default async function (req) {
                 description: ['Provide a domain name via ?domain=example.com'],
             }, { status: 400 });
         }
-        const cleanDomain = domain.trim().toLowerCase();
-        // First try exact match (root domain)
-        let domains = await platform.asServiceRole.entities.Domain.filter({ name: cleanDomain });
-        let domainRecord = null;
-        let rootDomain = cleanDomain;
-        let isSubdomain = false;
-        if (!domains.length) {
-            // Try to extract root domain for subdomain lookups (e.g. "migration.is-cool.dev" → "is-cool.dev")
-            const parts = cleanDomain.split('.');
-            if (parts.length > 2) {
-                // Try increasingly short suffixes
-                for (let i = 1; i < parts.length - 1; i++) {
-                    const candidate = parts.slice(i).join('.');
-                    domains = await platform.asServiceRole.entities.Domain.filter({ name: candidate });
-                    if (domains.length) {
-                        rootDomain = candidate;
-                        isSubdomain = true;
-                        break;
-                    }
-                }
-            }
+        const cleanDomain = typeof domain === 'string' ? domain.trim().toLowerCase().replace(/\.$/, '') : '';
+        const parts = cleanDomain.split('.');
+        // Reject anything that is not a plausible hostname before touching the database, so an
+        // anonymous caller cannot turn one lookup into hundreds of queries.
+        if (!cleanDomain || cleanDomain.length > 253 || parts.length < 2 ||
+            parts.some(label => !/^[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?$/.test(label))) {
+            return Response.json({
+                error: 'Invalid domain',
+                description: ['Provide a valid domain name, such as example.com'],
+            }, { status: 400 });
         }
+        // The exact name and every parent with at least two labels, looked up in one query. The
+        // longest match wins, so "migration.is-cool.dev" resolves to "is-cool.dev".
+        const candidates = parts.slice(0, -1).map((_, index) => parts.slice(index).join('.'));
+        const matches = await platform.asServiceRole.entities.Domain.filter({ name: { $in: candidates } });
+        const domains = matches.sort((a, b) => b.name.length - a.name.length);
+        let domainRecord = null;
+        const rootDomain = domains[0]?.name || cleanDomain;
+        const isSubdomain = rootDomain !== cleanDomain;
         if (!domains.length) {
             return Response.json({
                 error: 'Domain not found',

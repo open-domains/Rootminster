@@ -168,6 +168,28 @@ for (const prefix of prefixes) {
     });
   }
 
+  test(`${prefix} DNS writes stay out of another account's nested namespace`, async t => {
+    const f = await fixture(t);
+    // Legacy state: another account holds a child of this user's namespace.
+    f.data.SubdomainOwnership.push({ id: 'victim-grant', full_name: 'child.mine.example.test', root_domain: 'example.test', owner_id: 'victim', owner_email: 'victim@example.test', status: 'active' });
+    const create = (name, record_type, content) => f.app.inject({ method: 'POST', url: `${prefix}/manageDnsRecord`, headers: { authorization: 'Bearer browser-session' }, payload: { action: 'create', name, record_type, content } });
+    for (const [name, type, content] of [
+      ['child.mine.example.test', 'A', '1.1.1.1'],
+      ['www.child.mine.example.test', 'TXT', 'verification-token'],
+      ['mine.example.test', 'NS', 'ns1.attacker.example'],
+    ]) {
+      const response = await create(name, type, content);
+      assert.equal(response.statusCode, 403, `${name} ${type}: ${response.body}`);
+    }
+    assert.equal(f.providerCalls.length, 0);
+    const rename = await f.app.inject({ method: 'POST', url: `${prefix}/manageDnsRecord`, headers: { authorization: 'Bearer browser-session' }, payload: { action: 'update', record_id: RECORD_ID, name: 'child.mine.example.test' } });
+    assert.equal(rename.statusCode, 403, rename.body);
+    assert.equal(f.providerCalls.length, 0);
+    // The user's own names outside the child are unaffected.
+    assert.equal((await create('mine.example.test', 'TXT', 'site-verification')).statusCode, 200);
+    assert.equal((await create('other.mine.example.test', 'A', '1.1.1.1')).statusCode, 200);
+  });
+
   for (const role of ['user', 'staff', 'admin']) {
     for (const action of ['setup', 'enable']) {
       test(`${prefix} ${role} cannot ${action} TOTP while passkey MFA is pending`, async t => {

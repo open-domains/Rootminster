@@ -16,6 +16,15 @@ function isElevated(user) {
   return user?.role === 'admin' || user?.role === 'staff';
 }
 
+// Review notes and automated screening results on requests are for staff only, even though
+// the requester can read the rest of their own request.
+const REQUEST_ENTITIES = new Set(['SubdomainRequest', 'EditRequest']);
+const isStaffOnlyRequestField = (key) => key === 'admin_notes' || key.startsWith('safety_') || key.startsWith('observer_');
+
+function hidesStaffFields(user, entity) {
+  return REQUEST_ENTITIES.has(entity) && !isElevated(user);
+}
+
 async function entityEnabled(entity) {
   return entity !== 'Donation' || (await getModuleConfig('donations')).enabled;
 }
@@ -46,6 +55,9 @@ function redact(user, entity, record) {
   if (entity === 'Domain' && !isElevated(user)) {
     for (const key of ['zone_id', 'nameservers', 'reserved_names', 'notes', 'last_synced', 'record_count', 'created_by']) delete copy[key];
   }
+  if (hidesStaffFields(user, entity)) {
+    for (const key of Object.keys(copy)) if (isStaffOnlyRequestField(key)) delete copy[key];
+  }
   if (entity === 'ApiToken') delete copy.token_hash;
   if (entity === 'TrustedDevice') delete copy.token_hash;
   if (entity === 'PlatformSettings' && user?.role !== 'admin' && !PUBLIC_SETTINGS.has(copy.key)) return null;
@@ -75,8 +87,14 @@ export async function registerEntityRoutes(app) {
     if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     const filter = safeFilter(request.query?.filter);
+    let sort = request.query?.sort;
+    // Filtering or sorting on a hidden field would still reveal its value one bit at a time.
+    if (hidesStaffFields(user, request.params.entity)) {
+      for (const key of Object.keys(filter)) if (isStaffOnlyRequestField(key)) delete filter[key];
+      if (isStaffOnlyRequestField(String(sort || '').replace(/^-/, ''))) sort = undefined;
+    }
     const requestedLimit = Math.min(Number(request.query?.limit) || 1000, 10_000);
-    const rows = await store.filter(request.params.entity, filter, request.query?.sort, isElevated(user) ? requestedLimit : 10_000, Number(request.query?.skip) || 0);
+    const rows = await store.filter(request.params.entity, filter, sort, isElevated(user) ? requestedLimit : 10_000, Number(request.query?.skip) || 0);
     const allowed = [];
     for (const row of rows) {
       if (await userCanRead(user, request.params.entity, row)) {
