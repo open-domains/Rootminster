@@ -53,7 +53,12 @@ function redact(user, entity, record) {
   if (entity === 'User') return publicUser(record);
   const copy = { ...record };
   if (entity === 'Domain' && !isElevated(user)) {
-    for (const key of ['zone_id', 'nameservers', 'reserved_names', 'notes', 'last_synced', 'record_count', 'created_by']) delete copy[key];
+    // Domain providers can see stats for their own assigned domain; strip sensitive infra fields only
+    const isDomainProvider = user?.role === 'domain_provider' && (record.provider_user_id === user?.id || record.provider_user_email === user?.email);
+    const sensitiveFields = isDomainProvider
+      ? ['zone_id', 'nameservers', 'reserved_names', 'notes', 'created_by']
+      : ['zone_id', 'nameservers', 'reserved_names', 'notes', 'last_synced', 'record_count', 'created_by'];
+    for (const key of sensitiveFields) delete copy[key];
   }
   if (hidesStaffFields(user, entity)) {
     for (const key of Object.keys(copy)) if (isStaffOnlyRequestField(key)) delete copy[key];

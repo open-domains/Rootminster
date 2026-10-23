@@ -81,6 +81,7 @@ function ProductSidebar({ user, mobile, onClose }) {
   const location = useLocation();
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
+  const isDomainProvider = user?.role === 'domain_provider';
   const privileged = isAdmin || isStaff;
   const active = (to) => location.pathname === to || (to !== '/user-dashboard' && location.pathname.startsWith(to));
   const adminItems = adminNav.filter(item => !item.adminOnly || isAdmin);
@@ -120,6 +121,16 @@ function ProductSidebar({ user, mobile, onClose }) {
             </div>
           </>
         )}
+
+        {isDomainProvider && (
+          <>
+            <div className="my-4 border-t border-sidebar-border" />
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground/70">Domain Provider</p>
+            <div className="space-y-1">
+              <NavItem item={{ to: '/domain-provider-dashboard', icon: Globe2, label: 'My Donated Domains' }} active={active('/domain-provider-dashboard')} onNavigate={onClose} />
+            </div>
+          </>
+        )}
       </div>
 
     </aside>
@@ -146,6 +157,7 @@ export default function Layout() {
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
   const isPrivileged = isAdmin || isStaff;
+  const isDomainProvider = user?.role === 'domain_provider';
   const requestedReturnTo = new URLSearchParams(location.search).get('return_to');
   const mcpReturnTo = requestedReturnTo === '/oauth/authorize' || requestedReturnTo?.startsWith('/oauth/authorize?')
     ? requestedReturnTo
@@ -236,7 +248,12 @@ export default function Layout() {
   const initials = ((user?.full_name || user?.email || 'U')[0] || 'U').toUpperCase();
   const fullName = user?.full_name || 'User';
   const isAdminPath = location.pathname.startsWith('/admin-') || location.pathname === '/docker-engine';
-  const cmdItems = [...userNav, ...resourceNav, ...(isPrivileged ? adminNav.filter(i => !i.adminOnly || isAdmin) : [])];
+  const cmdItems = [
+    ...userNav,
+    ...resourceNav,
+    ...(isPrivileged ? adminNav.filter(i => !i.adminOnly || isAdmin) : []),
+    ...(isDomainProvider ? [{ to: '/domain-provider-dashboard', icon: Globe2, label: 'My Donated Domains' }] : []),
+  ];
   const stopImpersonation = async () => {
     try {
       await rootminster.impersonation.stop();

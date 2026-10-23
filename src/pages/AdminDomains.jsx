@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, RefreshCw, Trash2, AlertTriangle, Globe, Database, CheckCircle2, XCircle, ShieldCheck, Lock } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, AlertTriangle, Globe, Database, CheckCircle2, XCircle, ShieldCheck, Lock, UserCheck } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -44,6 +44,10 @@ export default function AdminDomains() {
   const [newDomain, setNewDomain] = useState({ zone_id: '', name: '' });
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [assignProviderDomain, setAssignProviderDomain] = useState(null);
+  const [providerUsers, setProviderUsers] = useState([]);
+  const [loadingProviders, setLoadingProviders] = useState(false);
+  const [assigningProvider, setAssigningProvider] = useState(false);
 
   const load = async () => {
     const [doms, logs] = await Promise.all([
@@ -98,6 +102,38 @@ export default function AdminDomains() {
     load();
   };
 
+  const openAssignProvider = async (domain) => {
+    setAssignProviderDomain(domain);
+    setLoadingProviders(true);
+    try {
+      const res = await rootminster.functions.invoke('adminListUsers', {});
+      const all = res.data?.users || [];
+      setProviderUsers(all.filter(u => u.role === 'domain_provider'));
+    } catch {
+      toast.error('Failed to load domain provider users');
+    } finally {
+      setLoadingProviders(false);
+    }
+  };
+
+  const assignProvider = async (userId) => {
+    if (!assignProviderDomain) return;
+    setAssigningProvider(true);
+    try {
+      await rootminster.functions.invoke('adminAssignDomainProvider', {
+        domain_id: assignProviderDomain.id,
+        user_id: userId,
+      });
+      toast.success(userId ? 'Provider assigned' : 'Provider removed');
+      setAssignProviderDomain(null);
+      load();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to assign provider');
+    } finally {
+      setAssigningProvider(false);
+    }
+  };
+
   const domainColumns = [
     { key: 'name', label: t('adminDomains.colDomain'), render: v => (
       <span className="inline-flex items-center">
@@ -112,6 +148,10 @@ export default function AdminDomains() {
     { key: 'last_synced', label: t('adminDomains.colLastSync'), render: v => <span className="text-muted-foreground text-xs">{v ? format(new Date(v), 'MMM d, HH:mm') : t('adminDomains.never')}</span> },
     { key: 'id', label: '', render: (_, row) => (
       <div className="flex gap-1">
+        <Button size="sm" variant="ghost" onClick={() => openAssignProvider(row)}
+          className="text-emerald-400 hover:bg-emerald-500/10 h-7 text-xs gap-1">
+          <UserCheck size={11} /> {row.provider_user_email ? 'Provider' : 'Assign'}
+        </Button>
         <Button size="sm" variant="ghost" onClick={() => syncDomain(row)} disabled={syncingId === row.id}
           className="text-muted-foreground hover:text-foreground hover:bg-muted h-7 text-xs gap-1">
           <RefreshCw size={11} className={syncingId === row.id ? 'animate-spin' : ''} /> {t('adminDomains.sync')}
@@ -232,6 +272,67 @@ export default function AdminDomains() {
               <Button variant="outline" onClick={() => setShowAdd(false)} className="flex-1">{t('common.cancel')}</Button>
               <Button onClick={addDomain} disabled={!newDomain.zone_id || !newDomain.name} className="flex-1">{t('adminDomains.addDomainBtn')}</Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Domain Provider modal */}
+      <Dialog open={!!assignProviderDomain} onOpenChange={open => !open && setAssignProviderDomain(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck size={16} className="text-emerald-400" />
+              Assign Domain Provider — {assignProviderDomain?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            {assignProviderDomain?.provider_user_email && (
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 mb-1">Current provider</p>
+                <p className="text-foreground font-medium">{assignProviderDomain.provider_user_email}</p>
+                <Button
+                  size="sm" variant="ghost"
+                  onClick={() => assignProvider(null)}
+                  disabled={assigningProvider}
+                  className="mt-2 h-7 px-2.5 text-xs text-destructive hover:bg-destructive/10"
+                >
+                  Remove provider
+                </Button>
+              </div>
+            )}
+            {loadingProviders ? (
+              <div className="flex justify-center py-6">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : providerUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No users have the Domain Provider role yet. Go to Admin → Users and grant the role first.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-xs">Select a domain provider user</Label>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {providerUsers.map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => assignProvider(u.id)}
+                      disabled={assigningProvider}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors text-sm ${
+                        assignProviderDomain?.provider_user_id === u.id
+                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+                          : 'border-border hover:bg-muted/60 text-foreground'
+                      }`}
+                    >
+                      <span className="font-medium">{u.full_name || u.email}</span>
+                      {u.full_name && <span className="text-muted-foreground text-xs ml-2">{u.email}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <Button variant="outline" onClick={() => setAssignProviderDomain(null)} className="w-full">
+              Cancel
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

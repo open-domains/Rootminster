@@ -5,7 +5,7 @@ import UserDetailModal from '@/components/UserDetailModal';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Shield, Ban, Unlock, Heart, GitBranch, KeyRound, AlertTriangle, Users, UserCheck, Crown, Key, Trash2, Loader2 } from 'lucide-react';
+import { Shield, Ban, Unlock, Heart, GitBranch, KeyRound, AlertTriangle, Users, UserCheck, Crown, Key, Trash2, Loader2, Globe2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -110,6 +110,18 @@ export default function AdminUsers() {
       toast.success(t('adminUsers.promotedStaff'));
       await load();
     });
+  };
+
+  const makeDomainProvider = async (user) => {
+    confirm(
+      t('adminUsers.makeDomainProvider', 'Make Domain Provider'),
+      t('adminUsers.makeDomainProviderDesc', { email: user.email, defaultValue: `Grant {{email}} the Domain Provider role? An admin can then assign one or more donated domains to this user.` }),
+      async () => {
+        await updateUser(user.id, { role: 'domain_provider' });
+        toast.success(t('adminUsers.domainProviderGranted', 'Domain Provider role granted'));
+        await load();
+      },
+    );
   };
 
   const toggleLegacyDonor = async (user) => {
@@ -235,9 +247,13 @@ export default function AdminUsers() {
       <span className={`text-xs font-medium px-2 py-0.5 rounded-full border whitespace-nowrap ${
         v === 'admin' ? 'bg-accent/10 text-accent border-accent/25' :
         v === 'staff' ? 'bg-primary/10 text-primary border-primary/25' :
+        v === 'domain_provider' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' :
         'bg-muted text-muted-foreground border-border'
       }`}>
-        {v === 'admin' ? t('adminUsers.roleAdmin') : v === 'staff' ? t('adminUsers.roleStaff') : t('adminUsers.roleUser')}
+        {v === 'admin' ? t('adminUsers.roleAdmin') :
+         v === 'staff' ? t('adminUsers.roleStaff') :
+         v === 'domain_provider' ? t('adminUsers.roleDomainProvider', 'Domain Provider') :
+         t('adminUsers.roleUser')}
       </span>
     )},
     { key: 'email', label: t('adminUsers.colSubdomains'), render: v => <span className="text-primary text-sm font-medium">{getOwnedCount(v)}</span> },
@@ -256,6 +272,10 @@ export default function AdminUsers() {
       <div className="flex items-center gap-1.5 flex-wrap">
         {row.role === 'user' && (
           <>
+            <Button size="sm" variant="ghost" onClick={() => makeDomainProvider(row)}
+              className="text-emerald-400 hover:bg-emerald-500/10 h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap">
+              <Globe2 size={12} /> {t('adminUsers.domainProvider', 'Domain Provider')}
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => promoteStaff(row)}
               className="text-primary hover:bg-primary/10 h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap">
               <Shield size={12} /> {t('adminUsers.staff')}
@@ -263,6 +283,22 @@ export default function AdminUsers() {
             <Button size="sm" variant="ghost" onClick={() => promoteAdmin(row)}
               className="text-accent hover:bg-accent/10 h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap">
               <Shield size={12} /> {t('adminUsers.admin')}
+            </Button>
+          </>
+        )}
+        {row.role === 'domain_provider' && (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => promoteStaff(row)}
+              className="text-primary hover:bg-primary/10 h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap">
+              <Shield size={12} /> {t('adminUsers.staff')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => promoteAdmin(row)}
+              className="text-accent hover:bg-accent/10 h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap">
+              <Shield size={12} /> {t('adminUsers.admin')}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => demoteUser(row)}
+              className="text-muted-foreground hover:text-foreground hover:bg-muted h-7 px-2.5 text-xs gap-1.5 whitespace-nowrap">
+              <Ban size={12} /> {t('adminUsers.demote')}
             </Button>
           </>
         )}
@@ -301,6 +337,7 @@ export default function AdminUsers() {
 
   const admins = users.filter(u => u.role === 'admin').length;
   const staff = users.filter(u => u.role === 'staff').length;
+  const providers = users.filter(u => u.role === 'domain_provider').length;
   const unlocked = users.filter(u => u.ns_unlocked).length;
 
   return (
@@ -362,11 +399,12 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <div className={`grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card ${donationsEnabled ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+      <div className={`grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-card ${donationsEnabled ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
         {[
           { label: t('adminUsers.labelUsers'), value: users.length, icon: Users },
           { label: t('adminUsers.labelStaff'), value: staff, icon: UserCheck },
           { label: t('adminUsers.labelAdmins'), value: admins, icon: Crown },
+          { label: t('adminUsers.labelDomainProviders', 'Domain Providers'), value: providers, icon: Globe2 },
           ...(donationsEnabled ? [{ label: t('adminUsers.labelNsUnlocked'), value: unlocked, icon: Key }] : []),
         ].map((item, index) => (
           <div key={item.label} className={`${index > 0 ? 'border-l border-border' : ''} px-4 py-3.5`}>

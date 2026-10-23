@@ -31,6 +31,7 @@ import { registerImpersonationRoutes } from './impersonation-routes.js';
 import { registerDockerManagerRoutes } from './docker-manager.js';
 import { registerObserverRoutes } from './observer.js';
 import { registerZammadRoutes } from './zammad.js';
+import { registerDomainProviderRoutes } from './domain-provider-routes.js';
 
 assertProductionConfiguration();
 
@@ -151,6 +152,7 @@ await registerModuleSettingsRoutes(app);
 await registerDockerManagerRoutes(app);
 await registerObserverRoutes(app);
 await registerZammadRoutes(app);
+await registerDomainProviderRoutes(app);
 await registerDesignRoutes(app);
 await registerBackupRoutes(app);
 await registerTermsRoutes(app);

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   email citext NOT NULL UNIQUE,
   password_hash text,
   full_name text,
-  role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'staff', 'admin')),
+  role text NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'staff', 'admin', 'domain_provider')),
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('pending', 'active', 'disabled')),
   email_verified_at timestamptz,
   tos_accepted_at timestamptz,
@@ -30,6 +30,38 @@ BEGIN
     UPDATE users
     SET full_name = coalesce(nullif(trim(full_name), ''), nullif(trim(display_name), ''));
     ALTER TABLE users DROP COLUMN display_name;
+  END IF;
+END $$;
+
+-- Migration: extend role CHECK constraint to include 'domain_provider'
+DO $$
+BEGIN
+  -- Only needed when the constraint still has the old value set (fresh installs get it from CREATE TABLE above)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE table_schema = 'public' AND table_name = 'users' AND constraint_type = 'CHECK'
+      AND constraint_name LIKE '%role%'
+  ) THEN
+    -- Drop any check constraint on role (name varies by Postgres version) and re-add the expanded one
+    EXECUTE (
+      SELECT 'ALTER TABLE users DROP CONSTRAINT ' || quote_ident(constraint_name)
+      FROM information_schema.table_constraints
+      WHERE table_schema = 'public' AND table_name = 'users' AND constraint_type = 'CHECK'
+        AND constraint_name LIKE '%role%'
+      LIMIT 1
+    );
+  END IF;
+  -- Add (or re-add) the constraint with all valid roles
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.check_constraints
+    WHERE constraint_schema = 'public' AND check_clause LIKE '%domain_provider%'
+      AND constraint_name IN (
+        SELECT constraint_name FROM information_schema.table_constraints
+        WHERE table_name = 'users' AND constraint_type = 'CHECK'
+      )
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT users_role_check
+      CHECK (role IN ('user', 'staff', 'admin', 'domain_provider'));
   END IF;
 END $$;
 
