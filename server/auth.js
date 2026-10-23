@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { config } from './config.js';
-import { pool } from './database.js';
+import { pool, transaction } from './database.js';
 import { sendEmail } from './mail.js';
 import { hashPassword, randomToken, sha256, verifyPassword } from './security.js';
 import { serializeUser } from './store.js';
@@ -125,21 +125,40 @@ async function upsertOauthUser(email, name) {
   const normalizedEmail = String(email).trim().toLowerCase();
   const disposable = await disposableEmailResult(normalizedEmail, await getModuleConfig('disposable_email'));
   if (disposable.disposable) throw Object.assign(new Error('Temporary email addresses are not accepted'), { status: 400 });
-  const existing = await pool.query('SELECT status FROM users WHERE email = $1', [normalizedEmail]);
-  if (existing.rows[0]?.status === 'disabled') {
-    throw Object.assign(new Error('This account is disabled'), { status: 403 });
-  }
-  return pool.query(
-    `INSERT INTO users(email, full_name, status, email_verified_at)
-     VALUES ($1, $2, 'active', now())
-     ON CONFLICT (email) DO UPDATE SET
-       email_verified_at = coalesce(users.email_verified_at, now()),
-       status = CASE WHEN users.status = 'pending' THEN 'active' ELSE users.status END,
-       full_name = coalesce(users.full_name, excluded.full_name),
-       updated_at = now()
-     RETURNING *`,
-    [normalizedEmail, name || null],
-  );
+  return transaction(async (client) => {
+    const existing = await client.query('SELECT id, status, email_verified_at FROM users WHERE email = $1 FOR UPDATE', [normalizedEmail]);
+    const row = existing.rows[0];
+    if (row?.status === 'disabled') {
+      throw Object.assign(new Error('This account is disabled'), { status: 403 });
+    }
+    if (row && !row.email_verified_at) {
+      // Nobody has proven control of this address yet, so anything already on the
+      // row may belong to whoever typed the email at registration. The provider has
+      // now verified the real owner: discard the pre-registered credentials and any
+      // outstanding tokens so the registrant cannot sign in to the claimed account.
+      await client.query(
+        `UPDATE users SET password_hash = NULL, totp_secret = NULL, totp_enabled = false,
+           full_name = $2, updated_at = now()
+         WHERE id = $1`,
+        [row.id, name || null],
+      );
+      await client.query('DELETE FROM sessions WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM email_verifications WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM password_resets WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM webauthn_credentials WHERE user_id = $1', [row.id]);
+    }
+    return client.query(
+      `INSERT INTO users(email, full_name, status, email_verified_at)
+       VALUES ($1, $2, 'active', now())
+       ON CONFLICT (email) DO UPDATE SET
+         email_verified_at = coalesce(users.email_verified_at, now()),
+         status = CASE WHEN users.status = 'pending' THEN 'active' ELSE users.status END,
+         full_name = coalesce(users.full_name, excluded.full_name),
+         updated_at = now()
+       RETURNING *`,
+      [normalizedEmail, name || null],
+    );
+  });
 }
 
 export async function registerAuthRoutes(app) {
