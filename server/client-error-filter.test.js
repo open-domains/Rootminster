@@ -55,6 +55,16 @@ test('filters injected wallet-provider globals without hiding app Ethereum error
   ])), false);
 });
 
+test('filters injected wallet extension property redefinition errors', () => {
+  assert.equal(shouldIgnoreClientErrorEvent(event('Cannot redefine property: ethereum', [
+    { filename: 'chrome-extension://wallet/evmAsk.js', function: 'inject' },
+    { filename: '<anonymous>', function: 'Object.defineProperty' },
+  ])), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event('Cannot redefine property: ethereum', [
+    { filename: '/assets/index.js', function: 'defineProvider' },
+  ])), false);
+});
+
 test('filters injected Firefox helper globals on document pages', () => {
   assert.equal(shouldIgnoreClientErrorEvent(event("Can't find variable: __firefox__", [
     { filename: '/login', function: 'global code' },
@@ -71,4 +81,13 @@ test('filters chunk load errors because lazy routes trigger a guarded reload', (
   assert.equal(shouldIgnoreClientErrorEvent(event('Failed to fetch dynamically imported module: https://open-domains.com/assets/Landing-sppzqlU9.js')), true);
   assert.equal(shouldIgnoreClientErrorEvent(event('Importing a module script failed.')), true);
   assert.equal(shouldIgnoreClientErrorEvent(event('Loading chunk 5 failed.')), true);
+});
+
+test('filters GradFlow shader renderer internals while keeping app shader errors', () => {
+  assert.equal(shouldIgnoreClientErrorEvent(event("undefined is not an object (evaluating 'this.uniformLocations.forEach')", [
+    { filename: '/assets/stripe-like-gradient-shader-CPa_dOTK.js', function: 'use' },
+  ])), true);
+  assert.equal(shouldIgnoreClientErrorEvent(event("undefined is not an object (evaluating 'this.uniformLocations.forEach')", [
+    { filename: '/assets/index.js', function: 'renderDashboard' },
+  ])), false);
 });

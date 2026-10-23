@@ -6,7 +6,10 @@ const EXTENSION_FETCH_ERROR = /^(?:TypeError:\s*)?Failed to fetch \([^)]+\)$/i;
 const EXTENSION_FRAME = /^(?:chrome|moz|safari-web)-extension:\/\//i;
 const DOCUMENT_PATH = /^\/(?:[A-Za-z0-9._~!$&'()*+,;=:@%-]+)?$/;
 const WALLET_GLOBAL_ERROR = /window\.ethereum\.selectedAddress\s*=\s*undefined/i;
+const WALLET_PROPERTY_REDEFINITION_ERROR = /Cannot redefine property:\s*ethereum/i;
 const FIREFOX_HELPER_GLOBAL_ERROR = /(?:\b__firefox__\b|window\.__firefox__\.)/i;
+const GRADFLOW_UNIFORM_ERROR = /uniformLocations\.forEach/i;
+const GRADFLOW_FRAME = /stripe-like-gradient-shader/i;
 
 function exceptionValues(event) {
   return event?.exception?.values || [];
@@ -26,9 +29,13 @@ export function shouldIgnoreClientErrorEvent(event) {
   if (messages.some((message) => WALLET_GLOBAL_ERROR.test(message))
       && frames.length
       && frames.every((frame) => (frame?.filename || frame?.abs_path || '') === '/' && frame?.function === 'global code')) return true;
+  if (messages.some((message) => WALLET_PROPERTY_REDEFINITION_ERROR.test(message))
+      && frames.some((frame) => EXTENSION_FRAME.test(frame?.filename || frame?.abs_path || ''))) return true;
   if (messages.some((message) => FIREFOX_HELPER_GLOBAL_ERROR.test(message))
       && frames.length
       && frames.every((frame) => DOCUMENT_PATH.test(frame?.filename || frame?.abs_path || '') && frame?.function === 'global code')) return true;
+  if (messages.some((message) => GRADFLOW_UNIFORM_ERROR.test(message))
+      && frames.some((frame) => GRADFLOW_FRAME.test(frame?.filename || frame?.abs_path || ''))) return true;
   if (messages.some((message) => CHUNK_LOAD_ERROR.test(message))) return true;
 
   const stackless = !values.some((value) => value?.stacktrace?.frames?.length);
