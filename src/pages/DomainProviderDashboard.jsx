@@ -34,6 +34,13 @@ function DomainCard({ domain }) {
           }`}>
             {domain.status}
           </span>
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+            domain.allow_new_requests
+              ? 'bg-blue-500/10 text-blue-400 border-blue-500/25'
+              : 'bg-slate-500/10 text-slate-400 border-slate-500/25'
+          }`}>
+            {domain.allow_new_requests ? t('domainProvider.acceptingRequests', 'Accepting requests') : t('domainProvider.notAcceptingRequests', 'Not accepting requests')}
+          </span>
         </div>
         {domain.last_synced && (
           <span className="text-xs text-muted-foreground">

@@ -7,7 +7,7 @@ const layoutSource = readFileSync(new URL('../src/components/Layout.jsx', import
 
 const adminRoutePattern = /<Route\s+path="(\/admin-[^"]+|\/docker-engine)"/g;
 const adminRoutes = [...appSource.matchAll(adminRoutePattern)].map(match => match[1]);
-const redirects = new Set(['/admin-dns-records', '/admin-observer']);
+const redirects = new Set(['/admin-dns-records', '/admin-observer', '/admin-domains']);
 const visibleAdminRoutes = adminRoutes.filter(route => !redirects.has(route));
 
 test('all admin pages are reachable from the admin navigation', () => {
@@ -17,7 +17,6 @@ test('all admin pages are reachable from the admin navigation', () => {
 
 test('hidden operational admin pages are promoted into navigation with explicit labels', () => {
   for (const [route, label] of [
-    ['/admin-domains', 'Root Domains'],
     ['/admin-donations', 'Donations'],
     ['/admin-email-logs', 'Email Logs'],
   ]) {

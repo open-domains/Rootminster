@@ -98,7 +98,7 @@ const DiscordLink = lazy(() => import('@/pages/DiscordLink'));
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const AdminRequests = lazy(() => import('@/pages/AdminRequests'));
 const AdminSubdomains = lazy(() => import('@/pages/AdminSubdomains'));
-const AdminDomains = lazy(() => import('@/pages/AdminDomains'));
+// AdminDomains removed — zone management moved to Platform Settings → Zones & Requests
 const AdminUsers = lazy(() => import('@/pages/AdminUsers'));
 const AdminAuditLogs = lazy(() => import('@/pages/AdminAuditLogs'));
 const AdminEmailLogs = lazy(() => import('@/pages/AdminEmailLogs'));
@@ -206,7 +206,7 @@ const AuthenticatedApp = () => {
 
         {/* Admin-only Routes */}
         <Route element={<RoleProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="/admin-domains" element={<AdminDomains />} />
+          <Route path="/admin-domains" element={<Navigate to="/admin-settings" replace />} />
           <Route path="/admin-users" element={<AdminUsers />} />
           <Route path="/admin-reports" element={<AdminReports />} />
           <Route path="/admin-audit-logs" element={<AdminAuditLogs />} />
