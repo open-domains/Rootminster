@@ -37,17 +37,19 @@ export async function registerDomainProviderRoutes(app) {
     // Per-domain stats from entity_records
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+    // SubdomainRequest stores the domain in 'root_domain'; DnsRecord uses 'zone_name'.
+    // Neither uses 'domain', so we must match each entity type against its own field.
     const statsResult = await pool.query(
       `SELECT
-         data->>'domain' AS domain_name,
+         COALESCE(data->>'root_domain', data->>'zone_name') AS domain_name,
          count(*) FILTER (WHERE entity_type = 'SubdomainRequest' AND data->>'status' = 'pending') AS pending_requests,
          count(*) FILTER (WHERE entity_type = 'SubdomainRequest' AND data->>'status' = 'approved') AS approved_subdomains,
          count(*) FILTER (WHERE entity_type = 'SubdomainRequest' AND created_at >= $2) AS new_requests_7d,
          count(*) FILTER (WHERE entity_type = 'DnsRecord' AND (data->>'managed')::boolean = true) AS dns_records
        FROM entity_records
-       WHERE (entity_type IN ('SubdomainRequest', 'DnsRecord'))
-         AND data->>'domain' = ANY($1::text[])
-       GROUP BY data->>'domain'`,
+       WHERE (entity_type = 'SubdomainRequest' AND data->>'root_domain' = ANY($1::text[]))
+          OR (entity_type = 'DnsRecord' AND data->>'zone_name' = ANY($1::text[]))
+       GROUP BY COALESCE(data->>'root_domain', data->>'zone_name')`,
       [domainNames, weekAgo],
     );
 
