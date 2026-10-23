@@ -21,6 +21,36 @@ async function audit(actor, action, target, reason, request, sessionId) {
   }, actor);
 }
 
+// Routes that create lasting credentials or identity bindings on the account
+// and must stay off-limits while an admin is viewing as another user.
+const IMPERSONATION_BLOCKED_PREFIXES = [
+  '/api/auth/passkeys', '/api/auth/tokens', '/api/functions/twoFactorAuth',
+  '/functions/twoFactorAuth', '/api/account-deletion-request', '/api/discord/link',
+];
+
+export function matchesBlockedPrefix(candidate) {
+  return typeof candidate === 'string'
+    && IMPERSONATION_BLOCKED_PREFIXES.some((prefix) => candidate === prefix || candidate.startsWith(`${prefix}/`));
+}
+
+// Fastify decodes percent-escapes before routing, so a blocklist that checks
+// only the raw URL can be defeated with e.g. /api/auth/%74okens. Normalise by
+// fully decoding the path (bounded against double-encoding) before matching.
+export function decodeRequestPath(url) {
+  let path = String(url || '').split('?')[0];
+  for (let i = 0; i < 3; i += 1) {
+    if (!/%[0-9a-fA-F]{2}/.test(path)) break;
+    try {
+      const next = decodeURIComponent(path);
+      if (next === path) break;
+      path = next;
+    } catch {
+      break;
+    }
+  }
+  return path;
+}
+
 export async function registerImpersonationRoutes(app) {
   app.addHook('preHandler', async (request, reply) => {
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) return;
@@ -29,11 +59,13 @@ export async function registerImpersonationRoutes(app) {
     const user = await authenticateRequest(request, { allowMfaPending: true });
     if (!user?.impersonation?.active) return;
     request.impersonatedRequest = user;
-    const securitySensitive = [
-      '/api/auth/passkeys', '/api/auth/tokens', '/api/functions/twoFactorAuth',
-      '/functions/twoFactorAuth', '/api/account-deletion-request',
-    ].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
-    if (securitySensitive || (path === '/api/auth/me' && request.method === 'PATCH')) {
+    // Check both the decoded path and the route that actually matched, so no
+    // encoding trick or alternate spelling can reach a blocked handler.
+    const decodedPath = decodeRequestPath(request.url);
+    const routePath = request.routeOptions?.url || '';
+    const securitySensitive = matchesBlockedPrefix(decodedPath) || matchesBlockedPrefix(routePath);
+    const profileEdit = request.method === 'PATCH' && (decodedPath === '/api/auth/me' || routePath === '/api/auth/me');
+    if (securitySensitive || profileEdit) {
       return reply.code(403).send({ error: 'This security-sensitive action is unavailable during a view-as session' });
     }
   });
