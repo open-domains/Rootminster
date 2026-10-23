@@ -72,11 +72,13 @@ export async function registerDomainProviderRoutes(app) {
       };
     });
 
+    // dns_records total uses record_count (synced from Cloudflare) when available,
+    // falling back to the entity_records count — matching what the per-domain UI shows.
     const totals = domainStats.reduce(
       (acc, d) => ({
         active_subdomains: acc.active_subdomains + d.stats.approved_subdomains,
         pending_requests: acc.pending_requests + d.stats.pending_requests,
-        dns_records: acc.dns_records + d.stats.dns_records,
+        dns_records: acc.dns_records + (d.record_count ?? d.stats.dns_records),
         new_requests_7d: acc.new_requests_7d + d.stats.new_requests_7d,
       }),
       { active_subdomains: 0, pending_requests: 0, dns_records: 0, new_requests_7d: 0 },
