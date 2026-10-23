@@ -276,6 +276,18 @@ export const rootminster = {
       window.location.href = `/login?return_to=${encodeURIComponent(returnTo)}`;
     },
   },
+  domainProvider: {
+    async stats(userId) {
+      const params = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+      const result = await request(`/api/domain-provider/stats${params}`);
+      return result.data;
+    },
+    async domains(userId) {
+      const params = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+      const result = await request(`/api/domain-provider/domains${params}`);
+      return result.data;
+    },
+  },
 };
 
 export default rootminster;

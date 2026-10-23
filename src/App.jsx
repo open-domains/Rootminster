@@ -110,6 +110,7 @@ const AdminAccountDeletionRequests = lazy(() => import('@/pages/AdminAccountDele
 const AdminReports = lazy(() => import('@/pages/AdminReports'));
 const AdminObserverFindings = lazy(() => import('@/pages/AdminObserverFindings'));
 const DockerEngine = lazy(() => import('@/pages/DockerEngine'));
+const DomainProviderDashboard = lazy(() => import('@/pages/DomainProviderDashboard'));
 
 const AuthenticatedApp = () => {
   return (
@@ -215,6 +216,11 @@ const AuthenticatedApp = () => {
           <Route path="/admin-modules" element={<AdminModules />} />
           <Route path="/docker-engine" element={<DockerEngine />} />
           <Route path="/admin-account-deletions" element={<AdminAccountDeletionRequests />} />
+        </Route>
+
+        {/* Domain Provider Routes */}
+        <Route element={<RoleProtectedRoute allowedRoles={['domain_provider', 'admin']} />}>
+          <Route path="/domain-provider-dashboard" element={<DomainProviderDashboard />} />
         </Route>
       </Route>
       </Route>

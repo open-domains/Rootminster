@@ -6,7 +6,7 @@ import { getModuleConfig } from './module-settings.js';
 import { captureServerMessage } from './glitchtip.js';
 
 const FUNCTION_NAMES = new Set([
-  'adminDirectCfOp', 'adminListUsers', 'adminMigrateDomains', 'analyticsManager',
+  'adminAssignDomainProvider', 'adminDirectCfOp', 'adminListUsers', 'adminMigrateDomains', 'analyticsManager',
   'appealRequest', 'approveRequest', 'checkAvailability', 'checkDomainHealth', 'cleanupPendingDonations',
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
   'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
