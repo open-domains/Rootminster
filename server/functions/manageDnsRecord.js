@@ -2,6 +2,7 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
 import { getModuleConfig } from '../module-settings.js';
 import {
+  findNamespaceConflict,
   hostnameWithin,
   isLiveManagedRecord,
   listAllEntities,
@@ -112,6 +113,18 @@ async function assertUserCanManageName(platform, user, hostname, baseName) {
     return requestedBase;
   }
   return resolveOwnershipBase(platform, user, host);
+}
+
+// A user's namespace check above only proves the host sits inside something they own. It
+// must also stay out of names another account owns: the same name or a parent, and for NS
+// delegation any child, since delegating a name hands over everything beneath it.
+async function assertNoForeignNamespace(platform, user, hostname, zone, recordType) {
+  if (user.role === 'admin' || user.role === 'staff') return;
+  const conflict = await findNamespaceConflict(platform.asServiceRole.entities, user, hostname, {
+    zoneName: zone.name,
+    includeDescendants: recordType === 'NS',
+  });
+  if (conflict) throw new Error('You do not own this domain namespace: part of it belongs to another account');
 }
 
 function recordOwnedBy(record, user) {
@@ -288,6 +301,9 @@ export default async function (req) {
       if (normalizeName(zone.name) !== normalizeName(old.zone_name) || zone.zone_id !== old.zone_id) {
         return Response.json({ error: 'Moving a DNS record between Cloudflare zones is not supported' }, { status: 400 });
       }
+      if (nameChanged || (candidate.record_type === 'NS' && old.record_type !== 'NS')) {
+        await assertNoForeignNamespace(platform, user, candidate.name, zone, candidate.record_type);
+      }
       if (donations.enabled && candidate.record_type === 'NS' && !user.ns_unlocked && user.role !== 'admin' && user.role !== 'staff') {
         return Response.json({ error: 'NS records are not unlocked for this account' }, { status: 403 });
       }
@@ -356,6 +372,7 @@ export default async function (req) {
     }
 
     const zone = await findZone(platform, name);
+    await assertNoForeignNamespace(platform, user, name, zone, recordType);
     const candidate = {
       name,
       record_type: recordType,

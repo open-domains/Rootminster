@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
+import { findNamespaceConflict, syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
 import { getModuleConfig } from '../module-settings.js';
 async function getAllDomainRecords() {
     const github = await getModuleConfig('github_oauth');
@@ -126,6 +126,14 @@ export default async function (req) {
         const records = extractRecords(data.record, data.proxied);
         if (records.length === 0) {
             details.push({ full_name: fullName, status: 'skipped', reason: 'No supported record types found' });
+            skipped++;
+            continue;
+        }
+        // The legacy registry is keyed by email alone, so never let it claim a name, parent or
+        // child that another account already holds here.
+        const conflict = await findNamespaceConflict(platform.asServiceRole.entities, user, fullName, { zoneName: rootDomain });
+        if (conflict) {
+            details.push({ full_name: fullName, status: 'skipped', reason: 'Owned by another account' });
             skipped++;
             continue;
         }

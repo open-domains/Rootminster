@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  findNamespaceConflictIn,
   inferBaseName,
   isLiveManagedRecord,
   listAllEntities,
   reconcileSubdomainOwnerships,
   resolveOwnershipBase,
+  syncOwnershipForNamespace,
 } from './lib/subdomain-ownership.js';
 
 function makeEntityApi(seed = []) {
@@ -220,4 +222,55 @@ test('reconciliation repairs false suspension and removes proven stray child own
   assert.equal(entities.DnsRecord.rows[0].status, 'active');
   assert.equal(entities.SubdomainOwnership.rows.find(row => row.id === 'parent').status, 'active');
   assert.equal(entities.SubdomainOwnership.rows.some(row => row.id === 'bad-child'), false);
+});
+
+test('namespace conflicts cover another owner on the same name, a parent, and children', () => {
+  const victim = { owner_id: 'victim', owner_email: 'victim@example.test' };
+  const rows = {
+    ownerships: [
+      { ...victim, full_name: 'team.example.test' },
+      { owner_id: 'me', owner_email: 'me@example.test', full_name: 'mine.example.test' },
+      { owner_id: 'apex', full_name: 'example.test' },
+    ],
+    records: [{ ...victim, name: 'shared.mine.example.test', managed: true, status: 'active' }],
+  };
+  const me = { id: 'me', email: 'me@example.test' };
+  const check = (name, includeDescendants = true) =>
+    findNamespaceConflictIn(rows, me, name, { zoneName: 'example.test', includeDescendants })?.name || null;
+  assert.equal(check('team.example.test'), 'team.example.test');
+  assert.equal(check('api.team.example.test'), 'team.example.test');
+  assert.equal(check('shared.mine.example.test'), 'shared.mine.example.test');
+  assert.equal(check('mine.example.test'), 'shared.mine.example.test');
+  assert.equal(check('mine.example.test', false), null);
+  assert.equal(check('other.mine.example.test'), null);
+  // Rows at the zone apex are not a namespace anyone can own.
+  assert.equal(check('fresh.example.test'), null);
+});
+
+test('reconciliation never backfills a parent namespace over another account', async () => {
+  const { platform, entities } = makePlatform({
+    ownerships: [{ id: 'victim-grant', full_name: 'foo.is-local.org', root_domain: 'is-local.org', owner_id: 'victim', owner_email: 'victim@example.test', status: 'active' }],
+    records: [
+      { id: 'victim-record', name: 'foo.is-local.org', zone_name: 'is-local.org', owner_id: 'victim', owner_email: 'victim@example.test', managed: true, status: 'active' },
+      { id: 'intruder-record', name: 'x.foo.is-local.org', zone_name: 'is-local.org', owner_id: 'intruder', owner_email: 'intruder@example.test', managed: true, status: 'active' },
+    ],
+  });
+  const { stats } = await reconcileSubdomainOwnerships(platform, { auditActor: null });
+  assert.equal(stats.namespace_conflicts_skipped, 1);
+  assert.deepEqual(entities.SubdomainOwnership.rows.map(row => [row.owner_id, row.full_name]), [['victim', 'foo.is-local.org']]);
+});
+
+test('ownership sync will not create a namespace that overlaps another account', async () => {
+  const { platform, entities } = makePlatform({
+    ownerships: [{ id: 'victim-grant', full_name: 'deep.foo.is-local.org', root_domain: 'is-local.org', owner_id: 'victim', owner_email: 'victim@example.test', status: 'active' }],
+    records: [{ id: 'mine', name: 'foo.is-local.org', zone_name: 'is-local.org', owner_id: 'me', owner_email: 'me@example.test', managed: true, status: 'active' }],
+  });
+  const result = await syncOwnershipForNamespace(platform, {
+    owner: { id: 'me', email: 'me@example.test' },
+    fullName: 'foo.is-local.org',
+    zone: { name: 'is-local.org', zone_id: 'zone' },
+  });
+  assert.equal(result.ownership, null);
+  assert.equal(result.conflict.name, 'deep.foo.is-local.org');
+  assert.equal(entities.SubdomainOwnership.rows.length, 1);
 });

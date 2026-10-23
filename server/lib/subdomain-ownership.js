@@ -53,6 +53,37 @@ export function inferBaseName(record) {
   return `${labels[labels.length - 1]}.${zone}`;
 }
 
+// Another account's ownership row or live managed record on the same name, an ancestor
+// below the zone apex, or (when includeDescendants is set) a child name. Every writer that
+// claims or writes into a namespace uses this so one account cannot nest inside another.
+export function findNamespaceConflictIn({ ownerships = [], records = [] }, owner, hostname, { zoneName, includeDescendants = true } = {}) {
+  const host = normalizeName(hostname);
+  const zone = normalizeName(zoneName);
+  if (!host || !zone || host === zone || !hostnameWithin(host, zone)) return null;
+  const claimant = {
+    owner_id: owner?.owner_id || owner?.id || null,
+    owner_email: owner?.owner_email || owner?.email || '',
+  };
+  const overlaps = name => Boolean(name && name !== zone && hostnameWithin(name, zone) &&
+    (hostnameWithin(host, name) || (includeDescendants && hostnameWithin(name, host))));
+  const foreign = row => !row?._removed && (row?.owner_id || row?.owner_email) && !sameOwner(row, claimant);
+  const ownership = ownerships.find(row => foreign(row) && overlaps(normalizeName(row.full_name)));
+  if (ownership) return { kind: 'ownership', name: normalizeName(ownership.full_name), id: ownership.id };
+  const record = records.find(row => foreign(row) && isLiveManagedRecord(row) && overlaps(normalizeName(row.name)));
+  if (record) return { kind: 'record', name: normalizeName(record.name), id: record.id };
+  return null;
+}
+
+export async function findNamespaceConflict(entities, owner, hostname, { zoneName, includeDescendants = true } = {}) {
+  const zone = normalizeName(zoneName);
+  if (!zone) return null;
+  const [ownerships, records] = await Promise.all([
+    listAllEntities(entities.SubdomainOwnership, { root_domain: zone }),
+    listAllEntities(entities.DnsRecord, { zone_name: zone, managed: true }),
+  ]);
+  return findNamespaceConflictIn({ ownerships, records }, owner, hostname, { zoneName: zone, includeDescendants });
+}
+
 export async function listAllEntities(entityApi, filter = null, sort = 'id') {
   const rows = [];
   let skip = 0;
@@ -169,6 +200,10 @@ export async function syncOwnershipForNamespace(platform, { owner, fullName, zon
   if (active && primary?.status === 'suspended') payload.last_record_added_at = nowIso;
 
   if (!existing.length) {
+    const conflict = zoneName
+      ? await findNamespaceConflict(platform.asServiceRole.entities, owner, full, { zoneName })
+      : null;
+    if (conflict) return { ownership: null, status: null, recordCount: liveRecords.length, conflict };
     const ownership = await platform.asServiceRole.entities.SubdomainOwnership.create(payload);
     return { ownership, status: payload.status, recordCount: liveRecords.length };
   }
@@ -209,6 +244,7 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     ownerships_created: 0,
     duplicates_removed: 0,
     stray_children_removed: 0,
+    namespace_conflicts_skipped: 0,
     activated: 0,
     suspended: 0,
   };
@@ -272,6 +308,8 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     const fullName = requestFullName(request);
     if (fullName) linkedNamespaceByRecordId.set(record.id, fullName);
   }
+  const conflictFor = (owner, fullName, zoneName) =>
+    findNamespaceConflictIn({ ownerships, records: liveRecords }, owner, fullName, { zoneName });
   const recordBelongsTo = (record, ownership) => sameOwner(record, ownership) &&
     (hostnameWithin(record.name, ownership.full_name) || linkedNamespaceByRecordId.get(record.id) === normalizeName(ownership.full_name));
 
@@ -287,6 +325,10 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
       (hostnameWithin(record.name, fullName) || linkedNamespaceByRecordId.get(record.id) === fullName));
     if (!hasRecords) continue;
     const rootDomain = normalizeName(request.root_domain);
+    if (conflictFor({ id: request.requester_id, email: request.requester_email }, fullName, rootDomain)) {
+      stats.namespace_conflicts_skipped++;
+      continue;
+    }
     const created = await entities.SubdomainOwnership.create({
       full_name: fullName,
       subdomain: request.subdomain || (rootDomain && fullName.endsWith(`.${rootDomain}`) ? fullName.slice(0, -(rootDomain.length + 1)) : fullName),
@@ -316,6 +358,10 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
     const fullName = linkedNamespaceByRecordId.get(record.id) || approvedNames[0] || inferBaseName(record);
     if (!fullName) continue;
     const zoneName = normalizeName(record.zone_name);
+    if (conflictFor(owner, fullName, zoneName)) {
+      stats.namespace_conflicts_skipped++;
+      continue;
+    }
     const created = await entities.SubdomainOwnership.create({
       full_name: fullName,
       subdomain: zoneName && fullName.endsWith(`.${zoneName}`) ? fullName.slice(0, -(zoneName.length + 1)) : fullName,
@@ -403,7 +449,7 @@ export async function reconcileSubdomainOwnerships(platform, { now = new Date(),
       actor_role: 'admin',
       action: 'subdomain_ownership_reconciled',
       entity_type: 'SubdomainOwnership',
-      description: `Reconciled ownership integrity: ${stats.activated} activated, ${stats.suspended} suspended, ${stats.duplicates_removed} duplicates removed, ${stats.stray_children_removed} stray child ownerships removed, ${stats.normalized_dns_records} DNS statuses normalized`,
+      description: `Reconciled ownership integrity: ${stats.activated} activated, ${stats.suspended} suspended, ${stats.duplicates_removed} duplicates removed, ${stats.stray_children_removed} stray child ownerships removed, ${stats.namespace_conflicts_skipped} cross-account namespace claims skipped, ${stats.normalized_dns_records} DNS statuses normalized`,
       new_value: JSON.stringify(stats),
     });
   }

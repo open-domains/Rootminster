@@ -1,5 +1,6 @@
 import { recordSetError, requestRecords, requestHostname, OPEN_REQUEST_STATUSES } from '../../shared/subdomain-requests.js';
 import { requestBundle, ensureRequestGroup } from './request-bundles.js';
+import { findNamespaceConflict } from './subdomain-ownership.js';
 
 const fail = (message, status = 409) => { throw Object.assign(new Error(message), { status }); };
 export async function provisionRequestBundle(entities, target, user, adminNotes, cfFetch) {
@@ -14,6 +15,10 @@ export async function provisionRequestBundle(entities, target, user, adminNotes,
   const domain = domains[0];
   const ownerships = await entities.SubdomainOwnership.filter({ full_name: hostname });
   if (ownerships.some(row => row.owner_id ? row.owner_id !== bundle.requester_id : row.owner_email !== bundle.requester_email)) fail('This hostname belongs to another account.');
+  // Exact-name ownership is not enough: approving a child of another account's namespace, or a
+  // parent that would swallow someone else's subdomain, hands that account's names to this one.
+  const conflict = await findNamespaceConflict(entities, { id: bundle.requester_id, email: bundle.requester_email }, hostname, { zoneName: bundle.root_domain });
+  if (conflict) fail(`This hostname overlaps ${conflict.name}, which belongs to another account.`);
   // Read authoritative records before any write. Tags let retries recover a
   // successful Cloudflare write even if its local checkpoint was interrupted.
   const listed = await cfFetch('GET', `/zones/${domain.zone_id}/dns_records?name=${encodeURIComponent(hostname)}&per_page=100`);

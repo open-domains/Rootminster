@@ -144,3 +144,17 @@ test('legacy public API cannot bypass bundle validation', async t => {
   const response=await legacyApi(new Request('https://example.com/functions/publicApi',{method:'POST',headers:{Authorization:'Bearer test-token'},body:JSON.stringify({action:'submit',subdomain:'site',root_domain:'example.com',preview_link:'https://example.com',records:[row('a'),row('b','CNAME')]})}));
   assert.equal(response.status,400);assert.match((await response.json()).error,/CNAME/);assert.equal(data.SubdomainRequest.length,0);
 });
+test('approval refuses a hostname nested in, or wrapping, another account\'s namespace', async () => {
+  const neverCalled = async () => { throw new Error('Cloudflare must not be called'); };
+  for (const [name, seed] of [
+    ['parent ownership', { SubdomainOwnership: [{ id: 'o', full_name: 'example.com', root_domain: 'example.com', owner_id: 'apex-claim' }, { id: 'p', full_name: 'parent.example.com', root_domain: 'example.com', owner_id: 'victim', owner_email: 'victim@example.com' }] }],
+    ['child ownership', { SubdomainOwnership: [{ id: 'c', full_name: 'deep.site.example.com', root_domain: 'example.com', owner_id: 'victim', owner_email: 'victim@example.com' }] }],
+    ['child record', { DnsRecord: [{ id: 'r', name: 'www.site.example.com', zone_name: 'example.com', owner_id: 'victim', owner_email: 'victim@example.com', managed: true, status: 'active' }] }],
+  ]) {
+    const nested = name === 'parent ownership' ? { ...row('a'), subdomain: 'site.parent', full_name: 'site.parent.example.com' } : row('a');
+    const { entities, data } = fixture([nested]);
+    Object.assign(data, structuredClone(seed));
+    await assert.rejects(provisionRequestBundle(entities, nested, owner, '', neverCalled), /belongs to another account/, name);
+    assert.equal(data.SubdomainRequest[0].status, 'pending');
+  }
+});
