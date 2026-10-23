@@ -42,7 +42,6 @@ const adminNav = [
   { to: '/admin-dashboard', icon: LayoutDashboard, label: 'Overview' },
   { to: '/admin-requests', icon: GitPullRequest, label: 'Requests' },
   { to: '/admin-subdomains', icon: Globe2, label: 'User Domains' },
-  { to: '/admin-domains', icon: Globe2, label: 'Root Domains', adminOnly: true },
   { to: '/admin-users', icon: Users, label: 'Users', adminOnly: true },
   { to: '/admin-reports', icon: FileBarChart, label: 'Reports', adminOnly: true },
   { to: '/admin-account-deletions', icon: UserX, label: 'Account Deletions', adminOnly: true },
