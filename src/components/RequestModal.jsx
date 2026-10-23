@@ -18,6 +18,7 @@ import {
 } from './dnsValidation';
 import { usePublicConfig } from '@/lib/public-config';
 import { loadTurnstile } from '@/lib/turnstile';
+import { isPublicSuffix } from '@/lib/psl-check';
 
 const DEFAULT_ROW = () => ({ record_type: 'A', record_value: '', ttl: 3600, proxied: false });
 
@@ -246,6 +247,21 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Requested address</p>
                     <p className="mt-1 font-mono text-sm font-medium text-foreground">{fqdn}</p>
                   </div>
+
+                  {rootDomain && !isPublicSuffix(rootDomain) && (
+                    <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-300">
+                      <Info size={13} className="mt-0.5 shrink-0" />
+                      <span>
+                        <span className="font-medium">Not on the Public Suffix List.</span>{' '}
+                        This domain hasn&apos;t been submitted to the{' '}
+                        <a href="https://publicsuffix.org/submit/" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-amber-200">
+                          Mozilla PSL
+                        </a>{' '}
+                        yet, so you may have difficulty verifying ownership with platforms like Vercel, Netlify, or GitHub Pages.
+                        It will still work for standard DNS use.
+                      </span>
+                    </div>
+                  )}
 
                   {availability && <div className="mt-3"><AvailabilityBadge status={availability.status} message={availability.message} /></div>}
                 </section>

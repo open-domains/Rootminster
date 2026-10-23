@@ -6,12 +6,32 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, RefreshCw, Trash2, AlertTriangle, Globe, Database, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, RefreshCw, Trash2, AlertTriangle, Globe, Database, CheckCircle2, XCircle, ShieldCheck, Lock } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { AdminHeader, AdminLoading, AdminPage, AdminStatsGrid } from '@/components/AdminPageShell';
+import { isPublicSuffix } from '@/lib/psl-check';
+
+function PslBadge({ domain }) {
+  const onPsl = isPublicSuffix(domain);
+  const title = onPsl
+    ? 'Listed in the Mozilla Public Suffix List. Third-party platforms (Vercel, Netlify, GitHub Pages) recognise subdomains of this domain as independent registrable names.'
+    : 'Not yet listed in the Mozilla Public Suffix List. Users may have difficulty verifying ownership with platforms like Vercel.';
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ml-2 cursor-default select-none ${
+        onPsl
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+          : 'border-slate-500/30 bg-slate-500/10 text-slate-400'
+      }`}
+    >
+      {onPsl ? <><ShieldCheck size={9} /> Public Suffix</> : <><Lock size={9} /> Private</>}
+    </span>
+  );
+}
 
 export default function AdminDomains() {
   const { t } = useTranslation();
@@ -79,7 +99,12 @@ export default function AdminDomains() {
   };
 
   const domainColumns = [
-    { key: 'name', label: t('adminDomains.colDomain'), render: v => <span className="font-mono text-primary font-medium">{v}</span> },
+    { key: 'name', label: t('adminDomains.colDomain'), render: v => (
+      <span className="inline-flex items-center">
+        <span className="font-mono text-primary font-medium">{v}</span>
+        <PslBadge domain={v} />
+      </span>
+    )},
     { key: 'zone_id', label: t('adminDomains.colZoneId'), render: v => <span className="font-mono text-muted-foreground text-xs">{v}</span> },
     { key: 'record_count', label: t('adminDomains.colRecords'), render: v => <span className="text-foreground text-sm tabular-nums">{v || 0}</span> },
     { key: 'status', label: t('adminDomains.colStatus'), render: v => <StatusBadge status={v} /> },
