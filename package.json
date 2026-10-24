@@ -111,7 +111,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.8.32",
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.6",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",
