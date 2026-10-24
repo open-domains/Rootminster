@@ -90,7 +90,7 @@
     "react-hot-toast": "^2.6.0",
     "react-i18next": "^15.7.4",
     "react-leaflet": "^4.2.1",
-    "react-markdown": "^9.0.1",
+    "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^7.18.4",
     "recharts": "^2.15.4",
