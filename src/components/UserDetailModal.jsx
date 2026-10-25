@@ -7,7 +7,7 @@ import { Ban, CheckCircle, Eye, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-export default function UserDetailModal({ user, subdomains, onClose, onUpdated }) {const { t } = useTranslation();
+export default function UserDetailModal({ user, subdomains, subdomainsLoading, onClose, onUpdated }) {const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [impersonationReason, setImpersonationReason] = useState('');
 
@@ -86,10 +86,12 @@ export default function UserDetailModal({ user, subdomains, onClose, onUpdated }
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Globe size={14} className="text-slate-400" />
-            <span className="text-sm font-medium text-slate-300">{t("operational.user_detail_modal.subdomains_c20a2a")}{subdomains.length})</span>
+            <span className="text-sm font-medium text-slate-300">{t("operational.user_detail_modal.subdomains_c20a2a")}{subdomainsLoading ? '…' : subdomains.length})</span>
           </div>
 
-          {subdomains.length === 0 ?
+          {subdomainsLoading ?
+          <p className="text-slate-500 text-sm py-4 text-center">Loading…</p> :
+          subdomains.length === 0 ?
           <p className="text-slate-500 text-sm py-4 text-center">{t("operational.user_detail_modal.no_subdomains_owned_by_this_user_46749d")}</p> :
 
           <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl overflow-hidden max-h-72 overflow-y-auto review-modal-scroll">

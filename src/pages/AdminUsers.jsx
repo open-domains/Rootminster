@@ -15,9 +15,11 @@ import AdminMigrateModal from '@/components/AdminMigrateModal';
 export default function AdminUsers() {
   const { t } = useTranslation();
   const [users, setUsers] = useState([]);
-  const [dnsRecords, setDnsRecords] = useState([]);
+  const [subdomainOwnerships, setSubdomainOwnerships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUserSubdomains, setSelectedUserSubdomains] = useState([]);
+  const [subdomainsLoading, setSubdomainsLoading] = useState(false);
   const [donations, setDonations] = useState([]);
   const [donationsEnabled, setDonationsEnabled] = useState(false);
   const [migrateModalOpen, setMigrateModalOpen] = useState(false);
@@ -28,9 +30,9 @@ export default function AdminUsers() {
   const [pendingAction, setPendingAction] = useState(null); // { label, description, action }
 
   const load = async () => {
-    const [usRes, recs, publicConfig, currentUser] = await Promise.all([
+    const [usRes, ownerships, publicConfig, currentUser] = await Promise.all([
       rootminster.functions.invoke('adminListUsers', {}),
-      rootminster.entities.DnsRecord.list(),
+      rootminster.entities.SubdomainOwnership.list(null, 10000),
       rootminster.config.getPublic(),
       rootminster.auth.me(),
     ]);
@@ -40,7 +42,7 @@ export default function AdminUsers() {
       : [];
     const us = usRes.data?.users || [];
     setUsers(us);
-    setDnsRecords(recs);
+    setSubdomainOwnerships(ownerships);
     setDonations(dons);
     setDonationsEnabled(enabled);
     setCurrentUserId(currentUser.id);
@@ -49,6 +51,18 @@ export default function AdminUsers() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!selectedUser) {
+      setSelectedUserSubdomains([]);
+      return;
+    }
+    setSubdomainsLoading(true);
+    rootminster.entities.DnsRecord.filter({ owner_email: selectedUser.email, managed: true }, null, 10000)
+      .then(recs => setSelectedUserSubdomains(recs || []))
+      .catch(() => setSelectedUserSubdomains([]))
+      .finally(() => setSubdomainsLoading(false));
+  }, [selectedUser?.email]);
 
   const updateUser = (user_id, data) =>
     rootminster.functions.invoke('adminListUsers', { action: 'update_user', user_id, data });
@@ -217,10 +231,8 @@ export default function AdminUsers() {
     });
   };
 
-  const getOwnedCount = (email) => dnsRecords.filter(r => r.owner_email === email && r.managed).length;
+  const getOwnedCount = (email) => subdomainOwnerships.filter(o => o.owner_email === email && o.status === 'active').length;
   const getTotalDonations = (email) => donations.filter(d => d.user_email === email).reduce((s, d) => s + (d.amount_pence || 0), 0);
-
-  const getUserSubdomains = (email) => dnsRecords.filter(r => r.owner_email === email && r.managed);
 
   const columns = [
     { key: '_selected', label: t('adminUsers.selectColumn'), render: (_, row) => (
@@ -421,7 +433,8 @@ export default function AdminUsers() {
       <AdminMigrateModal open={migrateModalOpen} onClose={() => setMigrateModalOpen(false)} onSuccess={load} />
       <UserDetailModal
         user={selectedUser}
-        subdomains={selectedUser ? getUserSubdomains(selectedUser.email) : []}
+        subdomains={selectedUserSubdomains}
+        subdomainsLoading={subdomainsLoading}
         onClose={() => setSelectedUser(null)}
         onUpdated={load}
       />
