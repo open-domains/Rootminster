@@ -790,6 +790,7 @@
       "failed_to_add_entry_b8090c": "Failed to add entry",
       "entry_removed_2079fb": "Entry removed",
       "failed_to_remove_entry_7fdc70": "Failed to remove entry",
+      "failed_to_load_blocklist": "Failed to load blocklist",
       "add_blocklist_entry_cfdfa7": "Add Blocklist Entry",
       "block_a_specific_value_or_type_value_combo_8b6c74": "Block a specific value or type+value combo from being requested",
       "value_to_block_600ed9": "Value to block *",

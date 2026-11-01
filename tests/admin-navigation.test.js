@@ -30,3 +30,9 @@ test('Observer findings use the staff route and keep admin-observer as a redirec
   assert.ok(appSource.includes('path="/staff-observer"'), 'staff observer route missing');
   assert.match(appSource, /path="\/admin-observer"\s+element=\{<Navigate to="\/staff-observer" replace \/>\}/);
 });
+
+test('Blocklist has a staff route reachable from the staff navigation', () => {
+  assert.ok(layoutSource.includes("to: '/staff-blocklist'"), 'Blocklist navigation should point to the staff route');
+  assert.match(appSource, /allowedRoles=\{\['admin', 'staff'\]\}[\s\S]*?path="\/staff-blocklist"[\s\S]*?<\/Route>/);
+  assert.doesNotMatch(layoutSource, /to: '\/staff-blocklist'[^}]*adminOnly/);
+});

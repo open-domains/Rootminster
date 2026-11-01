@@ -12,6 +12,11 @@ const STAFF_WRITABLE = new Set([
   'AbuseReport',
 ]);
 
+// Staff can add blocklist entries but only admins can edit or remove them.
+const STAFF_CREATABLE = new Set([
+  'BlocklistEntry',
+]);
+
 function isElevated(user) {
   return user?.role === 'admin' || user?.role === 'staff';
 }
@@ -72,9 +77,15 @@ function redact(user, entity, record) {
 function canWrite(user, entity, action, record) {
   if (!user) return false;
   if (user.role === 'admin') return entity !== 'User' || action === 'update';
-  if (user.role === 'staff') return STAFF_WRITABLE.has(entity);
+  if (user.role === 'staff') return STAFF_WRITABLE.has(entity) || (action === 'create' && STAFF_CREATABLE.has(entity));
   if (entity === 'ApiToken' && action === 'update') return record?.user_id === user.id;
   return false;
+}
+
+// Record who added a blocklist entry from the session rather than trusting the client.
+function stampCreate(user, entity, body) {
+  if (entity !== 'BlocklistEntry') return body;
+  return { ...(body || {}), added_by: user.email || '' };
 }
 
 function safeFilter(raw) {
@@ -125,7 +136,7 @@ export async function registerEntityRoutes(app) {
     if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     if (!canWrite(user, request.params.entity, 'create')) return reply.code(user ? 403 : 401).send({ error: user ? 'Forbidden' : 'Unauthorized' });
-    const created = await store.create(request.params.entity, request.body, user);
+    const created = await store.create(request.params.entity, stampCreate(user, request.params.entity, request.body), user);
     return reply.code(201).send({ data: redact(user, request.params.entity, created) });
   });
 
@@ -133,7 +144,7 @@ export async function registerEntityRoutes(app) {
     if (!(await entityEnabled(request.params.entity))) return reply.code(404).send({ error: 'Not found' });
     const user = await authenticateRequest(request);
     if (!canWrite(user, request.params.entity, 'create')) return reply.code(user ? 403 : 401).send({ error: user ? 'Forbidden' : 'Unauthorized' });
-    const rows = await store.bulkCreate(request.params.entity, request.body?.rows, user);
+    const rows = await store.bulkCreate(request.params.entity, Array.isArray(request.body?.rows) ? request.body.rows.map((row) => stampCreate(user, request.params.entity, row)) : request.body?.rows, user);
     return reply.code(201).send({ data: rows.map((row) => redact(user, request.params.entity, row)) });
   });
 

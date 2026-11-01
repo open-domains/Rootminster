@@ -20,7 +20,7 @@ import {
 import {
   Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp, Container,
   FileBarChart, FileCode2, GitPullRequest, Globe2, Heart, LayoutDashboard, Mail,
-  LogOut, Menu, Newspaper, Search, Settings, Shield, Users, UserX, Wrench,
+  LogOut, Menu, Newspaper, Search, Settings, Shield, ShieldOff, Users, UserX, Wrench,
   X,
 } from 'lucide-react';
 
@@ -47,6 +47,7 @@ const adminNav = [
   { to: '/admin-account-deletions', icon: UserX, label: 'Account Deletions', adminOnly: true },
   { to: '/admin-abuse-reports', icon: AlertTriangle, label: 'Abuse Reports' },
   { to: '/staff-observer', icon: Shield, label: 'Observer Findings' },
+  { to: '/staff-blocklist', icon: ShieldOff, label: 'Blocklist' },
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
   { to: '/admin-email-logs', icon: Mail, label: 'Email Logs', adminOnly: true },
   { to: '/admin-donations', icon: Heart, label: 'Donations', adminOnly: true },
