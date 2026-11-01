@@ -491,3 +491,7 @@ CREATE TABLE IF NOT EXISTS scheduled_notifications (
 DELETE FROM entity_records
 WHERE entity_type = 'PlatformSettings' AND data->>'key' = 'module:google_drive_backup';
 DROP TABLE IF EXISTS backup_oauth_states;
+
+-- Observer is the only store of findings and screenshot evidence, with its own
+-- retention. Remove the copies Rootminster used to keep.
+DELETE FROM entity_records WHERE entity_type = 'ObserverFinding';

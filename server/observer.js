@@ -63,7 +63,6 @@ const SEVERITY_RANK = new Map([
 
 const OBSERVER_SCAN_CURSOR_KEY = 'observer_scan_cursor';
 const DEFAULT_OBSERVER_BATCH_SIZE = 20;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function observerFindingOpen(finding) {
   return !['dismissed', 'resolved'].includes(String(finding.status || 'open').toLowerCase());
@@ -95,34 +94,6 @@ async function upsertObserverScanState(hostname, patch, storeImpl = store) {
   return rows[0]
     ? storeImpl.update('ObserverScanState', rows[0].id, payload)
     : storeImpl.create('ObserverScanState', payload);
-}
-
-async function storeObserverFindingsFromResult(record, result, settings, storeImpl = store) {
-  const hostname = hostnameFor(record);
-  const policy = result?.policy_result || result?.policy || {};
-  const findings = Array.isArray(result?.findings)
-    ? result.findings
-    : Array.isArray(policy?.findings)
-      ? policy.findings
-      : [];
-  const saved = [];
-  for (const finding of findings) {
-    saved.push(await storeImpl.create('ObserverFinding', {
-      hostname,
-      url: String(result?.url || record.preview_link || record.url || `https://${hostname}`).slice(0, 2000),
-      severity: String(finding.severity || policy.severity || 'unknown').slice(0, 40),
-      score: Number(finding.score ?? policy.score ?? 0),
-      finding_type: String(finding.finding_type || '').slice(0, 120),
-      policy_section: String(finding.policy_section || '').slice(0, 240),
-      evidence: String(finding.evidence || '').slice(0, 4000),
-      recommended_action: String(finding.recommended_action || '').slice(0, 4000),
-      screenshot_url: normaliseScreenshotUrl(settings, finding),
-      status: 'open',
-      observed_at: new Date().toISOString(),
-      raw: finding,
-    }));
-  }
-  return saved;
 }
 
 async function readObserverCursor(storeImpl = store) {
@@ -190,34 +161,13 @@ function findingTime(finding) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function findingKey(finding) {
-  return [
-    String(finding.hostname || '').toLowerCase(),
-    String(finding.url || '').toLowerCase(),
-    String(finding.finding_type || '').toLowerCase(),
-    String(finding.policy_section || '').toLowerCase(),
-    String(finding.evidence || '').slice(0, 120),
-  ].join('|');
-}
-
-export function mergeObserverFindings(storedFindings = [], liveFindings = []) {
-  const merged = new Map();
-  for (const finding of [...storedFindings, ...liveFindings]) {
-    if (!finding.hostname) continue;
-    const key = findingKey(finding);
-    const existing = merged.get(key);
-    if (!existing || finding.source === 'observer' || findingTime(finding) >= findingTime(existing)) {
-      merged.set(key, finding);
-    }
-  }
-  return [...merged.values()].sort((a, b) => findingTime(b) - findingTime(a));
-}
-
 export async function fetchObserverFindings(options = {}) {
   const settings = options.settings || await getModuleConfig('observer', { fresh: true });
   if (!settings.enabled) return [];
   const fetchImpl = options.fetchImpl || fetch;
-  const response = await fetchImpl(observerScanUrl(settings, '/api/findings'), {
+  const params = new URLSearchParams({ status: 'open', limit: String(options.limit || 5000) });
+  if (options.hostname) params.set('hostname', options.hostname);
+  const response = await fetchImpl(observerScanUrl(settings, `/api/findings?${params}`), {
     headers: { accept: 'application/json' },
   });
   if (!response.ok) throw Object.assign(new Error(`Observer findings failed with HTTP ${response.status}`), { status: response.status });
@@ -269,24 +219,34 @@ export function observerStatusesByHostname(findings = [], scanStates = []) {
 export async function loadObserverFindings(options = {}) {
   const settings = options.settings || await getModuleConfig('observer', { fresh: true });
   const storeImpl = options.storeImpl || store;
-  const storedRaw = await storeImpl.list('ObserverFinding', '-created_date', 10000);
-  const stored = storedRaw
-    .map(finding => normaliseObserverFinding(settings, finding, 'rootminster'))
-    .filter(finding => finding.hostname);
-  const dismissedKeys = new Set(stored.filter(finding => !observerFindingOpen(finding)).map(findingKey));
-  let live = [];
+  let findings = [];
   let observer_error = '';
   try {
-    live = await fetchObserverFindings({ settings, fetchImpl: options.fetchImpl });
+    findings = (await fetchObserverFindings({ settings, fetchImpl: options.fetchImpl }))
+      .filter(observerFindingOpen)
+      .sort((a, b) => findingTime(b) - findingTime(a));
   } catch (error) {
     observer_error = error.message || 'Could not fetch live Observer findings';
   }
-  const findings = mergeObserverFindings(
-    stored.filter(observerFindingOpen),
-    live.filter(finding => observerFindingOpen(finding) && !dismissedKeys.has(findingKey(finding))),
-  );
   const scanStates = await storeImpl.list('ObserverScanState', '-updated_date', 10000).catch(() => []);
   return { findings, scanStates, observer_error };
+}
+
+export async function dismissObserverFinding(id, { dismissedBy = '', reason = '' } = {}, options = {}) {
+  const settings = options.settings || await getModuleConfig('observer', { fresh: true });
+  if (!settings.enabled) throw Object.assign(new Error('Observer module is not enabled'), { status: 503 });
+  const findingId = String(id || '').trim();
+  if (!/^\d+$/.test(findingId)) throw Object.assign(new Error('A valid Observer finding id is required'), { status: 400 });
+  const fetchImpl = options.fetchImpl || fetch;
+  const response = await fetchImpl(observerScanUrl(settings, `/api/findings/${findingId}/dismiss`), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ dismissed_by: String(dismissedBy).slice(0, 320), reason: String(reason).slice(0, 1000) }),
+  });
+  if (response.status === 404) throw Object.assign(new Error('Observer finding not found'), { status: 404 });
+  if (!response.ok) throw Object.assign(new Error(`Observer dismiss failed with HTTP ${response.status}`), { status: 502 });
+  const body = response.json ? await response.json() : {};
+  return body.finding ? normaliseObserverFinding(settings, body.finding, 'observer') : null;
 }
 
 export function observerScanUrl(settings, path) {
@@ -317,10 +277,9 @@ export async function scanObserverTarget(record, options = {}) {
   if (!response.ok) throw Object.assign(new Error(`Observer scan failed with HTTP ${response.status}`), { status: response.status });
   const result = response.json ? await response.json() : { ok: true };
   const scanStatus = observerScanStatusFromResult(result);
-  if (!options.skipPersistence) {
-    await upsertObserverScanState(hostname, scanStatus, options.storeImpl || store);
-    await storeObserverFindingsFromResult(record, result, settings, options.storeImpl || store);
-  }
+  // Observer keeps the findings and screenshots; Rootminster only records the
+  // hostname's latest scan summary.
+  if (!options.skipPersistence) await upsertObserverScanState(hostname, scanStatus, options.storeImpl || store);
   return result;
 }
 
@@ -388,36 +347,26 @@ export async function registerObserverRoutes(app) {
     }
   });
 
+  // Observer reports findings from its scheduled scans here. It keeps the findings
+  // itself, so Rootminster only updates each hostname's scan summary.
   app.post('/internal/observer/findings', { config: { rawBody: true } }, async (request, reply) => {
     try {
-      const settings = await verifyObserverRequest(request);
+      await verifyObserverRequest(request);
       const findings = Array.isArray(request.body?.findings) ? request.body.findings.slice(0, 100) : [];
-      const saved = [];
+      const byHostname = new Map();
       for (const finding of findings) {
         const hostname = String(finding.hostname || '').toLowerCase().replace(/\.$/, '').slice(0, 253);
         if (!hostname) continue;
-        await upsertObserverScanState(hostname, {
-          status: 'flagged',
-          severity: String(finding.severity || finding.policy_result?.severity || 'unknown').slice(0, 40),
-          score: Number(finding.score ?? finding.policy_result?.score ?? 0),
-          finding_count: 1,
-        });
-        saved.push(await store.create('ObserverFinding', {
-          hostname,
-          url: String(finding.url || '').slice(0, 2000),
-          severity: String(finding.severity || finding.policy_result?.severity || 'unknown').slice(0, 40),
-          score: Number(finding.score ?? finding.policy_result?.score ?? 0),
-          finding_type: String(finding.finding_type || '').slice(0, 120),
-          policy_section: String(finding.policy_section || '').slice(0, 240),
-          evidence: String(finding.evidence || '').slice(0, 4000),
-          recommended_action: String(finding.recommended_action || '').slice(0, 4000),
-          screenshot_url: normaliseScreenshotUrl(settings, finding),
-          status: String(finding.status || 'open').slice(0, 40),
-          observed_at: new Date().toISOString(),
-          raw: finding,
-        }));
+        const severity = String(finding.severity || finding.policy_result?.severity || 'unknown').toLowerCase().slice(0, 40);
+        const score = Number(finding.score ?? finding.policy_result?.score ?? 0);
+        const current = byHostname.get(hostname) || { status: 'flagged', severity, score, finding_count: 0 };
+        current.finding_count += 1;
+        current.score = Math.max(current.score, score);
+        if ((SEVERITY_RANK.get(severity) ?? 0) > (SEVERITY_RANK.get(current.severity) ?? 0)) current.severity = severity;
+        byHostname.set(hostname, current);
       }
-      return { saved: saved.length, findings: saved };
+      for (const [hostname, state] of byHostname) await upsertObserverScanState(hostname, state);
+      return { received: findings.length, hostnames: byHostname.size };
     } catch (error) {
       return reply.code(error.status || 500).send({ error: error.message });
     }
@@ -444,35 +393,16 @@ export async function registerObserverRoutes(app) {
     const actor = await authenticateRequest(request);
     if (!actor || !['admin', 'staff'].includes(actor.role)) return reply.code(403).send({ error: 'Forbidden' });
     try {
-      const finding = request.body?.finding || {};
       const reason = String(request.body?.reason || '').slice(0, 1000);
-      const id = String(request.body?.id || finding.id || '').trim();
-      let saved;
-      const patch = { status: 'dismissed', dismissed_at: new Date().toISOString(), dismissed_by: actor.email, dismissal_reason: reason };
-      if (UUID_RE.test(id)) saved = await store.update('ObserverFinding', id, patch);
-      else {
-        saved = await store.create('ObserverFinding', {
-          hostname: String(finding.hostname || '').toLowerCase().replace(/\.$/, '').slice(0, 253),
-          url: String(finding.url || '').slice(0, 2000),
-          severity: String(finding.severity || 'unknown').slice(0, 40),
-          score: Number(finding.score) || 0,
-          finding_type: String(finding.finding_type || '').slice(0, 120),
-          policy_section: String(finding.policy_section || '').slice(0, 240),
-          evidence: String(finding.evidence || '').slice(0, 4000),
-          recommended_action: String(finding.recommended_action || '').slice(0, 4000),
-          screenshot_url: String(finding.screenshot_url || '').slice(0, 2000),
-          observed_at: finding.observed_at || finding.last_seen_at || new Date().toISOString(),
-          raw: finding,
-          ...patch,
-        });
-      }
+      const id = String(request.body?.id || request.body?.finding?.id || '').trim();
+      const saved = await dismissObserverFinding(id, { dismissedBy: actor.email, reason });
       await store.create('AuditLog', {
         action: 'observer.finding_dismissed',
         actor_id: actor.id,
         actor_email: actor.email,
         target_type: 'ObserverFinding',
-        target_id: saved?.id || id,
-        metadata: { reason, hostname: finding.hostname || saved?.hostname },
+        target_id: id,
+        metadata: { reason, hostname: saved?.hostname || request.body?.finding?.hostname },
       }, actor);
       return { ok: true, finding: saved };
     } catch (error) {
