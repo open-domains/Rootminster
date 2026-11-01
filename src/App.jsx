@@ -104,6 +104,7 @@ const AdminAuditLogs = lazy(() => import('@/pages/AdminAuditLogs'));
 const AdminEmailLogs = lazy(() => import('@/pages/AdminEmailLogs'));
 const AdminDonations = lazy(() => import('@/pages/AdminDonations'));
 const AdminSettings = lazy(() => import('@/pages/AdminSettings'));
+const StaffBlocklist = lazy(() => import('@/pages/StaffBlocklist'));
 const AdminAbuseReports = lazy(() => import('@/pages/AdminAbuseReports'));
 const AdminModules = lazy(() => import('@/pages/AdminModules'));
 const AdminAccountDeletionRequests = lazy(() => import('@/pages/AdminAccountDeletionRequests'));
@@ -202,6 +203,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin-abuse-reports" element={<AdminAbuseReports />} />
           <Route path="/staff-observer" element={<AdminObserverFindings />} />
           <Route path="/admin-observer" element={<Navigate to="/staff-observer" replace />} />
+          <Route path="/staff-blocklist" element={<StaffBlocklist />} />
         </Route>
 
         {/* Admin-only Routes */}
