@@ -57,6 +57,19 @@ export const MODULE_DEFINITIONS = Object.freeze({
       };
     },
   },
+  instant_approval: {
+    name: 'Instant approval', description: 'Approve low-risk subdomain requests automatically once Observer finds nothing, then keep re-scanning them and pull them back to review if Observer later flags serious abuse.', defaultEnabled: false,
+    fields: [
+      { key: 'allowed_record_types', label: 'Record types eligible for instant approval', type: 'text', required: true, description: 'Comma-separated. Requests with any other record type always go to staff review. NS and MX are excluded by default because Observer cannot see what they serve.' },
+      { key: 'min_account_age_days', label: 'Minimum account age (days)', type: 'number', min: 0, max: 365, step: 1 },
+      { key: 'max_per_account_per_day', label: 'Instant approvals per account per day', type: 'number', min: 1, max: 50, step: 1 },
+      { key: 'max_per_day', label: 'Instant approvals per day (all accounts)', type: 'number', min: 1, max: 10000, step: 1, description: 'Once reached, further requests wait for staff review until the next UTC day.' },
+      { key: 'recheck_minutes', label: 'First re-scan after approval (minutes)', type: 'number', min: 5, max: 1440, step: 1, description: 'Observer re-scans the live hostname after this delay, then daily.' },
+      { key: 'monitoring_days', label: 'Monitoring period (days)', type: 'number', min: 1, max: 90, step: 1, description: 'How long instantly approved hostnames keep being re-scanned.' },
+      { key: 'revoke_severity', label: 'Pull back to review at Observer severity', type: 'select', options: [{ value: 'critical', label: 'Critical only' }, { value: 'high', label: 'High or critical' }], description: 'Matching findings remove the DNS records and return the request to the staff queue.' },
+    ],
+    env: () => ({ enabled: false, allowed_record_types: 'A, AAAA, CNAME, TXT', min_account_age_days: 1, max_per_account_per_day: 1, max_per_day: 50, recheck_minutes: 30, monitoring_days: 14, revoke_severity: 'critical' }),
+  },
   glitchtip: {
     name: 'GlitchTip monitoring', description: 'Optional privacy-conscious browser and server error reporting with browser performance traces.', defaultEnabled: false,
     fields: [

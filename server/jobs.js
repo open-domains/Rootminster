@@ -24,6 +24,8 @@ cron.schedule('30 3 * * *', () => run('cleanupSuspendedRecords'), { timezone: 'U
 cron.schedule('0 2 */6 * *', () => run('scheduledSync'), { timezone: 'UTC' });
 cron.schedule('0 3 1 */2 *', () => run('verifyDnsRecords'), { timezone: 'UTC' });
 cron.schedule('0 4,12,20 * * *', () => run('observerScanAll'), { timezone: 'UTC' });
+// Re-scan instantly approved subdomains during their monitoring period.
+cron.schedule('*/5 * * * *', () => run('instantApprovalRecheck'), { timezone: 'UTC' });
 cron.schedule('0 23 * * 0', () => run('weeklyStatsDiscord'), { timezone: 'UTC' });
 cron.schedule('*/15 * * * *', async () => {
   try {

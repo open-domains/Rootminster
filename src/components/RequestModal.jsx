@@ -172,7 +172,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
         return;
       }
 
-      await rootminster.functions.invoke('submitRequest', {
+      const submitted = await rootminster.functions.invoke('submitRequest', {
         subdomain,
         root_domain: rootDomain,
         reason,
@@ -186,7 +186,8 @@ export default function RequestModal({ open, onClose, onSuccess }) {
         })),
       });
 
-      toast.success(rows.length > 1 ? t('requestModal.submitSuccessMulti', { count: rows.length }) : t('requestModal.submitSuccess'));
+      if (submitted?.data?.instant_approved) toast.success(t('requestModal.instantApproved', { hostname: `${subdomain}.${rootDomain}` }));
+      else toast.success(rows.length > 1 ? t('requestModal.submitSuccessMulti', { count: rows.length }) : t('requestModal.submitSuccess'));
       onSuccess?.();
       onClose();
     } catch (err) {

@@ -22,6 +22,7 @@ import StatusBadge from './StatusBadge';
 import ConversationThread from './ConversationThread';
 import QuickChips from './QuickChips';
 import SafetyBadge from './SafetyBadge';
+import InstantApprovalPanel from './InstantApprovalPanel';
 import { readableEvidence } from '@/lib/observer-evidence';
 
 const normalizeUrl = (url) => {
@@ -284,6 +285,8 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
                 )}
               </div>
             </div>
+
+            <InstantApprovalPanel request={request} onChanged={async () => { await onSuccess?.(); onClose(); }} />
 
             <div className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">

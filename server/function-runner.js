@@ -11,7 +11,7 @@ const FUNCTION_NAMES = new Set([
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
   'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
   'getRecaptchaSiteKey', 'getTurnstileSiteKey', 'githubMigrate',
-  'githubMigrateVerify', 'manageDnsRecord', 'observerScanAll', 'postComment', 'publicApi',
+  'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'observerScanAll', 'postComment', 'publicApi',
   'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
   'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest', 'submitSupportTicket',
@@ -24,7 +24,7 @@ const HTTP_FUNCTION_NAMES = new Set([
 ]);
 // Scheduled-job handlers. observerScanAll performs no caller authorization of its own,
 // so it must only be reachable through invokeInternal from the job runner.
-for (const internalOnly of ['cleanupPendingDonations', 'observerScanAll', 'scheduledSync', 'weeklyStatsDiscord']) {
+for (const internalOnly of ['cleanupPendingDonations', 'instantApprovalRecheck', 'observerScanAll', 'scheduledSync', 'weeklyStatsDiscord']) {
   HTTP_FUNCTION_NAMES.delete(internalOnly);
 }
 
