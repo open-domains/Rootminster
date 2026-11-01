@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Cloud, Database, Github, HeartHandshake, Loader2, Lock, Mail, MessageCircle, Network, Rocket, ShieldCheck, User } from 'lucide-react';
+import { CheckCircle2, Circle, Cloud, Database, HeartHandshake, Loader2, Lock, Mail, MessageCircle, Network, Rocket, ShieldCheck, User } from 'lucide-react';
+import Github from '@/components/GithubIcon';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

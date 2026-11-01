@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { rootminster } from '@/api/rootminsterClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Github, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import Github from '@/components/GithubIcon';
 
 export default function GithubMigrateModal({ open, onClose, onSuccess }) {
   const [step, setStep] = useState('confirm'); // 'confirm' | 'done'

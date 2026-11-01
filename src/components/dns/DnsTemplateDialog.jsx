@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, AlertTriangle, Github, Cloud, Server, BadgeCheck, Loader2, Sparkles } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Cloud, Server, BadgeCheck, Loader2, Sparkles } from 'lucide-react';
+import Github from '@/components/GithubIcon';
 import { checkConflict, validateAddName, validateContent } from './dnsConfig';
 
 const camelize = (id) => id.replace(/-(.)/g, (_, c) => c.toUpperCase());
