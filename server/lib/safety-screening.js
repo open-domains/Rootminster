@@ -1,6 +1,7 @@
 import { store } from '../store.js';
 import { requestRecords } from '../../shared/subdomain-requests.js';
 import { getModuleConfig } from '../module-settings.js';
+import { matchProtectedBrand, parseBrandList } from '../../shared/brand-protection.js';
 
 export const SAFETY_RULESET_VERSION = '2026-08-31.1';
 
@@ -76,14 +77,8 @@ function addPreviewSignals(request, signals) {
 }
 
 function addBrandSignals(request, protectedBrands, signals) {
-  const name = String(request.subdomain || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  for (const brand of parseProtectedBrands(protectedBrands)) {
-    const compact = brand.replace(/-/g, '');
-    if (name === compact || name.startsWith(compact) || name.endsWith(compact)) {
-      signals.push(signal('protected_brand', 'Subdomain resembles a protected brand', 50, 'high', brand));
-      break;
-    }
-  }
+  const brand = matchProtectedBrand(request.subdomain, parseBrandList(protectedBrands));
+  if (brand) signals.push(signal('protected_brand', 'Subdomain resembles a protected brand', 50, 'high', brand));
 }
 
 export function assessDeterministic(request, context = {}) {
