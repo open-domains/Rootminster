@@ -5,17 +5,17 @@ Business commands live in `server/functions/*.js` and are executed by `server/fu
 ## Responsibilities
 
 - Validate and submit subdomain requests.
-- Score requests through deterministic safety screening and optional providers.
+- Trigger Observer policy scans for new requests.
 - Review, approve, reject, appeal, comment on, and bundle requests.
 - Provision approved records in Cloudflare DNS and persist `DnsRecord`/`SubdomainOwnership` records.
 - Let users manage owned DNS namespaces after approval.
 - Verify DNS records, sync Cloudflare state, and repair missing records.
-- Emit audits, emails, Discord notifications, and safety assessments.
+- Emit audits, emails, and Discord notifications.
 
 ## Key Files
 
 - `server/function-runner.js` — function allow-list, HTTP/internal execution, production error masking.
-- `server/functions/submitRequest.js` — request validation, Turnstile, donation-gated NS checks, blocklists, safety screen, request creation.
+- `server/functions/submitRequest.js` — request validation, Turnstile, donation-gated NS checks, blocklists, request creation, Observer scan.
 - `server/functions/approveRequest.js` — staff approval, Cloudflare provisioning, audits, email/Discord notifications.
 - `server/functions/rejectRequest.js` — staff rejection flow.
 - `server/functions/manageDnsRecord.js` — post-approval DNS management by owner/staff/admin.
@@ -25,12 +25,12 @@ Business commands live in `server/functions/*.js` and are executed by `server/fu
 - `server/lib/request-bundles.js` — grouped request/comment handling and locks.
 - `server/lib/subdomain-ownership.js` — ownership namespace calculations.
 - `server/lib/request-policy.js` — platform request lock/reserved-name policy.
-- `server/lib/safety-screening.js` — risk scoring.
+- `server/observer.js` — Observer scan triggers and findings.
 - `server/lib/cloudflare.js` — Cloudflare API wrapper.
 
 ## Request Submission
 
-`submitRequest` accepts legacy single-record fields or a `records` array. It validates subdomain format, record compatibility, record values, preview link, Turnstile, private IPs, blocklists, reserved names, active duplicate/conflicting requests, request policy locks, and optional NS donation requirements before creating records and safety assessments.
+`submitRequest` accepts legacy single-record fields or a `records` array. It validates subdomain format, record compatibility, record values, preview link, Turnstile, private IPs, blocklists, reserved names, active duplicate/conflicting requests, request policy locks, and optional NS donation requirements before creating the request and triggering an Observer scan.
 
 ## Approval and DNS Provisioning
 

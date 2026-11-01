@@ -27,7 +27,6 @@ Defined modules include:
 - `google_oauth`
 - `github_oauth`
 - `discord`
-- `safety`
 - `mcp`
 - `analytics`
 - `design`

@@ -1,6 +1,6 @@
 # Subdomain requests and conversations
 
-New submissions store up to 20 DNS records in one `SubdomainRequest.records` array, with one request ID, status, conversation, safety assessment, and approval/rejection action. Legacy single-record input remains supported, including the legacy public API (a preview link is required); the response includes `request` and a one-item `requests` array. Top-level record fields describe the first record for compatibility; consumers should use `records` for the complete set.
+New submissions store up to 20 DNS records in one `SubdomainRequest.records` array, with one request ID, status, conversation, Observer screening result, and approval/rejection action. Legacy single-record input remains supported, including the legacy public API (a preview link is required); the response includes `request` and a one-item `requests` array. Top-level record fields describe the first record for compatibility; consumers should use `records` for the complete set.
 
 ## Compatibility
 

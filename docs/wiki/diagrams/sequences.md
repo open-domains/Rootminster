@@ -12,16 +12,16 @@ sequenceDiagram
     participant Runner as function-runner.js
     participant Submit as submitRequest.js
     participant Store as store.js
-    participant Safety as safety-screening.js
+    participant Observer as observer.js
     participant DB as PostgreSQL
     User->>React: submit hostname, records, preview link
     React->>Client: functions.invoke("submitRequest", body)
     Client->>Runner: POST /api/functions/submitRequest
     Runner->>Submit: bound Request with actor
     Submit->>Submit: validate subdomain, records, Turnstile, blocklist
-    Submit->>Safety: screenRequest(...)
-    Submit->>Store: create SubdomainRequest / SafetyAssessment
+    Submit->>Store: create SubdomainRequest
     Store->>DB: INSERT entity_records
+    Submit->>Observer: scanObserverRequestTarget(id)
     Submit-->>Runner: Response JSON
     Runner-->>Client: request result
     Client-->>React: data

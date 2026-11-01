@@ -29,7 +29,7 @@ It gives operators one place to manage the full lifecycle of a domain service:
 | 🌐 | **DNS management** | Manage zones and DNS records through Cloudflare with ownership and permission checks enforced server-side. |
 | 📨 | **Domain requests** | Accept, review, approve, reject and audit subdomain requests with staff workflows. |
 | 👥 | **Users & roles** | Local accounts, OAuth login, sessions, email verification, staff roles and administrator controls. |
-| 🛡️ | **Safety screening** | Explainable request risk scoring, protected-brand signals, velocity checks and staff overrides. |
+| 🛡️ | **Request screening** | New requests are scanned by Observer; staff see its status, score and findings and can re-run a scan. |
 | 🔑 | **Scoped API tokens** | Restrict tokens by permission, hostname, DNS type and expiry. |
 | 🩺 | **Domain health** | Compare saved records with public DNS and get actionable DNSSEC and propagation guidance from the DNS manager. See [domain health checks](docs/domain-health.md). |
 | 📡 | **Dynamic DNS** | Dedicated DDNS endpoints for controlled A and AAAA record updates. |
@@ -159,7 +159,7 @@ Rootminster currently exposes modules for:
 - Google OAuth
 - GitHub OAuth
 - Discord
-- automated safety screening
+- Observer request and subdomain policy scanning
 - MCP server — see [bundled requests, conversations, and hostname lookup](docs/request-bundles.md)
 - Umami analytics
 
@@ -264,22 +264,11 @@ Key protections include:
 - audited administrative actions
 - request risk screening
 
-### Request safety screening
+### Request screening
 
-Accepted requests receive a versioned, explainable risk assessment covering signals such as:
+New requests are scanned by Observer when the Observer module is enabled. Staff see the resulting status, score and findings on the review screen and can re-run a scan. The result helps staff prioritise reviews; it never approves requests automatically.
 
-- suspicious wording
-- preview URL structure
-- protected brands
-- account age
-- request velocity
-- rejection history
-- sensitive DNS record types
-- shared DNS targets
-
-The score helps staff prioritise reviews. It never approves requests automatically.
-
-Staff can inspect individual signals, re-run screening or override a verdict with a mandatory audited reason.
+Safety assessments and `safety_*` request fields recorded by the earlier built-in screener are kept, staff-only, so historical data stays readable (for example through the MCP request review tools).
 
 ---
 
