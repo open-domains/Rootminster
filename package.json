@@ -68,7 +68,7 @@
     "fastify": "^5.12.7",
     "fastify-raw-body": "^6.0.3",
     "framer-motion": "^11.18.2",
-    "gradflow": "^0.1.0",
+    "gradflow": "^0.4.0",
     "html2canvas": "^1.4.1",
     "i18next": "^24.2.3",
     "i18next-browser-languagedetector": "^8.2.4",
