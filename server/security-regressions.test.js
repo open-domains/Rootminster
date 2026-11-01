@@ -54,7 +54,23 @@ test('scheduled jobs are not exposed through the HTTP function dispatcher', asyn
   const runner = await source('./function-runner.js');
   assert.match(runner, /HTTP_FUNCTION_NAMES\.delete\(internalOnly\)/);
   assert.match(runner, /cleanupPendingDonations.*scheduledSync.*weeklyStatsDiscord/s);
+  const internalOnly = runner.match(/for \(const internalOnly of \[([^\]]*)\]\)/);
+  assert.ok(internalOnly, 'internal-only function list not found');
+  assert.match(internalOnly[1], /'observerScanAll'/);
   assert.doesNotMatch(runner, /method:\s*\['GET',\s*'POST'/);
+});
+
+test('every scheduled job function is registered with the function runner', async () => {
+  const runner = await source('./function-runner.js');
+  const jobs = await source('./jobs.js');
+  const registry = runner.match(/const FUNCTION_NAMES = new Set\(\[([\s\S]*?)\]\);/);
+  assert.ok(registry, 'FUNCTION_NAMES declaration not found');
+  const registered = new Set([...registry[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map(match => match[1]));
+  const scheduled = [...new Set([...jobs.matchAll(/\brun\('([A-Za-z0-9_]+)'/g)].map(match => match[1]))];
+  assert.ok(scheduled.length > 0, 'no run(...) calls found in jobs.js');
+  for (const name of scheduled) {
+    assert.ok(registered.has(name), `jobs.js runs ${name}, which is missing from FUNCTION_NAMES`);
+  }
 });
 
 test('DNS mutation never treats an API-token row ID as a credential', async () => {
