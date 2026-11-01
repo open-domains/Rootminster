@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react';
 import { rootminster } from '@/api/rootminsterClient';
 import { useTranslation } from 'react-i18next';
 import {
-  Globe, CheckCircle2, Plus, ChevronRight, MessageCircle, Github,
-  AlertTriangle, ArrowRight, Server, Activity, MoreHorizontal, ShieldCheck,
+  Globe, CheckCircle2, Plus, ChevronRight, MessageCircle, AlertTriangle, ArrowRight, Server, Activity, MoreHorizontal, ShieldCheck,
 } from 'lucide-react';
+import Github from '@/components/GithubIcon';
 import CarbonAd from '@/components/CarbonAd';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';

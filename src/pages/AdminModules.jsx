@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BarChart3, Boxes, Bug, CheckCircle2, Cloud, Container, CreditCard, Database, Eye, EyeOff, Github, KeyRound, Loader2, Mail, MessageSquare, Palette, RefreshCw, Save, Search, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BarChart3, Boxes, Bug, CheckCircle2, Cloud, Container, CreditCard, Database, Eye, EyeOff, KeyRound, Loader2, Mail, MessageSquare, Palette, RefreshCw, Save, Search, ShieldCheck, TriangleAlert } from 'lucide-react';
+import Github from '@/components/GithubIcon';
 import { toast } from 'sonner';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';

@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Github, CheckCircle, AlertCircle, Loader2, Search } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2, Search } from 'lucide-react';
+import Github from '@/components/GithubIcon';
 import { toast } from 'sonner';
 
 export default function AdminMigrateModal({ open, onClose, onSuccess }) {
