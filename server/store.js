@@ -5,7 +5,7 @@ export const ENTITY_NAMES = new Set([
   'AbuseReport', 'PlatformSettings', 'RequestComment',
   'TrustedDevice', 'CleanupMigrationState', 'EmailLog', 'Donation', 'DeviceCode',
   'DnsRecord', 'ApiToken', 'BlocklistEntry', 'EditRequest', 'User',
-  'SafetyAssessment', 'ObserverFinding', 'ObserverScanState',
+  'SafetyAssessment', 'ObserverScanState',
 ]);
 
 const USER_COLUMNS = new Set([

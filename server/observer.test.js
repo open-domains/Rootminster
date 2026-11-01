@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   signingHeaders, observerScanUrl, scanObserverTarget, scanAllObserverTargets,
-  scanObserverOwnershipTarget, fetchObserverFindings, mergeObserverFindings,
+  scanObserverOwnershipTarget, fetchObserverFindings, dismissObserverFinding,
   observerStatusesByHostname, loadObserverFindings, selectObserverBatch,
 } from './observer.js';
 
@@ -120,7 +120,7 @@ test('fetchObserverFindings normalises live Observer findings from the internal 
   const findings = await fetchObserverFindings({
     settings: { enabled: true, observer_internal_url: 'http://observer:8080', observer_url: 'https://observer.example' },
     fetchImpl: async (url, options) => {
-      assert.equal(url, 'http://observer:8080/api/findings');
+      assert.equal(url, 'http://observer:8080/api/findings?status=open&limit=5000');
       assert.equal(options.headers.accept, 'application/json');
       return {
         ok: true,
@@ -160,46 +160,91 @@ test('observerStatusesByHostname reports worst live severity per subdomain', () 
   assert.equal(statuses['other.example.test'].severity, 'medium');
 });
 
-test('loadObserverFindings merges stored findings with live Observer findings', async () => {
+test('loadObserverFindings reads open findings live from Observer and never from Rootminster storage', async () => {
+  const listed = [];
   const result = await loadObserverFindings({
     settings: { enabled: true, observer_internal_url: 'http://observer:8080' },
     storeImpl: {
-      list: async (entity, sort, limit) => {
-        if (entity === 'ObserverScanState') return [];
-        assert.equal(entity, 'ObserverFinding');
-        assert.equal(sort, '-created_date');
-        assert.equal(limit, 10000);
-        return [{ hostname: 'stored.example.test', severity: 'medium', observed_at: '2026-10-01T00:00:00Z' }];
+      list: async (entity) => {
+        listed.push(entity);
+        return [{ hostname: 'live.example.test', status: 'flagged' }];
       },
     },
     fetchImpl: async () => ({
       ok: true,
-      json: async () => ({ findings: [{ hostname: 'live.example.test', severity: 'high', last_seen_at: '2026-10-02 00:00:00' }] }),
+      json: async () => ({ findings: [
+        { id: 1, hostname: 'older.example.test', severity: 'medium', last_seen_at: '2026-10-01 00:00:00' },
+        { id: 2, hostname: 'live.example.test', severity: 'high', last_seen_at: '2026-10-02 00:00:00' },
+        { id: 3, hostname: 'gone.example.test', severity: 'high', status: 'dismissed' },
+      ] }),
     }),
   });
 
-  assert.deepEqual(result.findings.map(finding => finding.hostname), ['live.example.test', 'stored.example.test']);
+  assert.deepEqual(result.findings.map(finding => finding.hostname), ['live.example.test', 'older.example.test']);
+  assert.deepEqual(listed, ['ObserverScanState']);
+  assert.equal(result.scanStates.length, 1);
   assert.equal(result.observer_error, '');
 });
 
-test('loadObserverFindings falls back to stored findings when live Observer is unavailable', async () => {
+test('loadObserverFindings reports when live Observer is unavailable', async () => {
   const result = await loadObserverFindings({
     settings: { enabled: true, observer_internal_url: 'http://observer:8080' },
-    storeImpl: { list: async (entity) => entity === 'ObserverScanState' ? [] : [{ hostname: 'stored.example.test', severity: 'medium' }] },
+    storeImpl: { list: async () => [] },
     fetchImpl: async () => ({ ok: false, status: 503 }),
   });
 
-  assert.equal(result.findings.length, 1);
-  assert.equal(result.findings[0].hostname, 'stored.example.test');
+  assert.deepEqual(result.findings, []);
   assert.match(result.observer_error, /HTTP 503/);
 });
 
-test('mergeObserverFindings prefers live Observer data over a duplicate stored finding', () => {
-  const merged = mergeObserverFindings(
-    [{ hostname: 'same.example.test', url: 'https://same.example.test', finding_type: 'abuse', policy_section: '6', evidence: 'same', source: 'rootminster', observed_at: '2026-10-01T00:00:00Z' }],
-    [{ hostname: 'same.example.test', url: 'https://same.example.test', finding_type: 'abuse', policy_section: '6', evidence: 'same', source: 'observer', last_seen_at: '2026-10-02T00:00:00Z' }],
-  );
+test('dismissObserverFinding records the dismissal in Observer', async () => {
+  const calls = [];
+  const finding = await dismissObserverFinding('42', { dismissedBy: 'staff@example.test', reason: 'Board game club' }, {
+    settings: { enabled: true, observer_internal_url: 'http://observer:8080' },
+    fetchImpl: async (url, options) => {
+      calls.push({ url, options });
+      return { ok: true, status: 200, json: async () => ({ finding: { id: 42, hostname: 'Club.Example.Test', status: 'dismissed' } }) };
+    },
+  });
 
-  assert.equal(merged.length, 1);
-  assert.equal(merged[0].source, 'observer');
+  assert.equal(calls[0].url, 'http://observer:8080/api/findings/42/dismiss');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[0].options.body), { dismissed_by: 'staff@example.test', reason: 'Board game club' });
+  assert.equal(finding.hostname, 'club.example.test');
+  assert.equal(finding.status, 'dismissed');
+});
+
+test('dismissObserverFinding rejects ids that are not Observer finding ids', async () => {
+  const settings = { enabled: true, observer_internal_url: 'http://observer:8080' };
+  const fetchImpl = async () => { throw new Error('fetch should not run'); };
+  for (const id of ['', '../scan', 'abc', '1/../../x']) {
+    await assert.rejects(() => dismissObserverFinding(id, {}, { settings, fetchImpl }), error => error.status === 400);
+  }
+  await assert.rejects(
+    () => dismissObserverFinding('7', {}, { settings, fetchImpl: async () => ({ ok: false, status: 404 }) }),
+    error => error.status === 404,
+  );
+});
+
+test('scanObserverTarget stores only the hostname scan summary, never a copy of findings', async () => {
+  const writes = [];
+  const storeImpl = {
+    filter: async () => [],
+    create: async (entity, data) => { writes.push(entity); return { id: 'x', ...data }; },
+    update: async (entity, id, data) => { writes.push(entity); return { id, ...data }; },
+  };
+  await scanObserverTarget({ full_name: 'flagged.example.test' }, {
+    settings: observerSettings,
+    storeImpl,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ findings: [{ id: 9, severity: 'high', policy_section: '5.5 Gambling' }], severity: 'high', score: 35 }) }),
+  });
+
+  assert.deepEqual(writes, ['ObserverScanState']);
+});
+
+test('Rootminster no longer has an ObserverFinding entity to store copies in', async () => {
+  const { ENTITY_NAMES, store } = await import('./store.js');
+  assert.equal(ENTITY_NAMES.has('ObserverFinding'), false);
+  assert.equal(ENTITY_NAMES.has('ObserverScanState'), true);
+  await assert.rejects(() => store.create('ObserverFinding', { hostname: 'x.example.test' }), error => error.status === 404);
 });
