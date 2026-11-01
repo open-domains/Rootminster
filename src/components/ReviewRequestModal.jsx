@@ -22,6 +22,7 @@ import StatusBadge from './StatusBadge';
 import ConversationThread from './ConversationThread';
 import QuickChips from './QuickChips';
 import SafetyBadge from './SafetyBadge';
+import { readableEvidence } from '@/lib/observer-evidence';
 
 const normalizeUrl = (url) => {
   if (!url) return url;
@@ -308,7 +309,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
                           <p className="font-medium text-foreground">{finding.policy_section || finding.finding_type || 'Observer policy finding'}</p>
                           <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-mono text-amber-700 dark:text-amber-300">{finding.severity || 'unknown'} · {Number(finding.score) || 0}</span>
                         </div>
-                        {finding.evidence && <p className="mt-2 text-muted-foreground break-words">{finding.evidence}</p>}
+                        {finding.evidence && <p className="mt-2 whitespace-pre-line break-words leading-relaxed text-muted-foreground">{readableEvidence(finding.evidence)}</p>}
                         {finding.screenshot_url && (
                           <button type="button" onClick={() => openExternal(finding.screenshot_url)} className="mt-2 text-primary underline hover:opacity-80">
                             Open Observer screenshot
