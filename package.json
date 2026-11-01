@@ -95,7 +95,7 @@
     "react-router-dom": "^7.18.5",
     "recharts": "^2.15.4",
     "sonner": "^2.0.8",
-    "stripe": "^18.5.0",
+    "stripe": "^23.1.0",
     "tailwind-merge": "^3.7.0",
     "three": "^0.171.0",
     "tldts": "^7.4.19",
