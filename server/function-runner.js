@@ -11,7 +11,7 @@ const FUNCTION_NAMES = new Set([
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
   'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
   'getRecaptchaSiteKey', 'getTurnstileSiteKey', 'githubMigrate',
-  'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'observerScanAll', 'postComment', 'publicApi',
+  'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'manageProtectedBrands', 'observerScanAll', 'postComment', 'publicApi',
   'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
   'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest', 'submitSupportTicket',

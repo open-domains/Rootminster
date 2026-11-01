@@ -9,6 +9,7 @@
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
+import { protectedBrandRefusal } from '../lib/brand-protection.js';
 import { invokeInternal } from '../function-runner.js';
 import { apiIdentity, tokenHasScope, tokenAllowsRecord, tokenAllowsRequest } from '../public-api.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
@@ -54,6 +55,9 @@ export default async function (req) {
             if (isReservedName(subdomain, reserved)) {
                 return respond({ status: 'reserved', message: 'This subdomain name is reserved' });
             }
+            const brandRefusal = await protectedBrandRefusal(platform.asServiceRole.entities, subdomain, null);
+            if (brandRefusal)
+                return respond({ status: 'reserved', message: brandRefusal });
             const fullName = `${subdomain}.${domain}`;
             const existing = await platform.asServiceRole.entities.DnsRecord.filter({ name: fullName });
             if (existing.length > 0)

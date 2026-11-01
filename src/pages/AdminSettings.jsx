@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import BlocklistManager from '@/components/BlocklistManager';
+import ProtectedBrandsManager from '@/components/ProtectedBrandsManager';
 import TermsManager from '@/components/TermsManager';
 import StatusBadge from '@/components/StatusBadge';
 import { isPublicSuffix } from '@/lib/psl-check';
@@ -603,7 +604,7 @@ export default function AdminSettings() {
             </div>
 
           : activeTab === 'blocklist'
-            ? <div className="max-w-2xl"><BlocklistManager currentUser={currentUser} /></div>
+            ? <div className="max-w-2xl space-y-6"><ProtectedBrandsManager /><BlocklistManager currentUser={currentUser} /></div>
 
             : activeTab === 'terms'
               ? <TermsManager />

@@ -5,6 +5,7 @@ import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { scanObserverRequestTarget } from '../observer.js';
 import { tryInstantApproval } from '../lib/instant-approval.js';
+import { protectedBrandRefusal } from '../lib/brand-protection.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
 const SINGLE_VALUE_TYPES = ['CNAME'];
@@ -223,6 +224,9 @@ export default async function (req) {
     if (isReservedName(subdomain, reserved)) {
         return Response.json({ error: 'This subdomain name is reserved' }, { status: 409 });
     }
+    const brandRefusal = await protectedBrandRefusal(platform.asServiceRole.entities, subdomain, user);
+    if (brandRefusal)
+        return Response.json({ error: brandRefusal }, { status: 403 });
     return withRequestLock(`${subdomain}.${root_domain}`, async () => {
     // Existing DNS records for this hostname
     const existing = await platform.asServiceRole.entities.DnsRecord.filter({ name: `${subdomain}.${root_domain}` });

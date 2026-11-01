@@ -1,5 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
+import { protectedBrandRefusal } from '../lib/brand-protection.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
@@ -37,6 +38,9 @@ export default async function (req) {
     if (isReservedName(subdomain, reserved)) {
         return Response.json({ status: 'reserved', message: 'This subdomain name is reserved' });
     }
+    const brandRefusal = await protectedBrandRefusal(platform.asServiceRole.entities, subdomain, user);
+    if (brandRefusal)
+        return Response.json({ status: 'reserved', message: brandRefusal });
     // Ownership persists even when the subdomain temporarily has zero DNS records.
     const ownership = await platform.asServiceRole.entities.SubdomainOwnership.filter({ full_name: fullName.toLowerCase() });
     if (ownership.length > 0) {
