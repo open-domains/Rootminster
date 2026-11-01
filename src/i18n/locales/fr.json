@@ -113,7 +113,8 @@
     "submitMulti": "Soumettre {{count}} enregistrements",
     "submitting": "Envoi en cours…",
     "submitSuccess": "Demande soumise avec succès !",
-    "submitSuccessMulti": "{{count}} demandes soumises !"
+    "submitSuccessMulti": "{{count}} demandes soumises !",
+    "instantApproved": "{{hostname}} est approuvé et en ligne ! La propagation des modifications DNS peut prendre quelques minutes."
   },
   "common": {
     "back": "Retour",

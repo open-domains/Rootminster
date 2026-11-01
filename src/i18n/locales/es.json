@@ -113,7 +113,8 @@
     "submitMulti": "Enviar {{count}} registros",
     "submitting": "Enviando…",
     "submitSuccess": "¡Solicitud enviada con éxito!",
-    "submitSuccessMulti": "¡{{count}} solicitudes enviadas!"
+    "submitSuccessMulti": "¡{{count}} solicitudes enviadas!",
+    "instantApproved": "¡{{hostname}} está aprobado y en línea! Los cambios de DNS pueden tardar unos minutos en propagarse."
   },
   "common": {
     "back": "Atrás",

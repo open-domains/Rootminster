@@ -113,6 +113,7 @@
     "submitMulti": "{{count}} रिकॉर्ड सबमिट करें",
     "submitting": "सबमिट हो रहा है…",
     "submitSuccess": "अनुरोध सफलतापूर्वक सबमिट हुआ!",
-    "submitSuccessMulti": "{{count}} अनुरोध सबमिट हुए!"
+    "submitSuccessMulti": "{{count}} अनुरोध सबमिट हुए!",
+    "instantApproved": "{{hostname}} स्वीकृत और लाइव है! DNS बदलावों को फैलने में कुछ मिनट लग सकते हैं।"
   }
 }

@@ -4,6 +4,7 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getModuleConfig } from '../module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { scanObserverRequestTarget } from '../observer.js';
+import { tryInstantApproval } from '../lib/instant-approval.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
 const SINGLE_VALUE_TYPES = ['CNAME'];
@@ -272,8 +273,12 @@ export default async function (req) {
     const created = [request];
     const typeList = recordList.map(r => r.record_type);
     const valueList = recordList.map(r => r.record_value);
+    let observerForApproval = null;
     try {
         const observerResult = await scanObserverRequestTarget(created[0].id);
+        observerForApproval = observerResult.skipped
+            ? { error: `scan skipped (${observerResult.reason || 'unavailable'})` }
+            : observerResult.observer_status;
         Object.assign(created[0], {
             observer_status: observerResult.observer_status?.status,
             observer_severity: observerResult.observer_status?.severity,
@@ -283,19 +288,26 @@ export default async function (req) {
         });
     }
     catch (error) {
+        observerForApproval = { error: error.message };
         await platform.asServiceRole.entities.AuditLog.create({
             actor_email: 'system@rootminster.local', actor_role: 'system',
             action: 'observer_scan_failed', entity_type: 'SubdomainRequest', entity_id: created[0].id,
             description: `Observer scan failed for ${subdomain}.${root_domain}: ${error.message}`
         }).catch(() => {});
     }
+    // Instant approval must never block a submission: on any unexpected error the
+    // request simply stays in the staff queue.
+    const instant = await tryInstantApproval(platform, created[0], user, observerForApproval)
+        .catch(() => ({ decision: 'error' }));
+    const instantApproved = instant.decision === 'approved';
+    if (instantApproved) created[0].status = 'approved';
     // Discord notification
     await sendDiscord(platform, [
         { name: 'Subdomain', value: String(subdomain + '.' + root_domain) },
         { name: 'Types', value: typeList.join(', ') },
         { name: 'Values', value: valueList.join(', ') },
         { name: 'Requested By', value: String(user.email) },
-        { name: 'Status', value: 'Pending Review' },
+        { name: 'Status', value: instantApproved ? 'Instantly approved' : 'Pending Review' },
         { name: 'Observer automated screening', value: created[0].observer_status ? `${created[0].observer_status}${created[0].observer_score !== undefined ? ` (${created[0].observer_score}/100)` : ''}${created[0].observer_finding_count ? ` · ${created[0].observer_finding_count} finding${created[0].observer_finding_count === 1 ? '' : 's'}` : ''}` : 'Scan pending or unavailable' }
     ], 'New Subdomain Request', 0x6366f1);
     await platform.asServiceRole.entities.AuditLog.create({
@@ -303,6 +315,6 @@ export default async function (req) {
         action: 'request_submitted', entity_type: 'SubdomainRequest', entity_id: created[0].id,
         description: `New subdomain request: ${subdomain}.${root_domain} (${typeList.join(', ')})`
     });
-    return Response.json({ success: true, request: created[0], requests: created });
+    return Response.json({ success: true, instant_approved: instantApproved, request: created[0], requests: created });
     });
 }

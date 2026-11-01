@@ -11,7 +11,7 @@ const FUNCTION_NAMES = new Set([
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
   'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
   'getRecaptchaSiteKey', 'getTurnstileSiteKey', 'githubMigrate',
-  'githubMigrateVerify', 'manageDnsRecord', 'postComment', 'publicApi',
+  'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'postComment', 'publicApi',
   'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
   'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest', 'submitSupportTicket',
@@ -22,7 +22,7 @@ const FUNCTION_NAMES = new Set([
 const HTTP_FUNCTION_NAMES = new Set([
   ...FUNCTION_NAMES,
 ]);
-for (const internalOnly of ['cleanupPendingDonations', 'scheduledSync', 'weeklyStatsDiscord']) {
+for (const internalOnly of ['cleanupPendingDonations', 'instantApprovalRecheck', 'scheduledSync', 'weeklyStatsDiscord']) {
   HTTP_FUNCTION_NAMES.delete(internalOnly);
 }
 

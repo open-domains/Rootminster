@@ -113,7 +113,8 @@
     "submitMulti": "Submit {{count}} Records",
     "submitting": "Submitting…",
     "submitSuccess": "Request submitted successfully!",
-    "submitSuccessMulti": "{{count}} requests submitted!"
+    "submitSuccessMulti": "{{count}} requests submitted!",
+    "instantApproved": "{{hostname}} is approved and live! DNS changes can take a few minutes to spread."
   },
   "common": {
     "back": "Back",

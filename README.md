@@ -27,7 +27,7 @@ It gives operators one place to manage the full lifecycle of a domain service:
 | | Capability | What it does |
 |---|---|---|
 | 🌐 | **DNS management** | Manage zones and DNS records through Cloudflare with ownership and permission checks enforced server-side. |
-| 📨 | **Domain requests** | Accept, review, approve, reject and audit subdomain requests with staff workflows. |
+| 📨 | **Domain requests** | Accept, review, approve, reject and audit subdomain requests with staff workflows, with optional [instant approval](docs/instant-approval.md) for low-risk requests. |
 | 👥 | **Users & roles** | Local accounts, OAuth login, sessions, email verification, staff roles and administrator controls. |
 | 🛡️ | **Safety screening** | Explainable request risk scoring, protected-brand signals, velocity checks and staff overrides. |
 | 🔑 | **Scoped API tokens** | Restrict tokens by permission, hostname, DNS type and expiry. |

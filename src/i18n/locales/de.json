@@ -113,7 +113,8 @@
     "submitMulti": "{{count}} Einträge einreichen",
     "submitting": "Wird eingereicht…",
     "submitSuccess": "Anfrage erfolgreich eingereicht!",
-    "submitSuccessMulti": "{{count}} Anfragen eingereicht!"
+    "submitSuccessMulti": "{{count}} Anfragen eingereicht!",
+    "instantApproved": "{{hostname}} ist genehmigt und online! DNS-Änderungen können einige Minuten brauchen, bis sie überall ankommen."
   },
   "common": {
     "back": "Zurück",
