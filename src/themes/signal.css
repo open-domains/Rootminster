@@ -1,0 +1,359 @@
+/* Signal: graphite ink, one live accent, kinetic display type.
+   A monochrome identity for infrastructure work; color mode stays independent. */
+:root[data-theme="signal"] {
+  --font-body: 'Space Grotesk', system-ui, sans-serif;
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
+  --background: 240 8% 97%;
+  --foreground: 240 10% 8%;
+  --card: 240 10% 99%;
+  --card-foreground: 240 10% 8%;
+  --popover: 240 10% 99%;
+  --popover-foreground: 240 10% 8%;
+  --primary: 14 88% 42%;
+  --primary-foreground: 30 30% 98%;
+  --secondary: 240 6% 92%;
+  --secondary-foreground: 240 10% 8%;
+  --muted: 240 6% 93%;
+  --muted-foreground: 240 4% 36%;
+  --accent: 14 70% 94%;
+  --accent-foreground: 14 75% 28%;
+  --border: 240 6% 87%;
+  --input: 240 5% 70%;
+  --ring: 14 88% 42%;
+  --radius: 0.375rem;
+  --chart-1: 14 88% 42%;
+  --chart-2: 240 10% 24%;
+  --chart-3: 198 60% 36%;
+  --chart-4: 40 85% 40%;
+  --chart-5: 280 30% 45%;
+  --sidebar-background: 240 7% 95%;
+  --sidebar-foreground: 240 4% 36%;
+  --sidebar-primary: 14 88% 42%;
+  --sidebar-primary-foreground: 30 30% 98%;
+  --sidebar-accent: 240 6% 90%;
+  --sidebar-accent-foreground: 240 10% 8%;
+  --sidebar-border: 240 6% 87%;
+  --sidebar-ring: 14 88% 42%;
+  /* Full-bleed inverted band used once on the landing page. */
+  --signal-band: 240 10% 8%;
+  --signal-band-foreground: 40 12% 94%;
+  --signal-band-muted: 240 5% 66%;
+}
+:root[data-theme="signal"].dark {
+  --background: 240 6% 6%;
+  --foreground: 40 10% 93%;
+  --card: 240 5% 9%;
+  --card-foreground: 40 10% 93%;
+  --popover: 240 5% 10%;
+  --popover-foreground: 40 10% 93%;
+  --primary: 18 100% 60%;
+  --primary-foreground: 240 10% 6%;
+  --secondary: 240 4% 14%;
+  --secondary-foreground: 40 10% 93%;
+  --muted: 240 4% 13%;
+  --muted-foreground: 240 4% 65%;
+  --accent: 18 35% 15%;
+  --accent-foreground: 18 100% 76%;
+  --border: 240 4% 17%;
+  --input: 240 4% 28%;
+  --ring: 18 100% 60%;
+  --chart-1: 18 100% 60%;
+  --chart-2: 40 10% 80%;
+  --chart-3: 198 60% 62%;
+  --chart-4: 40 85% 60%;
+  --chart-5: 280 35% 70%;
+  --sidebar-background: 240 6% 7.5%;
+  --sidebar-foreground: 240 4% 65%;
+  --sidebar-primary: 18 100% 60%;
+  --sidebar-primary-foreground: 240 10% 6%;
+  --sidebar-accent: 240 4% 14%;
+  --sidebar-accent-foreground: 40 10% 93%;
+  --sidebar-border: 240 4% 17%;
+  --sidebar-ring: 18 100% 60%;
+  --signal-band: 18 100% 60%;
+  --signal-band-foreground: 240 10% 6%;
+  --signal-band-muted: 240 10% 6% / 0.72;
+}
+
+/* Shared surfaces: type, numerals, focus, selection. */
+:root[data-theme="signal"] body {
+  background-image: none;
+  font-family: var(--font-body);
+  letter-spacing: -0.011em;
+}
+[data-theme="signal"] :is(h1, h2, h3, h4) { font-family: var(--font-heading); }
+[data-theme="signal"] :is(h1, h2) { text-wrap: balance; letter-spacing: -0.03em; }
+[data-theme="signal"] p { text-wrap: pretty; }
+[data-theme="signal"] :is(code, kbd, pre, .font-mono) { font-family: var(--font-mono); letter-spacing: 0; }
+[data-theme="signal"] :is(table, .font-mono) { font-variant-numeric: tabular-nums; }
+[data-theme="signal"] :is(input, textarea) { caret-color: hsl(var(--primary)); }
+[data-theme="signal"] ::selection { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+[data-theme="signal"] .review-modal-scroll { scrollbar-color: hsl(var(--muted-foreground)) transparent; }
+[data-theme="signal"] .ui-button {
+  box-shadow: none;
+  border-radius: 4px;
+  font-weight: 500;
+  transition: transform 150ms var(--ease-out), background-color 150ms ease-out, color 150ms ease-out;
+}
+[data-theme="signal"] .ui-button:active:not(:disabled) { transform: scale(0.97); }
+[data-theme="signal"] .ui-button svg { transition: transform 250ms var(--ease-out); }
+@media (hover: hover) {
+  :root[data-theme="signal"] .landing-page .ui-button:hover > svg:last-child { transform: translateX(3px); }
+}
+
+/* Landing: oversized type leads, the DNS workspace supports it. */
+:root[data-theme="signal"] .landing-intro {
+  position: relative;
+  isolation: isolate;
+}
+:root[data-theme="signal"] .landing-intro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(hsl(var(--foreground) / 0.12) 1px, transparent 1.5px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 85%);
+  pointer-events: none;
+}
+:root[data-theme="signal"] .landing-kicker {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+:root[data-theme="signal"] .landing-kicker > span {
+  position: relative;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: hsl(var(--primary));
+}
+:root[data-theme="signal"] .landing-kicker > span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: signal-ping 2.4s var(--ease-out) infinite;
+}
+:root[data-theme="signal"] .landing-title {
+  max-width: none;
+  font-family: var(--font-display);
+  font-size: clamp(3.25rem, 9.5vw, 8.5rem);
+  font-weight: 600;
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+}
+:root[data-theme="signal"] .landing-title-accent {
+  display: inline;
+  color: hsl(var(--muted-foreground));
+  background-image: linear-gradient(hsl(var(--primary)), hsl(var(--primary)));
+  background-repeat: no-repeat;
+  background-position: 0 92%;
+  background-size: 100% 0.08em;
+  animation: signal-underline 900ms var(--ease-in-out) 450ms both;
+}
+:root[data-theme="signal"] .landing-lead {
+  max-width: 36ch;
+  font-size: clamp(1.0625rem, 0.6vw + 0.85rem, 1.3125rem);
+  line-height: 1.5;
+}
+:root[data-theme="signal"] .landing-assurances svg { color: hsl(var(--primary)); }
+:root[data-theme="signal"] .landing-workspace {
+  border: 1px solid hsl(var(--foreground) / 0.12);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 hsl(var(--foreground) / 0.04), 0 24px 60px -32px hsl(var(--foreground) / 0.35);
+}
+:root[data-theme="signal"] .landing-check {
+  border-color: hsl(var(--primary) / 0.35);
+  border-left: 2px solid hsl(var(--primary));
+  border-radius: 2px;
+  background: hsl(var(--accent));
+}
+
+:root[data-theme="signal"] .landing-steps {
+  counter-reset: signal-step;
+  background: hsl(var(--signal-band));
+  color: hsl(var(--signal-band-foreground));
+  border-color: transparent;
+}
+:root[data-theme="signal"] .landing-steps .landing-step {
+  counter-increment: signal-step;
+  padding-top: 3rem;
+  padding-bottom: 3.5rem;
+  border-color: hsl(var(--signal-band-foreground) / 0.16);
+}
+:root[data-theme="signal"] .landing-steps .landing-step::before {
+  content: counter(signal-step, decimal-leading-zero) / "";
+  display: block;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 5vw, 4.5rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: transparent;
+  -webkit-text-stroke: 1px hsl(var(--signal-band-foreground) / 0.55);
+}
+:root[data-theme="signal"] .landing-steps :is(.text-muted-foreground, p) { color: hsl(var(--signal-band-muted)); }
+:root[data-theme="signal"] .landing-steps h2 { color: hsl(var(--signal-band-foreground)); font-size: 1.5rem; }
+
+:root[data-theme="signal"] .landing-domains { background: transparent; }
+:root[data-theme="signal"] .landing-domains h2,
+:root[data-theme="signal"] .landing-features h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 3.5vw + 0.75rem, 4rem);
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+:root[data-theme="signal"] .landing-domains .rounded-lg {
+  border-radius: 2px;
+  transition: border-color 250ms var(--ease-out), transform 250ms var(--ease-out);
+}
+:root[data-theme="signal"] .landing-features { padding-top: 7rem; padding-bottom: 7rem; }
+:root[data-theme="signal"] .landing-features :is(p.uppercase) { font-family: var(--font-mono); font-size: 0.6875rem; letter-spacing: 0.1em; }
+:root[data-theme="signal"] .landing-features :has(> .landing-feature) {
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--border));
+}
+:root[data-theme="signal"] .landing-feature {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  padding: 1.75rem;
+}
+:root[data-theme="signal"] .landing-feature::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: hsl(var(--primary));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 400ms var(--ease-out);
+}
+:root[data-theme="signal"] .landing-feature svg { transition: transform 400ms var(--ease-out); }
+:root[data-theme="signal"] .landing-feature h3 { font-size: 1rem; }
+:root[data-theme="signal"] .landing-feature p { font-size: 0.875rem; line-height: 1.5; }
+@media (hover: hover) {
+  :root[data-theme="signal"] .landing-domains .rounded-lg:hover { border-color: hsl(var(--primary)); transform: translateY(-2px); }
+  :root[data-theme="signal"] .landing-feature:hover::after { transform: scaleX(1); }
+  :root[data-theme="signal"] .landing-feature:hover svg { transform: translateX(4px); }
+}
+
+:root[data-theme="signal"] .landing-cta { background: transparent; }
+:root[data-theme="signal"] .landing-cta > div { padding-top: 6rem; padding-bottom: 6rem; }
+:root[data-theme="signal"] .landing-cta h2 {
+  max-width: 16ch;
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 5vw + 0.5rem, 5rem);
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+/* Desktop composition: headline spans the grid; supporting copy and
+   the workspace share the row beneath it. */
+@media (min-width: 1024px) {
+  :root[data-theme="signal"] .landing-intro-grid {
+    grid-template-columns: minmax(0, 4.5fr) minmax(0, 7.5fr);
+    grid-template-areas:
+      "kicker kicker"
+      "title title"
+      "lead preview"
+      "actions preview"
+      "assure preview"
+      ". preview";
+    grid-template-rows: auto auto auto auto auto 1fr;
+    column-gap: 4rem;
+    row-gap: 0;
+    align-items: start;
+    padding-top: 6rem;
+    padding-bottom: 7rem;
+  }
+  :root[data-theme="signal"] .landing-intro-grid > div:first-child { display: contents; }
+  :root[data-theme="signal"] .landing-kicker { grid-area: kicker; justify-self: start; margin-bottom: 2.5rem; }
+  :root[data-theme="signal"] .landing-title { grid-area: title; margin-bottom: 4rem; }
+  :root[data-theme="signal"] .landing-lead { grid-area: lead; margin-top: 0; }
+  :root[data-theme="signal"] .landing-actions { grid-area: actions; }
+  :root[data-theme="signal"] .landing-assurances { grid-area: assure; grid-template-columns: 1fr; }
+  :root[data-theme="signal"] .landing-preview { grid-area: preview; }
+}
+@media (max-width: 639px) {
+  :root[data-theme="signal"] .landing-intro-grid { padding-top: 3.5rem; padding-bottom: 3.5rem; gap: 3rem; }
+  :root[data-theme="signal"] .landing-features { padding-top: 4.5rem; padding-bottom: 4.5rem; }
+  :root[data-theme="signal"] .landing-cta > div { padding-top: 4rem; padding-bottom: 4rem; }
+}
+
+/* Motion: one entrance sequence, then reveals that run once per section. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme="signal"] :is(.landing-kicker, .landing-title, .landing-lead, .landing-actions, .landing-assurances, .landing-preview) {
+    animation: signal-rise 700ms var(--ease-out) both;
+  }
+  :root[data-theme="signal"] .landing-title { animation-delay: 60ms; }
+  :root[data-theme="signal"] .landing-lead { animation-delay: 140ms; }
+  :root[data-theme="signal"] .landing-actions { animation-delay: 200ms; }
+  :root[data-theme="signal"] .landing-assurances { animation-delay: 260ms; }
+  :root[data-theme="signal"] .landing-preview { animation-delay: 320ms; }
+  @supports (animation-timeline: view()) {
+    [data-theme="signal"] :is(.landing-step, .landing-domains > div, .landing-features > div, .landing-cta > div) {
+      animation: signal-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="signal"] :is(.ui-button, .ui-button svg, .landing-feature::after, .landing-feature svg, .landing-domains .rounded-lg) { transition: none; }
+  [data-theme="signal"] .ui-button:active:not(:disabled) { transform: none; }
+  :root[data-theme="signal"] .landing-kicker > span::after { animation: none; }
+  :root[data-theme="signal"] .landing-title-accent { animation: none; }
+}
+@keyframes signal-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes signal-underline {
+  from { background-size: 0% 0.08em; }
+  to { background-size: 100% 0.08em; }
+}
+@keyframes signal-ping {
+  0% { transform: scale(1); opacity: 0.6; }
+  70%, 100% { transform: scale(3); opacity: 0; }
+}
+
+.theme-swatch--signal { background: #141418; color: #ff6a2e; font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 600; letter-spacing: -0.04em; }
+
+/* Compatibility for older public articles and modal components while they
+   migrate from fixed Tailwind colors to the shared semantic tokens. */
+:root[data-theme="signal"] :is(.bg-slate-950, .bg-slate-950\/80) { background-color: hsl(var(--background)); }
+:root[data-theme="signal"] :is(.bg-slate-900, .bg-slate-900\/50, .bg-slate-900\/80) { background-color: hsl(var(--card)); }
+:root[data-theme="signal"] :is(.bg-slate-800, .bg-slate-800\/50, .bg-slate-800\/80) { background-color: hsl(var(--muted)); }
+:root[data-theme="signal"] :is(.border-slate-800, .border-slate-700, .border-slate-800\/50) { border-color: hsl(var(--border)); }
+:root[data-theme="signal"] :is(.text-slate-100, .text-slate-200) { color: hsl(var(--foreground)); }
+:root[data-theme="signal"] :is(.text-slate-300, .text-slate-400, .text-slate-500) { color: hsl(var(--muted-foreground)); }
+:root[data-theme="signal"] :is(.text-indigo-400, .text-indigo-300, .text-indigo-500) { color: hsl(var(--primary)); }
+:root[data-theme="signal"] :is(.bg-indigo-600, .bg-indigo-500) { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+:root[data-theme="signal"] :is(.bg-indigo-500\/10, .bg-indigo-500\/20, .bg-indigo-600\/20) { background-color: hsl(var(--accent)); }
+:root[data-theme="signal"] .prose-invert { color: hsl(var(--foreground)); }
+@media (hover: hover) {
+  :root[data-theme="signal"] .hover\:bg-indigo-700:hover { background-color: hsl(var(--primary) / .9); }
+  :root[data-theme="signal"] .hover\:text-white:hover { color: hsl(var(--foreground)); }
+  :root[data-theme="signal"] .hover\:bg-slate-800:hover { background-color: hsl(var(--accent)); }
+}
+:root[data-theme="signal"] .text-white:not([class*="bg-red-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-green-"]):not([class*="bg-blue-"]):not([class*="bg-orange-"]):not([class*="bg-indigo-"]):not([class*="bg-primary"]) { color: hsl(var(--foreground)); }
+:root[data-theme="signal"] .bg-primary.text-white { color: hsl(var(--primary-foreground)); }

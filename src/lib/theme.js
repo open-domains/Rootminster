@@ -3,6 +3,7 @@ export const MODE_KEY = 'od_theme';
 export const THEMES = [
   { id: 'classic', name: 'Classic', description: 'Clean, familiar, focused.' },
   { id: 'fieldwork', name: 'Fieldwork', description: 'Warm paper, forest ink, editorial type.' },
+  { id: 'signal', name: 'Signal', description: 'Graphite ink, one live accent, kinetic type.' },
 ];
 export const MODES = ['light', 'dark', 'system'];
 export function readAppearance(storage) {

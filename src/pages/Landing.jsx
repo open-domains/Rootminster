@@ -58,7 +58,7 @@ function MarketingNav() {
 
 function ProductPreview() {
   return (
-    <div className="od-product-preview overflow-hidden rounded-xl bg-card">
+    <div className="od-product-preview landing-workspace overflow-hidden rounded-xl bg-card">
       <div className="flex flex-col gap-3 border-b border-border bg-muted/25 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -76,7 +76,7 @@ function ProductPreview() {
           ))}
         </aside>
         <div className="p-4">
-          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900/60 dark:bg-blue-950/20">
+          <div className="landing-check mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900/60 dark:bg-blue-950/20">
             <p className="font-medium text-foreground">DNS check passed</p>
             <p className="mt-1 text-xs text-muted-foreground">Records resolve and proxy settings are valid.</p>
           </div>
@@ -120,24 +120,24 @@ export default function Landing() {
       <MarketingNav />
 
       <main id="main-content" tabIndex={-1}>
-        <section className="border-b border-border">
-          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8 lg:py-28">
+        <section className="landing-intro border-b border-border">
+          <div className="landing-intro-grid mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8 lg:py-28">
             <div>
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:ring-blue-900/60">
+              <div className="landing-kicker mb-6 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:ring-blue-900/60">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
                 Free subdomains · careful DNS controls
               </div>
-              <h1 className="max-w-2xl text-5xl font-semibold tracking-[-0.055em] text-foreground sm:text-6xl lg:text-[72px] lg:leading-[0.96]">
-                Free subdomains without the mess.
+              <h1 className="landing-title max-w-2xl text-5xl font-semibold tracking-[-0.055em] text-foreground sm:text-6xl lg:text-[72px] lg:leading-[0.96]">
+                Free subdomains <span className="landing-title-accent">without the mess.</span>
               </h1>
-              <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+              <p className="landing-lead mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Create a free OpenDomains address, manage DNS records, and understand your request status from one clear control room.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="landing-actions mt-8 flex flex-wrap gap-3">
                 <Link to="/dashboard"><Button size="lg" className="gap-2">Create a subdomain <ArrowRight size={16} /></Button></Link>
                 <Link to="/guides"><Button size="lg" variant="outline">Read the guides</Button></Link>
               </div>
-              <div className="mt-9 grid max-w-xl grid-cols-1 gap-3 border-t border-border pt-6 sm:grid-cols-2">
+              <div className="landing-assurances mt-9 grid max-w-xl grid-cols-1 gap-3 border-t border-border pt-6 sm:grid-cols-2">
                 {['No adverts or tracking added to your site', 'DNSSEC and verification-focused flows', 'Cloudflare-backed DNS management', 'Abuse and policy review built in'].map(item => (
                   <div key={item} className="flex gap-2 text-sm text-foreground"><Check size={15} className="mt-0.5 shrink-0 text-emerald-600" />{item}</div>
                 ))}
@@ -147,14 +147,14 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="border-b border-border bg-muted/30">
+        <section className="landing-steps border-b border-border bg-muted/30">
           <div className="mx-auto grid max-w-7xl divide-y divide-border px-4 sm:px-6 md:grid-cols-3 md:divide-x md:divide-y-0 lg:px-8">
             {[
               ['Request', 'Pick an address', 'Choose an available domain and explain the non-commercial project clearly.'],
               ['Verify', 'Review safely', 'Rootminster handles terms, DNS compatibility, abuse signals and status updates.'],
               ['Manage', 'Edit DNS directly', 'Once approved, records are edited through a straightforward table-first interface.'],
             ].map(([step, title, text]) => (
-              <div key={step} className="py-8 md:px-8 first:md:pl-0 last:md:pr-0">
+              <div key={step} className="landing-step py-8 md:px-8 first:md:pl-0 last:md:pr-0">
                 <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{step}</p>
                 <h2 className="mt-3 text-xl font-semibold tracking-tight">{title}</h2>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p>
@@ -164,7 +164,7 @@ export default function Landing() {
         </section>
 
         {domains.length > 0 && (
-          <section className="border-b border-border bg-card/50">
+          <section className="landing-domains border-b border-border bg-card/50">
             <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
               <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div><p className="text-xs font-medium uppercase tracking-[.14em] text-muted-foreground">Available domains</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">Pick your address</h2></div>
@@ -182,7 +182,7 @@ export default function Landing() {
           </section>
         )}
 
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <section className="landing-features mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <div>
               <p className="text-xs font-medium uppercase tracking-[.14em] text-primary">Professional by being quieter</p>
@@ -196,7 +196,7 @@ export default function Landing() {
                 [Zap, 'Direct DNS editing', 'Changes apply without unnecessary queues.'],
                 [LockKeyhole, 'Security first', '2FA, verification and careful access controls.'],
               ].map(([Icon, title, text]) => (
-                <div key={title} className="rounded-lg border border-border bg-card p-5">
+                <div key={title} className="landing-feature rounded-lg border border-border bg-card p-5">
                   <Icon size={18} className="mb-4 text-primary" />
                   <h3 className="text-sm font-semibold text-foreground">{title}</h3>
                   <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{text}</p>
@@ -206,7 +206,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="border-t border-border bg-card">
+        <section className="landing-cta border-t border-border bg-card">
           <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-4 py-14 sm:px-6 md:flex-row md:items-center lg:px-8">
             <div><h2 className="text-2xl font-semibold tracking-tight">Ready to create your subdomain?</h2><p className="mt-2 text-sm text-muted-foreground">Free to use, with no advertising baked into the experience.</p></div>
             <Link to="/dashboard"><Button className="gap-2">Get started <ArrowRight size={15} /></Button></Link>

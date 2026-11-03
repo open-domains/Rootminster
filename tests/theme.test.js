@@ -11,7 +11,7 @@ test('invalid or unavailable storage falls back safely', () => {
   }
 });
 test('every style works independently of light, dark, and system mode', () => {
-  for (const style of ['classic', 'fieldwork']) {
+  for (const style of ['classic', 'fieldwork', 'signal']) {
     for (const mode of ['light', 'dark', 'system']) {
       for (const prefersDark of [true, false]) {
         let dark;
