@@ -806,7 +806,11 @@
       "add_to_blocklist_4557b2": "Add to Blocklist",
       "current_blocklist_312b27": "Current Blocklist",
       "no_blocklist_entries_yet_d136ea": "No blocklist entries yet.",
-      "regex_d6a8e6": "regex"
+      "regex_d6a8e6": "regex",
+      "entry_updated": "Entry updated",
+      "failed_to_update_entry": "Failed to update entry",
+      "cancel": "Cancel",
+      "save": "Save"
     },
     "bulk_import_modal": {
       "bulk_import_dns_records_f5e5a0": "Bulk Import DNS Records",

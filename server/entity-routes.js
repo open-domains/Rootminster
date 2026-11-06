@@ -8,14 +8,14 @@ const PUBLIC_SETTINGS = new Set([
   'requests_locked', 'requests_locked_message',
 ]);
 
+// Staff can create, edit and delete these, just like admins.
 const STAFF_WRITABLE = new Set([
   'AbuseReport',
-]);
-
-// Staff can add blocklist entries but only admins can edit or remove them.
-const STAFF_CREATABLE = new Set([
   'BlocklistEntry',
 ]);
+
+// Entities staff may create but not edit or delete. Currently none.
+const STAFF_CREATABLE = new Set([]);
 
 function isElevated(user) {
   return user?.role === 'admin' || user?.role === 'staff';
@@ -158,6 +158,8 @@ export async function registerEntityRoutes(app) {
     if (user.role === 'user' && request.params.entity === 'ApiToken') {
       for (const key of Object.keys(body)) if (!['revoked', 'revoked_by'].includes(key)) delete body[key];
     }
+    // Editing an entry doesn't change who originally added it.
+    if (request.params.entity === 'BlocklistEntry') delete body.added_by;
     const updated = await store.update(request.params.entity, request.params.id, body);
     return { data: redact(user, request.params.entity, updated) };
   });

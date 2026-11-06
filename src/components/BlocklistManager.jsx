@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Plus, Trash2, ShieldOff } from 'lucide-react';
+import { Loader2, Plus, Trash2, ShieldOff, Pencil, Check, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 
@@ -22,13 +22,16 @@ const TYPE_COLORS = {
 };
 
 export default function BlocklistManager({ currentUser }) {const { t } = useTranslation();
-  // Staff can add entries; removing them stays admin-only (enforced server-side too).
-  const canRemove = currentUser?.role === 'admin';
+  // Staff and admins can add, edit and remove entries (enforced server-side too).
+  const canManage = ['admin', 'staff'].includes(currentUser?.role);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [form, setForm] = useState({ value: '', is_regex: false, record_type: 'ANY', reason: '', notes: '' });
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -77,6 +80,45 @@ export default function BlocklistManager({ currentUser }) {const { t } = useTran
       toast.error(t("operational.blocklist_manager.failed_to_remove_entry_7fdc70"));
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const startEdit = (entry) => {
+    setEditingId(entry.id);
+    setEditForm({
+      value: entry.value || '',
+      is_regex: !!entry.is_regex,
+      record_type: entry.record_type || 'ANY',
+      reason: entry.reason || '',
+      notes: entry.notes || ''
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm?.value.trim()) return;
+    setSaving(true);
+    try {
+      const changes = {
+        value: editForm.is_regex ? editForm.value.trim() : editForm.value.trim().toLowerCase(),
+        is_regex: editForm.is_regex,
+        record_type: editForm.record_type || 'ANY',
+        reason: editForm.reason.trim(),
+        notes: editForm.notes.trim()
+      };
+      const updated = await rootminster.entities.BlocklistEntry.update(editingId, changes);
+      setEntries((prev) => prev.map((row) => row.id === editingId ? { ...row, ...changes, ...(updated || {}) } : row));
+      toast.success(t("operational.blocklist_manager.entry_updated"));
+      cancelEdit();
+    } catch {
+      toast.error(t("operational.blocklist_manager.failed_to_update_entry"));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -173,7 +215,54 @@ export default function BlocklistManager({ currentUser }) {const { t } = useTran
         <p className="text-muted-foreground text-sm text-center py-8">{t("operational.blocklist_manager.no_blocklist_entries_yet_d136ea")}</p> :
 
         <div className="space-y-2">
-            {entries.map((entry) =>
+            {entries.map((entry) => editingId === entry.id && editForm ?
+          <form key={entry.id} onSubmit={saveEdit}
+          className="space-y-3 p-3 bg-muted/40 border border-primary/40 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label className="text-xs">{t("operational.blocklist_manager.value_to_block_600ed9")}</Label>
+                    <Input value={editForm.value} required autoFocus
+                onChange={(e) => setEditForm((f) => ({ ...f, value: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">{t("operational.blocklist_manager.record_type_bdd640")}</Label>
+                    <Select value={editForm.record_type} onValueChange={(v) => setEditForm((f) => ({ ...f, record_type: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {RECORD_TYPES.map((type) =>
+                    <SelectItem key={type} value={type}>{type === 'ANY' ? 'ANY (all types)' : type}</SelectItem>
+                    )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">{t("operational.blocklist_manager.reason_shown_to_user_1b7ed3")}</Label>
+                    <Input value={editForm.reason}
+                onChange={(e) => setEditForm((f) => ({ ...f, reason: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">{t("operational.blocklist_manager.internal_notes_85ab57")}</Label>
+                    <Input value={editForm.notes}
+                onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="flex items-center gap-2 text-sm text-foreground">
+                    <Switch checked={editForm.is_regex} onCheckedChange={(v) => setEditForm((f) => ({ ...f, is_regex: v }))} />
+                    {t("operational.blocklist_manager.regex_pattern_6c75e5")}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={cancelEdit} disabled={saving} className="gap-1">
+                      <X size={13} /> {t("operational.blocklist_manager.cancel")}
+                    </Button>
+                    <Button type="submit" size="sm" disabled={saving || !editForm.value.trim()} className="gap-1">
+                      {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} {t("operational.blocklist_manager.save")}
+                    </Button>
+                  </div>
+                </div>
+              </form> :
           <div key={entry.id}
           className="flex items-center justify-between gap-3 p-3 bg-muted/40 border border-border rounded-lg">
                 <div className="flex items-center gap-3 min-w-0">
@@ -192,7 +281,17 @@ export default function BlocklistManager({ currentUser }) {const { t } = useTran
                   {entry.added_by &&
               <span className="text-muted-foreground/80 text-xs hidden md:block">{entry.added_by}</span>
               }
-                  {canRemove &&
+                  {canManage &&
+                  <Button
+                variant="ghost" size="icon"
+                onClick={() => startEdit(entry)}
+                disabled={deletingId === entry.id || saving}
+                aria-label={`Edit ${entry.value}`}
+                className="text-muted-foreground hover:text-foreground h-7 w-7 cursor-pointer">
+                    <Pencil size={13} />
+                  </Button>
+                  }
+                  {canManage &&
                   <Button
                 variant="ghost" size="icon"
                 onClick={() => remove(entry.id)}
