@@ -17,7 +17,7 @@ export default function StaffBlocklist() {
       <AdminHeader
         eyebrow={currentUser?.role === 'admin' ? 'Administration' : 'Staff'}
         title="Blocklist"
-        description="Stop users registering names that imitate protected brands, and block values from being used in DNS records. Staff can add blocklist entries; only admins can remove them."
+        description="Stop users registering names that imitate protected brands, and block values from being used in DNS records. Staff and admins can add, edit and remove blocklist entries."
       />
       {currentUser
         ? <div className="max-w-2xl space-y-6"><ProtectedBrandsManager /><BlocklistManager currentUser={currentUser} /></div>

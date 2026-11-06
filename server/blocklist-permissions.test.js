@@ -39,8 +39,23 @@ test('staff can read and add blocklist entries, recorded under their own email',
   assert.equal(f.created[0].value, '1.2.3.4');
 });
 
-test('staff cannot edit or remove blocklist entries', async t => {
+test('staff can edit and remove any blocklist entry', async t => {
   const f = await fixture(t, 'staff');
+  const patched = await f.send('PATCH', '/api/entities/BlocklistEntry/b1', { value: 'x.example', reason: 'Spam' });
+  assert.equal(patched.statusCode, 200, patched.body);
+  assert.equal(patched.json().data.value, 'x.example');
+  assert.equal((await f.send('DELETE', '/api/entities/BlocklistEntry/b1')).statusCode, 200);
+});
+
+test('editing a blocklist entry cannot rewrite who added it', async t => {
+  const f = await fixture(t, 'staff');
+  const patched = await f.send('PATCH', '/api/entities/BlocklistEntry/b1', { value: 'x.example', added_by: 'forged@example.test' });
+  assert.equal(patched.statusCode, 200, patched.body);
+  assert.equal(patched.json().data.added_by, undefined);
+});
+
+test('regular users cannot edit or remove blocklist entries', async t => {
+  const f = await fixture(t, 'user');
   assert.equal((await f.send('PATCH', '/api/entities/BlocklistEntry/b1', { value: 'x' })).statusCode, 403);
   assert.equal((await f.send('DELETE', '/api/entities/BlocklistEntry/b1')).statusCode, 403);
 });
