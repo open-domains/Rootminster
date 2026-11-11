@@ -10,6 +10,7 @@ import { Fingerprint } from 'lucide-react';
 import { startAuthentication } from '@simplewebauthn/browser';
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
+import DiscordIcon from "@/components/DiscordIcon";
 import { usePublicConfig } from '@/lib/public-config';
 
 export default function Login() {
@@ -76,7 +77,7 @@ export default function Login() {
         <div className="relative mb-4"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div><div className="relative flex justify-center text-xs text-muted-foreground"><span className="bg-card px-2">or use another method</span></div></div>
       </>}
 
-      {(config.oauth.google || config.oauth.github) && (
+      {(config.oauth.google || config.oauth.github || config.oauth.discord) && (
         <>
           <div className="mb-4 space-y-2">
             {config.oauth.google && (
@@ -87,6 +88,11 @@ export default function Login() {
             {config.oauth.github && (
               <Button type="button" variant="outline" className="w-full h-12 font-medium flex items-center gap-3" onClick={() => rootminster.auth.loginWithProvider('github', searchParams.get('return_to') || '/user-dashboard')}>
                 <Github className="h-5 w-5" /> Continue with GitHub
+              </Button>
+            )}
+            {config.oauth.discord && (
+              <Button type="button" variant="outline" className="w-full h-12 font-medium flex items-center gap-3" onClick={() => rootminster.auth.loginWithProvider('discord', searchParams.get('return_to') || '/user-dashboard')}>
+                <DiscordIcon className="h-5 w-5 text-[#5865F2]" /> Continue with Discord
               </Button>
             )}
           </div>

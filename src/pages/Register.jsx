@@ -8,6 +8,7 @@ import { UserPlus, Mail, Lock, Loader2, User } from "lucide-react";
 import Github from "@/components/GithubIcon";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
+import DiscordIcon from "@/components/DiscordIcon";
 import { toast } from "@/components/ui/use-toast";
 import { usePublicConfig } from '@/lib/public-config';
 
@@ -97,7 +98,7 @@ export default function Register() {
         </div>
       )}
 
-      {(config.oauth.google || config.oauth.github) && (
+      {(config.oauth.google || config.oauth.github || config.oauth.discord) && (
         <>
           <div className="mb-4 space-y-2">
             {config.oauth.google && (
@@ -108,6 +109,11 @@ export default function Register() {
             {config.oauth.github && (
               <Button type="button" variant="outline" className="w-full h-12 font-medium flex items-center gap-3" onClick={() => rootminster.auth.loginWithProvider('github', '/user-dashboard')}>
                 <Github className="h-5 w-5" /> Continue with GitHub
+              </Button>
+            )}
+            {config.oauth.discord && (
+              <Button type="button" variant="outline" className="w-full h-12 font-medium flex items-center gap-3" onClick={() => rootminster.auth.loginWithProvider('discord', '/user-dashboard')}>
+                <DiscordIcon className="h-5 w-5 text-[#5865F2]" /> Continue with Discord
               </Button>
             )}
           </div>

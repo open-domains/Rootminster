@@ -186,11 +186,15 @@ export async function registerDiscordRoutes(app) {
       const token = await client.query('DELETE FROM discord_link_tokens WHERE token_hash = $1 AND expires_at > now() RETURNING *', [tokenHash]);
       if (!token.rowCount) return null;
       const identity = token.rows[0];
+      // A Discord account that signs in to another user cannot be moved here.
+      const signIn = await client.query("SELECT user_id FROM user_identities WHERE provider = 'discord' AND provider_user_id = $1", [identity.discord_user_id]);
+      if (signIn.rowCount && signIn.rows[0].user_id !== user.id) return { conflict: true };
       await client.query('DELETE FROM discord_accounts WHERE user_id = $1 OR discord_user_id = $2', [user.id, identity.discord_user_id]);
       await client.query('INSERT INTO discord_accounts(discord_user_id, user_id, discord_username) VALUES ($1, $2, $3)', [identity.discord_user_id, user.id, identity.discord_username]);
       return identity;
     });
     if (!linked) return reply.code(400).send({ error: 'This Discord link is invalid or has expired' });
+    if (linked.conflict) return reply.code(409).send({ error: 'This Discord account is already linked to a different Rootminster user' });
     return { success: true, username: linked.discord_username };
   });
 

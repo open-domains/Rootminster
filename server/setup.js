@@ -27,7 +27,7 @@ export function validateSetupInput(body = {}) {
 
 async function setupStatus() {
   const result = await pool.query('SELECT EXISTS(SELECT 1 FROM users) AS installed');
-  const modules = Object.fromEntries(await Promise.all(['email', 'cloudflare', 'turnstile', 'google_oauth', 'github_oauth', 'discord', 'mcp', 'donations'].map(async (id) => [id, await getModuleConfig(id)])));
+  const modules = Object.fromEntries(await Promise.all(['email', 'cloudflare', 'turnstile', 'google_oauth', 'github_oauth', 'discord_oauth', 'discord', 'mcp', 'donations'].map(async (id) => [id, await getModuleConfig(id)])));
   return {
     required: !result.rows[0].installed,
     setup_key_configured: Boolean(config.initialSetupKey),
@@ -38,6 +38,7 @@ async function setupStatus() {
       turnstile: modules.turnstile.enabled,
       google_oauth: modules.google_oauth.enabled,
       github_oauth: modules.github_oauth.enabled,
+      discord_oauth: modules.discord_oauth.enabled,
       discord_bot: modules.discord.enabled,
       mcp: modules.mcp.enabled,
       donations: modules.donations.enabled,

@@ -3,9 +3,11 @@ import { config } from './config.js';
 import { pool, transaction } from './database.js';
 import { sendEmail } from './mail.js';
 import { hashPassword, randomToken, sha256, verifyPassword } from './security.js';
-import { serializeUser } from './store.js';
+import { serializeUser, store } from './store.js';
 import { getModuleConfig } from './module-settings.js';
 import { disposableEmailResult } from './lib/disposable-email.js';
+import { OAUTH_PROVIDERS, oauthProvider, providerConfigured } from './lib/oauth-providers.js';
+import { findIdentity, IdentityError, linkIdentity, listIdentities, rememberIdentity, touchIdentity, unlinkIdentity } from './lib/oauth-identities.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -146,6 +148,8 @@ async function upsertOauthUser(email, name) {
       await client.query('DELETE FROM email_verifications WHERE user_id = $1', [row.id]);
       await client.query('DELETE FROM password_resets WHERE user_id = $1', [row.id]);
       await client.query('DELETE FROM webauthn_credentials WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM user_identities WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM discord_accounts WHERE user_id = $1', [row.id]);
     }
     return client.query(
       `INSERT INTO users(email, full_name, status, email_verified_at)
@@ -159,6 +163,115 @@ async function upsertOauthUser(email, name) {
       [normalizedEmail, name || null],
     );
   });
+}
+
+const LINK_RETURN_TO = '/settings?section=accounts';
+
+function oauthRedirectUri(name) {
+  return `${config.appUrl}/api/auth/oauth/${name}/callback`;
+}
+
+async function startOauth(name, { purpose = 'login', userId = null, sessionId = null, returnTo }) {
+  const provider = oauthProvider(name);
+  const settings = await getModuleConfig(provider.module);
+  if (!providerConfigured(settings)) return { status: 501, error: `${provider.label} sign-in is not configured` };
+  const state = randomToken(24);
+  const verifier = randomToken(48);
+  await pool.query(
+    `INSERT INTO oauth_states(state_hash, verifier, provider, return_to, purpose, user_id, session_id, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '10 minutes')`,
+    [sha256(state), verifier, name, returnTo, purpose, userId, sessionId],
+  );
+  const url = new URL(provider.authorizeUrl);
+  url.search = new URLSearchParams({
+    client_id: settings.client_id,
+    redirect_uri: oauthRedirectUri(name),
+    response_type: 'code',
+    scope: provider.scope,
+    state,
+    ...(provider.pkce ? { code_challenge: crypto.createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256' } : {}),
+    ...provider.extraParams,
+  });
+  return { url: url.toString() };
+}
+
+async function auditIdentity(user, action, provider, request) {
+  await store.create('AuditLog', {
+    actor_id: user.id,
+    actor_email: user.email,
+    actor_role: user.role,
+    action,
+    entity_type: 'User',
+    entity_id: user.id,
+    target_user_id: user.id,
+    target_user_email: user.email,
+    ip_address: request.ip,
+    user_agent: request.headers['user-agent'] || null,
+    description: `${user.email} ${action === 'identity_linked' ? 'linked' : 'unlinked'} a ${OAUTH_PROVIDERS[provider].label} account`,
+  }, user).catch((error) => request.log.warn({ err: error }, 'Could not record identity audit log'));
+}
+
+function linkResult(reply, params) {
+  return reply.redirect(`${LINK_RETURN_TO}&${new URLSearchParams(params)}`);
+}
+
+async function completeLink(name, saved, profile, request, reply) {
+  // The callback must arrive in the same browser session that started the link,
+  // so a link URL sent to someone else cannot attach their account to ours.
+  const user = await authenticateRequest(request);
+  if (!user || user.id !== saved.user_id || user._session_id !== saved.session_id || user.impersonation?.active) {
+    return linkResult(reply, { link_error: 'session' });
+  }
+  try {
+    await transaction((client) => linkIdentity(client, user.id, name, profile));
+  } catch (error) {
+    if (error instanceof IdentityError) return linkResult(reply, { link_error: error.code });
+    throw error;
+  }
+  await auditIdentity(user, 'identity_linked', name, request);
+  return linkResult(reply, { linked: name });
+}
+
+async function oauthCallback(name, request, reply) {
+  const provider = oauthProvider(name);
+  const settings = await getModuleConfig(provider.module);
+  if (!providerConfigured(settings)) return reply.code(501).send({ error: `${provider.label} sign-in is not configured` });
+  const state = String(request.query?.state || '');
+  const code = String(request.query?.code || '');
+  const stateResult = await pool.query(
+    'DELETE FROM oauth_states WHERE state_hash = $1 AND provider = $2 AND expires_at > now() RETURNING *',
+    [sha256(state), name],
+  );
+  const saved = stateResult.rows[0];
+  if (saved?.purpose === 'link' && !code) return linkResult(reply, { link_error: 'cancelled' });
+  if (!saved || !code) return reply.code(400).send({ error: 'Invalid OAuth state' });
+
+  let profile;
+  try {
+    profile = await provider.fetchProfile({ code, verifier: saved.verifier, redirectUri: oauthRedirectUri(name), settings });
+  } catch (error) {
+    if (saved.purpose === 'link') return linkResult(reply, { link_error: 'provider' });
+    return reply.code(error.status || 502).send({ error: error.message || `${provider.label} authentication failed` });
+  }
+
+  if (saved.purpose === 'link') return completeLink(name, saved, profile, request, reply);
+
+  // An explicitly linked account signs in to its owner even when the provider
+  // email differs from the Rootminster email.
+  const identity = await findIdentity(pool, name, profile.id);
+  let userId;
+  if (identity) {
+    if (identity.status !== 'active') return reply.code(403).send({ error: 'This account is disabled' });
+    await touchIdentity(pool, name, profile);
+    userId = identity.user_id;
+  } else {
+    if (!profile.email) return reply.code(403).send({ error: `A verified ${provider.label} email is required` });
+    const userResult = await upsertOauthUser(profile.email, profile.name);
+    userId = userResult.rows[0].id;
+    await rememberIdentity(pool, userId, name, profile);
+  }
+  await createSession(userId, request, reply);
+  return reply.redirect(saved.return_to);
 }
 
 export async function registerAuthRoutes(app) {
@@ -296,109 +409,58 @@ export async function registerAuthRoutes(app) {
     return { success: true };
   });
 
-  app.get('/api/auth/oauth/google', async (request, reply) => {
-    const google = await getModuleConfig('google_oauth');
-    if (!google.enabled || !google.client_id || !google.client_secret) return reply.code(501).send({ error: 'Google sign-in is not configured' });
-    const state = randomToken(24);
-    const verifier = randomToken(48);
-    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
-    await pool.query('INSERT INTO oauth_states(state_hash, verifier, provider, return_to, expires_at) VALUES ($1, $2, $3, $4, now() + interval \'10 minutes\')', [sha256(state), verifier, 'google', safeReturnTo(request.query?.return_to)]);
-    const redirectUri = `${config.appUrl}/api/auth/oauth/google/callback`;
-    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-    url.search = new URLSearchParams({ client_id: google.client_id, redirect_uri: redirectUri, response_type: 'code', scope: 'openid email profile', state, code_challenge: challenge, code_challenge_method: 'S256', prompt: 'select_account' });
-    return reply.redirect(url.toString());
+  for (const name of Object.keys(OAUTH_PROVIDERS)) {
+    app.get(`/api/auth/oauth/${name}`, async (request, reply) => {
+      const started = await startOauth(name, { returnTo: safeReturnTo(request.query?.return_to) });
+      if (started.error) return reply.code(started.status).send({ error: started.error });
+      return reply.redirect(started.url);
+    });
+    app.get(`/api/auth/oauth/${name}/callback`, (request, reply) => oauthCallback(name, request, reply));
+  }
+
+  // Linked social accounts. These routes are blocked during view-as sessions
+  // (see impersonation-routes.js) because they bind lasting sign-in methods.
+  app.get('/api/auth/identities', async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    const listed = await listIdentities(pool, user.id);
+    const providers = await Promise.all(Object.entries(OAUTH_PROVIDERS).map(async ([name, provider]) => {
+      const linked = listed.identities.find((item) => item.provider === name) || null;
+      return {
+        provider: name,
+        label: provider.label,
+        available: providerConfigured(await getModuleConfig(provider.module)),
+        linked: linked ? { username: linked.display_name, email: linked.provider_email, linked_at: linked.linked_at, last_used_at: linked.last_used_at } : null,
+      };
+    }));
+    return { providers, has_password: listed.has_password, passkeys: listed.passkeys };
   });
 
-  app.get('/api/auth/oauth/google/callback', async (request, reply) => {
-    const google = await getModuleConfig('google_oauth');
-    if (!google.enabled || !google.client_id || !google.client_secret) return reply.code(501).send({ error: 'Google sign-in is not configured' });
-    const state = String(request.query?.state || '');
-    const code = String(request.query?.code || '');
-    const stateResult = await pool.query("DELETE FROM oauth_states WHERE state_hash = $1 AND provider = 'google' AND expires_at > now() RETURNING *", [sha256(state)]);
-    if (!stateResult.rowCount || !code) return reply.code(400).send({ error: 'Invalid OAuth state' });
-    const saved = stateResult.rows[0];
-    const redirectUri = `${config.appUrl}/api/auth/oauth/google/callback`;
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ code, client_id: google.client_id, client_secret: google.client_secret, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: saved.verifier }),
-    });
-    const tokens = await tokenResponse.json();
-    if (!tokenResponse.ok) return reply.code(502).send({ error: 'Google authentication failed' });
-    const profileResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${tokens.access_token}` } });
-    const profile = await profileResponse.json();
-    if (!profileResponse.ok || !profile.email || !profile.email_verified) return reply.code(403).send({ error: 'A verified Google email is required' });
-    const userResult = await upsertOauthUser(profile.email, profile.name);
-    await createSession(userResult.rows[0].id, request, reply);
-    return reply.redirect(saved.return_to);
+  app.post('/api/auth/identities/:provider', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    if (user.impersonation?.active) return reply.code(403).send({ error: 'This security-sensitive action is unavailable during a view-as session' });
+    if (!user._session_id) return reply.code(403).send({ error: 'Sign in through the browser to link an account' });
+    const name = String(request.params?.provider || '');
+    if (!oauthProvider(name)) return reply.code(404).send({ error: 'Unknown sign-in provider' });
+    const started = await startOauth(name, { purpose: 'link', userId: user.id, sessionId: user._session_id, returnTo: LINK_RETURN_TO });
+    if (started.error) return reply.code(started.status).send({ error: started.error });
+    return { url: started.url };
   });
 
-  app.get('/api/auth/oauth/github', async (request, reply) => {
-    const github = await getModuleConfig('github_oauth');
-    if (!github.enabled || !github.client_id || !github.client_secret) return reply.code(501).send({ error: 'GitHub sign-in is not configured' });
-    const state = randomToken(24);
-    await pool.query(
-      'INSERT INTO oauth_states(state_hash, verifier, provider, return_to, expires_at) VALUES ($1, $2, $3, $4, now() + interval \'10 minutes\')',
-      [sha256(state), randomToken(24), 'github', safeReturnTo(request.query?.return_to)],
-    );
-    const redirectUri = `${config.appUrl}/api/auth/oauth/github/callback`;
-    const url = new URL('https://github.com/login/oauth/authorize');
-    url.search = new URLSearchParams({
-      client_id: github.client_id,
-      redirect_uri: redirectUri,
-      scope: 'read:user user:email',
-      state,
-      allow_signup: 'true',
-    });
-    return reply.redirect(url.toString());
-  });
-
-  app.get('/api/auth/oauth/github/callback', async (request, reply) => {
-    const github = await getModuleConfig('github_oauth');
-    if (!github.enabled || !github.client_id || !github.client_secret) return reply.code(501).send({ error: 'GitHub sign-in is not configured' });
-    const state = String(request.query?.state || '');
-    const code = String(request.query?.code || '');
-    const stateResult = await pool.query(
-      "DELETE FROM oauth_states WHERE state_hash = $1 AND provider = 'github' AND expires_at > now() RETURNING *",
-      [sha256(state)],
-    );
-    if (!stateResult.rowCount || !code) return reply.code(400).send({ error: 'Invalid OAuth state' });
-    const saved = stateResult.rows[0];
-    const redirectUri = `${config.appUrl}/api/auth/oauth/github/callback`;
-    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: github.client_id,
-        client_secret: github.client_secret,
-        code,
-        redirect_uri: redirectUri,
-      }),
-    });
-    const tokens = await tokenResponse.json();
-    if (!tokenResponse.ok || !tokens.access_token) return reply.code(502).send({ error: 'GitHub authentication failed' });
-
-    const githubHeaders = {
-      Authorization: `Bearer ${tokens.access_token}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'Rootminster-V2',
-    };
-    const [profileResponse, emailsResponse] = await Promise.all([
-      fetch('https://api.github.com/user', { headers: githubHeaders }),
-      fetch('https://api.github.com/user/emails', { headers: githubHeaders }),
-    ]);
-    const profile = await profileResponse.json();
-    const emails = await emailsResponse.json();
-    if (!profileResponse.ok || !emailsResponse.ok || !Array.isArray(emails)) {
-      return reply.code(502).send({ error: 'Could not read the GitHub account profile' });
+  app.delete('/api/auth/identities/:provider', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    if (user.impersonation?.active) return reply.code(403).send({ error: 'This security-sensitive action is unavailable during a view-as session' });
+    const name = String(request.params?.provider || '');
+    if (!oauthProvider(name)) return reply.code(404).send({ error: 'Unknown sign-in provider' });
+    try {
+      await transaction((client) => unlinkIdentity(client, user.id, name));
+    } catch (error) {
+      if (error instanceof IdentityError) return reply.code(error.status).send({ error: error.message, code: error.code });
+      throw error;
     }
-    const verifiedEmail = emails.find((item) => item.primary && item.verified)?.email
-      || emails.find((item) => item.verified)?.email;
-    if (!verifiedEmail) return reply.code(403).send({ error: 'A verified GitHub email is required' });
-
-    const userResult = await upsertOauthUser(verifiedEmail, profile.name || profile.login);
-    await createSession(userResult.rows[0].id, request, reply);
-    return reply.redirect(saved.return_to);
+    await auditIdentity(user, 'identity_unlinked', name, request);
+    return { success: true };
   });
 }

@@ -12,6 +12,7 @@ const integrationLabels = {
   turnstile: ['Turnstile protection', ShieldCheck],
   google_oauth: ['Google sign-in', User],
   github_oauth: ['GitHub sign-in', Github],
+  discord_oauth: ['Discord sign-in', MessageCircle],
   discord_bot: ['Discord bot', MessageCircle],
   mcp: ['MCP server', Network],
   donations: ['Stripe donations', HeartHandshake],
