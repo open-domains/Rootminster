@@ -26,6 +26,7 @@ async function audit(actor, action, target, reason, request, sessionId) {
 const IMPERSONATION_BLOCKED_PREFIXES = [
   '/api/auth/passkeys', '/api/auth/tokens', '/api/functions/twoFactorAuth',
   '/functions/twoFactorAuth', '/api/account-deletion-request', '/api/discord/link',
+  '/api/auth/identities',
 ];
 
 export function matchesBlockedPrefix(candidate) {

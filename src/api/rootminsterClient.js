@@ -121,6 +121,14 @@ export const rootminster = {
       return result.data;
     },
   },
+  identities: {
+    async list() { return request('/api/auth/identities'); },
+    async startLink(provider) {
+      const result = await request(`/api/auth/identities/${encodeURIComponent(provider)}`, { method: 'POST', body: {} });
+      window.location.href = result.url;
+    },
+    async unlink(provider) { return request(`/api/auth/identities/${encodeURIComponent(provider)}`, { method: 'DELETE' }); },
+  },
   passkeys: {
     async list() { const result = await request('/api/auth/passkeys'); return result.data; },
     async registrationOptions() { return request('/api/auth/passkeys/register/options', { method: 'POST', body: {} }); },
@@ -233,7 +241,7 @@ export const rootminster = {
       return result;
     },
     loginWithProvider(provider, returnTo = '/user-dashboard') {
-      if (!['google', 'github'].includes(provider)) throw new Error(`Unsupported login provider: ${provider}`);
+      if (!['google', 'github', 'discord'].includes(provider)) throw new Error(`Unsupported login provider: ${provider}`);
       window.location.href = `/api/auth/oauth/${provider}?return_to=${encodeURIComponent(returnTo)}`;
     },
     async register(data) {

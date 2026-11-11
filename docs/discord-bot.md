@@ -6,7 +6,7 @@ Enable the Discord module in administration and configure the application ID, pu
 
 Commands register when the API starts. Restart the API after deploying or changing module configuration. A configured guild ID registers commands in that server; otherwise registration is global.
 
-Run `/link` and use **Link Rootminster account** to sign in on the site. The private link expires after 15 minutes. Discord permissions do not grant Rootminster staff access: the linked site's account role controls staff functions.
+Users who sign in with Discord, or link Discord under **Settings → Linked accounts**, are linked to the bot automatically (see [social sign-in](social-sign-in.md)). Otherwise, run `/link` and use **Link Rootminster account** to sign in on the site. The private link expires after 15 minutes. Discord permissions do not grant Rootminster staff access: the linked site's account role controls staff functions.
 
 ## Commands and buttons
 

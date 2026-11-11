@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { User, Shield, BellOff, KeyRound, HeartHandshake, CheckCircle2, Trash2, Download } from 'lucide-react';
+import { User, Shield, BellOff, KeyRound, HeartHandshake, CheckCircle2, Trash2, Download, Link2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import CarbonAd from '@/components/CarbonAd';
 import DonationWidget from '@/components/DonationWidget';
@@ -13,6 +13,7 @@ import ApiTokenManager from '@/components/ApiTokenManager';
 import TwoFactorSetup from '@/components/TwoFactorSetup';
 import TrustedBrowsers from '@/components/TrustedBrowsers';
 import PasskeyManager from '@/components/PasskeyManager';
+import LinkedAccounts from '@/components/LinkedAccounts';
 import { usePublicConfig } from '@/lib/public-config';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -33,11 +34,12 @@ export default function Settings() {
   const [deletionBusy, setDeletionBusy] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const requestedSection = searchParams.get('section');
-  const [active, setActive] = useState(['profile', 'security', 'api', 'support', 'privacy'].includes(requestedSection) ? requestedSection : 'profile');
+  const [active, setActive] = useState(['profile', 'security', 'accounts', 'api', 'support', 'privacy'].includes(requestedSection) ? requestedSection : 'profile');
 
   const sections = [
     { id: 'profile', label: t('settings.navProfile'), icon: User },
     { id: 'security', label: t('settings.navSecurity'), icon: Shield },
+    { id: 'accounts', label: 'Linked accounts', icon: Link2 },
     { id: 'api', label: t('settings.navApi'), icon: KeyRound },
     { id: 'privacy', label: 'Privacy & deletion', icon: Trash2 },
     ...(publicConfig.features.donations ? [{ id: 'support', label: t('settings.navSupport'), icon: HeartHandshake }] : []),
@@ -248,6 +250,10 @@ export default function Settings() {
               <PasskeyManager onUpdated={refreshUser} />
               <TrustedBrowsers user={user} />
             </>
+          )}
+
+          {active === 'accounts' && user && (
+            <LinkedAccounts linkedProvider={searchParams.get('linked')} linkError={searchParams.get('link_error')} />
           )}
 
           {active === 'api' && user && (

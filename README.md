@@ -158,6 +158,7 @@ Rootminster currently exposes modules for:
 - Stripe donations
 - Google OAuth
 - GitHub OAuth
+- Discord OAuth — see [social sign-in and linked accounts](docs/social-sign-in.md)
 - Discord
 - automated safety screening
 - MCP server — see [bundled requests, conversations, and hostname lookup](docs/request-bundles.md)

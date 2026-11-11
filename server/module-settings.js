@@ -153,6 +153,14 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: Boolean(config.githubClientId && config.githubClientSecret), client_id: config.githubClientId, client_secret: config.githubClientSecret, registry_url: config.githubRegistryUrl }),
   },
+  discord_oauth: {
+    name: 'Discord OAuth', description: 'Allow users to register, sign in and link their account with Discord.', defaultEnabled: false,
+    fields: [
+      { key: 'client_id', label: 'Client ID', type: 'text', required: true },
+      { key: 'client_secret', label: 'Client secret', type: 'secret', required: true },
+    ],
+    env: () => ({ enabled: Boolean(config.discordClientId && config.discordClientSecret), client_id: config.discordClientId, client_secret: config.discordClientSecret }),
+  },
   zammad: {
     name: 'Zammad Support', description: 'Create Zammad tickets from Rootminster with authenticated user context.', defaultEnabled: false,
     fields: [

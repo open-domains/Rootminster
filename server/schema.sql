@@ -176,6 +176,25 @@ CREATE TABLE IF NOT EXISTS oauth_states (
 );
 
 ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'google';
+ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS purpose text NOT NULL DEFAULT 'login';
+ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS session_id uuid REFERENCES sessions(id) ON DELETE CASCADE;
+
+-- Social accounts bound to a Rootminster user. A provider account belongs to at
+-- most one user, and a user links at most one account per provider. Sign-in
+-- looks up this binding before falling back to the provider's verified email.
+CREATE TABLE IF NOT EXISTS user_identities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider text NOT NULL CHECK (provider IN ('google', 'github', 'discord')),
+  provider_user_id text NOT NULL,
+  provider_email text,
+  display_name text,
+  linked_at timestamptz NOT NULL DEFAULT now(),
+  last_used_at timestamptz,
+  UNIQUE (provider, provider_user_id),
+  UNIQUE (user_id, provider)
+);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS tos_accepted_version text;
 
 CREATE TABLE IF NOT EXISTS design_auth_codes (
