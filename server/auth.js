@@ -287,6 +287,20 @@ export async function registerAuthRoutes(app) {
     const disposable = await disposableEmailResult(email, await getModuleConfig('disposable_email'));
     if (disposable.disposable) return reply.code(400).send({ error: 'Temporary email addresses are not accepted' });
     if (password.length < 10) return reply.code(400).send({ error: 'Password must be at least 10 characters' });
+    const turnstile = await getModuleConfig('turnstile');
+    const cfToken = String(request.body?.recaptcha_token || request.body?.cf_turnstile_response || '').trim();
+    if (turnstile.enabled && turnstile.secret_key && !cfToken) {
+      return reply.code(400).send({ error: 'Please complete the CAPTCHA' });
+    }
+    if (turnstile.enabled && turnstile.secret_key && cfToken) {
+      const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret: turnstile.secret_key, response: cfToken }),
+      });
+      const tsData = await tsRes.json();
+      if (!tsData.success) return reply.code(400).send({ error: 'CAPTCHA verification failed. Please try again.' });
+    }
     const existing = await pool.query('SELECT id, status FROM users WHERE email = $1', [email]);
     if (existing.rowCount) return reply.code(409).send({ error: 'An account with this email already exists' });
     const passwordHash = await hashPassword(password);
