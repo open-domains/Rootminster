@@ -147,3 +147,20 @@ test('OAuth sign-in does not inherit credentials from an unverified pre-registra
     assert.match(upsert, new RegExp(`DELETE FROM ${table} WHERE user_id = \\$1`));
   }
 });
+
+test('registration endpoint enforces Turnstile before inserting a user record', async () => {
+  const auth = await source('./auth.js');
+  // Extract just the /api/auth/register handler body
+  const registerStart = auth.indexOf("app.post('/api/auth/register'");
+  const insertStart = auth.indexOf('INSERT INTO users', registerStart);
+  assert.ok(registerStart !== -1 && insertStart !== -1, 'register route and INSERT must both exist');
+  const handler = auth.slice(registerStart, insertStart);
+  // Turnstile config must be fetched
+  assert.match(handler, /getModuleConfig\('turnstile'\)/);
+  // Missing token must be rejected before the INSERT
+  assert.match(handler, /Please complete the CAPTCHA/);
+  // Failed verification must be rejected before the INSERT
+  assert.match(handler, /CAPTCHA verification failed/);
+  // siteverify call must be present
+  assert.match(handler, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
+});
