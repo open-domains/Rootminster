@@ -73,12 +73,22 @@ async function disposableDomains(settings = {}) {
   return pendingRefresh;
 }
 
+function parentDomains(domain) {
+  const parts = domain.split('.');
+  const parents = [];
+  for (let i = 1; i < parts.length - 1; i++) {
+    parents.push(parts.slice(i).join('.'));
+  }
+  return parents;
+}
+
 export async function disposableEmailResult(email, settings = {}) {
   if (!settings.enabled) return { disposable: false, domain: '' };
   const domain = String(email || '').trim().toLowerCase().split('@').pop() || '';
   const configured = parseDisposableDomains(settings.additional_domains);
   const sourceDomains = await disposableDomains(settings);
-  return { disposable: sourceDomains.has(domain) || configured.has(domain), domain };
+  const domainsToCheck = [domain, ...parentDomains(domain)];
+  return { disposable: domainsToCheck.some((d) => sourceDomains.has(d) || configured.has(d)), domain };
 }
 
 export const DISPOSABLE_EMAIL_SOURCE_URL = DEFAULT_DISPOSABLE_EMAIL_SOURCE_URL;
