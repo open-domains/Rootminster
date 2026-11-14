@@ -87,7 +87,13 @@ async function executeHttp(name, request, reply, rawBody) {
   const response = await handler(web);
   if (!(response instanceof Response)) return response;
   const data = await decodeResponse(response);
-  if (response.status >= 500 && config.production) {
+  // Only capture and replace genuine internal server errors (500).
+  // 502 responses from functions like manageDnsRecord indicate an upstream
+  // (Cloudflare API) failure — not a Rootminster bug — and must be passed
+  // through to the client with the original error body so the user can see
+  // what failed. Logging every Cloudflare blip as a GlitchTip "server error"
+  // creates noise that obscures real issues (ROOTMINSTER-1R).
+  if (response.status === 500 && config.production) {
     request.log?.error?.({ function: name, status: response.status }, 'Function returned a server error');
     captureServerMessage(`Function ${name} returned HTTP ${response.status}`, { function: name, requestId: request.id });
     return reply.code(response.status).send({ error: 'Internal server error' });
