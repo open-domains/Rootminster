@@ -94,8 +94,13 @@ async function executeHttp(name, request, reply, rawBody) {
   // what failed. Logging every Cloudflare blip as a GlitchTip "server error"
   // creates noise that obscures real issues (ROOTMINSTER-1R).
   if (response.status === 500 && config.production) {
-    request.log?.error?.({ function: name, status: response.status }, 'Function returned a server error');
-    captureServerMessage(`Function ${name} returned HTTP ${response.status}`, { function: name, requestId: request.id });
+    const errorBody = typeof data === 'object' ? JSON.stringify(data) : String(data || '');
+    request.log?.error?.({ function: name, status: response.status, body: errorBody.slice(0, 500) }, 'Function returned a server error');
+    captureServerMessage(`Function ${name} returned HTTP ${response.status}`, {
+      function: name,
+      requestId: request.id,
+      errorBody: errorBody.slice(0, 500),
+    });
     return reply.code(response.status).send({ error: 'Internal server error' });
   }
   reply.code(response.status);
