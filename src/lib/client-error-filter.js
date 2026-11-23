@@ -26,14 +26,16 @@ export function shouldIgnoreClientErrorEvent(event) {
   if (frames.length && frames.every((frame) => EXTENSION_FRAME.test(frame?.filename || frame?.abs_path || ''))) return true;
   if (frames.some((frame) => EXTENSION_FRAME.test(frame?.filename || frame?.abs_path || ''))
       && messages.some((message) => EXTENSION_FETCH_ERROR.test(message))) return true;
-  if (messages.some((message) => WALLET_GLOBAL_ERROR.test(message))
-      && frames.length
-      && frames.every((frame) => (frame?.filename || frame?.abs_path || '') === '/' && frame?.function === 'global code')) return true;
+  // MetaMask/crypto-wallet extensions inject window.ethereum — never set by Rootminster.
+  // The frames.every() guard was removed: when the extension's own stack frames appear
+  // alongside the global-code frame in the raw Sentry event the guard evaluates false,
+  // causing the filter to miss the event (ROOTMINSTER-11, seen Nov 15 on latest build).
+  if (messages.some((message) => WALLET_GLOBAL_ERROR.test(message))) return true;
   if (messages.some((message) => WALLET_PROPERTY_REDEFINITION_ERROR.test(message))
       && frames.some((frame) => EXTENSION_FRAME.test(frame?.filename || frame?.abs_path || ''))) return true;
-  if (messages.some((message) => FIREFOX_HELPER_GLOBAL_ERROR.test(message))
-      && frames.length
-      && frames.every((frame) => DOCUMENT_PATH.test(frame?.filename || frame?.abs_path || '') && frame?.function === 'global code')) return true;
+  // Firefox internal helpers (__firefox__) are never referenced by Rootminster.
+  // Same reasoning as above — message alone is specific enough (ROOTMINSTER-1E, 1F).
+  if (messages.some((message) => FIREFOX_HELPER_GLOBAL_ERROR.test(message))) return true;
   if (messages.some((message) => GRADFLOW_UNIFORM_ERROR.test(message))
       && frames.some((frame) => GRADFLOW_FRAME.test(frame?.filename || frame?.abs_path || ''))) return true;
   if (messages.some((message) => CHUNK_LOAD_ERROR.test(message))) return true;
