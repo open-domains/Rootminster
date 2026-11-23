@@ -186,3 +186,42 @@ test('schema adds the activity column and notice table', async () => {
   assert.match(schema, /ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at timestamptz/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS inactive_account_notices/);
 });
+
+test('due times are rounded up to the next daily job run at 03:45 UTC', async () => {
+  const { nextJobRunAt } = await import('./lib/inactive-accounts.js');
+  assert.equal(nextJobRunAt('2026-11-23T03:00:00Z').toISOString(), '2026-11-23T03:45:00.000Z');
+  assert.equal(nextJobRunAt('2026-11-23T03:45:00Z').toISOString(), '2026-11-23T03:45:00.000Z');
+  assert.equal(nextJobRunAt('2026-11-23T10:00:00Z').toISOString(), '2026-11-24T03:45:00.000Z');
+});
+
+test('the notified accounts list shows when the reminder and closure happen', async () => {
+  const { describeNotice } = await import('./lib/inactive-accounts.js');
+  const future = (days) => new Date(Date.now() + days * DAY).toISOString();
+  const row = { user_id: 'u1', user_email: 'idle@example.test', full_name: 'Idle', notified_at: new Date().toISOString(), closes_at: future(30), reminder_sent_at: null, closed_at: null };
+  const view = describeNotice(row, SETTINGS);
+  assert.equal(view.status, 'notified');
+  assert.equal(view.reminder_due_at.getTime(), new Date(row.closes_at).getTime() - 7 * DAY);
+  assert.ok(view.reminder_expected_at >= view.reminder_due_at);
+  assert.ok(view.closure_expected_at.getTime() >= new Date(row.closes_at).getTime());
+  assert.ok(view.closure_expected_at.getTime() - new Date(row.closes_at).getTime() < DAY);
+
+  const reminded = describeNotice({ ...row, reminder_sent_at: new Date().toISOString() }, SETTINGS);
+  assert.equal(reminded.status, 'reminded');
+  assert.equal(reminded.reminder_expected_at, null);
+  assert.equal(describeNotice(row, { ...SETTINGS, reminder_days: 0 }).reminder_expected_at, null);
+
+  const closed = describeNotice({ ...row, closed_at: new Date().toISOString() }, SETTINGS);
+  assert.equal(closed.status, 'closed');
+  assert.equal(closed.closure_expected_at, null);
+
+  // An overdue notice (module was off) is expected on the next run, not in the past.
+  const overdue = describeNotice({ ...row, notified_at: future(-40), closes_at: future(-10) }, SETTINGS);
+  assert.ok(overdue.closure_expected_at.getTime() >= Date.now());
+});
+
+test('only admins can list notified accounts', async () => {
+  const source = await readFile(new URL('./module-settings.js', import.meta.url), 'utf8');
+  const route = source.slice(source.indexOf("app.get('/api/admin/modules/inactive_accounts/notices'"));
+  assert.ok(route.length > 0);
+  assert.match(route.slice(0, 400), /actor\.role !== 'admin'\) return reply\.code\(403\)/);
+});

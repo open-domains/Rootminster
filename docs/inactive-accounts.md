@@ -25,6 +25,10 @@ The job runs daily at 03:45 UTC.
 
 **Notices per daily run** and **Closures per daily run** cap the work per day, so turning the module on with a large backlog ramps up gradually.
 
+## Notified accounts tab
+
+The module page has a **Notified accounts** tab listing every account with an open notice (and accounts already disabled by the job). For each it shows when the account was notified, when the reminder email will go out (or when it was sent), and when the account closes, as a countdown to the daily run that will act. Data comes from `GET /api/admin/modules/inactive_accounts/notices` (admins only).
+
 ## Data
 
 - `users.last_active_at` — durable activity marker (sessions are deleted after they expire).

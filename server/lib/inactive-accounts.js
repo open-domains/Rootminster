@@ -167,13 +167,65 @@ export function planNoticeActions(notices, settings, now = new Date()) {
       if (plan.close.length < settings.max_closures_per_run) plan.close.push(notice);
       continue;
     }
-    if (settings.reminder_days > 0 && !notice.reminder_sent_at
-      && nowMs >= closesMs - settings.reminder_days * DAY_MS
-      && nowMs - notifiedMs >= MIN_REMINDER_GAP_MS) {
-      plan.remind.push(notice);
-    }
+    const reminderDue = notice.reminder_sent_at ? null : reminderDueAt(notice, settings);
+    if (reminderDue && nowMs >= reminderDue.getTime()) plan.remind.push(notice);
   }
   return plan;
+}
+
+// The job runs daily at this UTC time (see server/jobs.js).
+export const JOB_RUN_UTC = Object.freeze({ hour: 3, minute: 45 });
+
+// First scheduled job run at or after `value`: when something due then actually happens.
+export function nextJobRunAt(value) {
+  const due = new Date(value);
+  const run = new Date(Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate(), JOB_RUN_UTC.hour, JOB_RUN_UTC.minute));
+  if (run < due) run.setUTCDate(run.getUTCDate() + 1);
+  return run;
+}
+
+// When the reminder becomes due under the current settings, or null if none will be sent.
+export function reminderDueAt(notice, settings) {
+  if (settings.reminder_days <= 0) return null;
+  const closesMs = time(notice.closes_at);
+  const dueMs = Math.max(closesMs - settings.reminder_days * DAY_MS, time(notice.notified_at) + MIN_REMINDER_GAP_MS);
+  return dueMs < closesMs ? new Date(dueMs) : null;
+}
+
+// Admin view of every notified account, with when its reminder and closure happen.
+export function describeNotice(row, rawSettings) {
+  const settings = inactivitySettings(rawSettings);
+  const closed = Boolean(row.closed_at);
+  const reminderDue = row.reminder_sent_at || closed ? null : reminderDueAt(row, settings);
+  let status = 'notified';
+  if (closed) status = 'closed';
+  else if (row.reminder_sent_at) status = 'reminded';
+  return {
+    user_id: row.user_id,
+    email: row.current_email || row.user_email,
+    full_name: row.full_name || null,
+    status,
+    last_activity_at: row.last_activity_at || null,
+    notified_at: row.notified_at,
+    reminder_sent_at: row.reminder_sent_at || null,
+    reminder_due_at: reminderDue,
+    reminder_expected_at: reminderDue ? nextJobRunAt(Math.max(reminderDue.getTime(), Date.now())) : null,
+    closes_at: row.closes_at,
+    closure_expected_at: closed ? null : nextJobRunAt(Math.max(time(row.closes_at), Date.now())),
+    closed_at: row.closed_at || null,
+  };
+}
+
+export async function listInactiveAccountNotices(db, settings) {
+  const result = await db.query(
+    `SELECT n.user_id, n.user_email, n.last_activity_at, n.notified_at, n.closes_at, n.reminder_sent_at, n.closed_at,
+            u.email AS current_email, u.full_name
+     FROM inactive_account_notices n
+     LEFT JOIN users u ON u.id = n.user_id
+     ORDER BY n.closed_at IS NOT NULL, n.closes_at ASC
+     LIMIT 1000`,
+  );
+  return result.rows.map((row) => describeNotice(row, settings));
 }
 
 function escapeHtml(value) {
