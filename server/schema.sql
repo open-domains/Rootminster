@@ -497,6 +497,25 @@ CREATE TABLE IF NOT EXISTS backup_usage_monthly (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Inactive account cleanup. users.last_active_at is a durable activity marker,
+-- because sessions are deleted once they expire. One open notice per user; a
+-- notice is deleted as soon as the user is active again.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at timestamptz;
+CREATE INDEX IF NOT EXISTS entity_records_created_by_idx ON entity_records(created_by_id) WHERE created_by_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS inactive_account_notices (
+  user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  user_email citext NOT NULL,
+  last_activity_at timestamptz,
+  notified_at timestamptz NOT NULL DEFAULT now(),
+  closes_at timestamptz NOT NULL,
+  reminder_sent_at timestamptz,
+  closed_at timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS inactive_account_notices_open_idx
+  ON inactive_account_notices(closes_at) WHERE closed_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS scheduled_notifications (
   notification_key text PRIMARY KEY,
   status text NOT NULL CHECK (status IN ('sending', 'sent')),

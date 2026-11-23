@@ -7,6 +7,7 @@ import { serializeUser, store } from './store.js';
 import { getModuleConfig } from './module-settings.js';
 import { disposableEmailResult } from './lib/disposable-email.js';
 import { OAUTH_PROVIDERS, oauthProvider, providerConfigured } from './lib/oauth-providers.js';
+import { recordUserActivity } from './lib/inactive-accounts.js';
 import { findIdentity, IdentityError, linkIdentity, listIdentities, rememberIdentity, touchIdentity, unlinkIdentity } from './lib/oauth-identities.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -57,6 +58,8 @@ export async function authenticateRequest(request, { allowMfaPending = false } =
   const mfaVerified = !mfaRequired || Boolean(row._session_mfa_verified_at);
   if (!mfaVerified && !allowMfaPending) return null;
   pool.query('UPDATE sessions SET last_used_at = now() WHERE token_hash = $1', [sha256(raw)]).catch(() => {});
+  // Staff impersonation and half-finished MFA sign-ins are not the user's own activity.
+  if (mfaVerified && !row._impersonator_user_id) recordUserActivity(pool, row.id).catch(() => {});
   const impersonation = row._impersonator_user_id ? {
     active: true,
     actor_id: row._impersonator_user_id,
