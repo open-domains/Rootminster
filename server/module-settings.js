@@ -348,6 +348,15 @@ export async function registerModuleSettingsRoutes(app) {
     return { modules, encryption_configured: Boolean(process.env.MODULE_ENCRYPTION_KEY || process.env.TOTP_ENCRYPTION_KEY) };
   });
 
+  app.get('/api/admin/modules/inactive_accounts/notices', async (request, reply) => {
+    const { authenticateRequest } = await import('./auth.js');
+    const actor = await authenticateRequest(request);
+    if (!actor || actor.role !== 'admin') return reply.code(403).send({ error: 'Forbidden' });
+    const [{ pool }, { inactivitySettings, listInactiveAccountNotices }] = await Promise.all([import('./database.js'), import('./lib/inactive-accounts.js')]);
+    const settings = inactivitySettings(await getModuleConfig('inactive_accounts', { fresh: true }));
+    return { settings, notices: await listInactiveAccountNotices(pool, settings) };
+  });
+
   app.put('/api/admin/modules/:id', async (request, reply) => {
     const { authenticateRequest } = await import('./auth.js');
     const actor = await authenticateRequest(request);
