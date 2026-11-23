@@ -70,6 +70,18 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: false, allowed_record_types: 'A, AAAA, CNAME, TXT', min_account_age_days: 1, max_per_account_per_day: 1, max_per_day: 50, recheck_minutes: 30, monitoring_days: 14, revoke_severity: 'critical' }),
   },
+  inactive_accounts: {
+    name: 'Inactive account cleanup', description: 'Email accounts with no domains and no recent sign-in or activity, then close them if they stay inactive through a grace period. Any sign-in, including through a linked Google, GitHub or Discord account, cancels the closure.', defaultEnabled: false,
+    fields: [
+      { key: 'inactivity_days', label: 'Inactive after (days)', type: 'number', min: 30, max: 3650, step: 1, description: 'Accounts with no sign-in or other activity for this long, and no subdomains, DNS records, open requests or donations, get a notice.' },
+      { key: 'grace_days', label: 'Grace period after notice (days)', type: 'number', min: 7, max: 365, step: 1, description: 'The account is closed this long after the notice unless the user signs in or is otherwise active again.' },
+      { key: 'reminder_days', label: 'Reminder before closure (days)', type: 'number', min: 0, max: 30, step: 1, description: 'Send one reminder this many days before closure. Set to 0 for no reminder.' },
+      { key: 'closure_action', label: 'When an account is closed', type: 'select', options: [{ value: 'delete', label: 'Delete the account and its data' }, { value: 'disable', label: 'Disable the account (reversible)' }] },
+      { key: 'max_notices_per_run', label: 'Notices per daily run', type: 'number', min: 1, max: 1000, step: 1, description: 'Caps how many accounts are notified each day, so enabling this on a large backlog ramps up gradually.' },
+      { key: 'max_closures_per_run', label: 'Closures per daily run', type: 'number', min: 1, max: 1000, step: 1 },
+    ],
+    env: () => ({ enabled: false, inactivity_days: 365, grace_days: 30, reminder_days: 7, closure_action: 'delete', max_notices_per_run: 100, max_closures_per_run: 50 }),
+  },
   glitchtip: {
     name: 'GlitchTip monitoring', description: 'Optional privacy-conscious browser and server error reporting with browser performance traces.', defaultEnabled: false,
     fields: [

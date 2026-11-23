@@ -5,6 +5,7 @@ import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
 import { pool } from './database.js';
 import { invokeInternal } from './function-runner.js';
+import { recordUserActivity } from './lib/inactive-accounts.js';
 import { getModuleConfig } from './module-settings.js';
 import { jwksFromPrivateKey, oidcDiscoveryMetadata, oidcUserInfoFromUser, scopeIncludesOpenId, signOidcIdToken } from './oidc.js';
 import { randomToken, sha256 } from './security.js';
@@ -140,6 +141,7 @@ async function authenticateMcp(request) {
        AND (u.role = 'user' OR t.mfa_verified_at IS NOT NULL)`,
     [sha256(raw)],
   );
+  if (result.rows[0]) recordUserActivity(pool, result.rows[0].id).catch(() => {});
   return serializeUser(result.rows[0]);
 }
 

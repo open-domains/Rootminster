@@ -1,6 +1,8 @@
 import { authenticateRequest } from './auth.js';
 import { config } from './config.js';
+import { pool } from './database.js';
 import { invokeInternal } from './function-runner.js';
+import { recordUserActivity } from './lib/inactive-accounts.js';
 import { randomToken, sha256 } from './security.js';
 import { store } from './store.js';
 import { isIP } from 'node:net';
@@ -83,6 +85,7 @@ export async function apiIdentity(request) {
   if (!token) return null;
   const user = token.user_id ? await store.get('User', token.user_id) : (await store.filter('User', { email: token.user_email }, '-created_date', 1))[0];
   if (!user || user.status !== 'active') return null;
+  recordUserActivity(pool, user.id).catch(() => {});
   if (!token.last_used || Date.now() - new Date(token.last_used).getTime() > 300_000) {
     store.update('ApiToken', token.id, { last_used: new Date().toISOString() }).catch(() => {});
   }

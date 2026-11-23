@@ -3,6 +3,12 @@ import { pool, withAdvisoryLock } from './database.js';
 import { invokeInternal } from './function-runner.js';
 import { runScheduledBackup } from './backup-service.js';
 import { purgeApprovedAccountDeletionRequests } from './lib/account-deletion-retention.js';
+import { config } from './config.js';
+import { sendEmail } from './mail.js';
+import { getModuleConfig } from './module-settings.js';
+import { store } from './store.js';
+import { deleteUserAccounts } from './lib/admin-user-deletion.js';
+import { runInactiveAccountCleanup } from './lib/inactive-accounts.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Jobs' };
 
@@ -27,6 +33,26 @@ cron.schedule('0 4,12,20 * * *', () => run('observerScanAll'), { timezone: 'UTC'
 // Re-scan instantly approved subdomains during their monitoring period.
 cron.schedule('*/5 * * * *', () => run('instantApprovalRecheck'), { timezone: 'UTC' });
 cron.schedule('0 23 * * 0', () => run('weeklyStatsDiscord'), { timezone: 'UTC' });
+// Notify inactive accounts with no domains, and close them after the grace period.
+cron.schedule('45 3 * * *', () => withAdvisoryLock('rootminster:inactiveAccountCleanup', async () => {
+  try {
+    const settings = await getModuleConfig('inactive_accounts', { fresh: true });
+    if (!settings.enabled) return;
+    const branding = await getModuleConfig('branding').catch(() => ({}));
+    const summary = await runInactiveAccountCleanup({
+      db: pool,
+      settings,
+      sendEmail,
+      deleteAccounts: deleteUserAccounts,
+      store,
+      appUrl: config.appUrl,
+      platformName: branding.enabled && branding.platform_name ? branding.platform_name : 'Open Domains',
+    });
+    console.log('[jobs] inactive account cleanup completed', summary);
+  } catch (error) {
+    console.error('[jobs] inactive account cleanup failed', error);
+  }
+}), { timezone: 'UTC' });
 cron.schedule('*/15 * * * *', async () => {
   try {
     const result = await runScheduledBackup();
