@@ -239,12 +239,14 @@ export default function SubdomainDnsManager() {
         applied += 1;
       }
       toast.success(applied === 1 ? t('dnsManager.templateAppliedOne', { count: applied }) : t('dnsManager.templateAppliedOther', { count: applied }));
-      setTemplateOpen(false);
       await load();
+      // The dialog stays open on its "check it worked" step.
+      return true;
     } catch (err) {
       const prefix = applied > 0 ? (applied === 1 ? t('dnsManager.templatePartialPrefixOne', { count: applied }) : t('dnsManager.templatePartialPrefixOther', { count: applied })) : '';
       toast.error(`${prefix}${err?.response?.data?.error || err?.message || t('dnsManager.templateFailed')}`);
       await load();
+      return false;
     } finally {
       setTemplateApplying(false);
     }

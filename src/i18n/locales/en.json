@@ -400,6 +400,54 @@
       "fieldLabel": "Verification value",
       "fieldPlaceholder": "service-verification=abc123",
       "note": "Paste the exact verification value supplied by the service."
+    },
+    "render": {
+      "name": "Render",
+      "description": "Point the domain and www hostname to a Render web service or static site.",
+      "fieldLabel": "Render service name",
+      "fieldPlaceholder": "my-app",
+      "note": "Add the custom domain to your service in the Render dashboard so Render can issue a certificate."
+    },
+    "fastmail": {
+      "name": "Fastmail",
+      "description": "Receive and send mail for this subdomain with Fastmail, including SPF and DKIM.",
+      "note": "Add the domain in Fastmail under Settings, Domains first. Fastmail verifies these records and then starts accepting mail."
+    },
+    "protonMail": {
+      "name": "Proton Mail",
+      "description": "Verify the domain and route mail to Proton Mail, with an SPF record.",
+      "fieldLabel": "Proton verification value",
+      "fieldPlaceholder": "protonmail-verification=abc123",
+      "note": "Proton also shows DKIM CNAME records that are unique to your account. Add those from the Proton domain screen, then finish verification there."
+    },
+    "bluesky": {
+      "name": "Bluesky handle",
+      "description": "Use this subdomain as your Bluesky handle.",
+      "fieldLabel": "Your Bluesky DID",
+      "fieldPlaceholder": "did:plc:abc123",
+      "note": "In Bluesky, open Settings, Account, Handle, choose I have my own domain, and verify the DNS record."
+    },
+    "verify": {
+      "title": "Check it worked",
+      "description": "The {{name}} records were created. Here is what public DNS returns for them now.",
+      "checking": "Checking public DNS…",
+      "notRun": "The check has not run yet.",
+      "rateLimited": "Health checks can run once every 30 seconds. Wait a moment, then check again.",
+      "failed": "Could not run the check. Try again shortly.",
+      "checkAgain": "Check again",
+      "done": "Done",
+      "nextStep": "Next step",
+      "status": {
+        "pass": "Live",
+        "warning": "Not visible yet",
+        "unknown": "Could not check",
+        "pending": "Waiting"
+      },
+      "overall": {
+        "pass": "All records are live in public DNS. Finish the setup on the provider's side if you haven't already.",
+        "warning": "Some records are not visible yet. New records usually appear within a minute; changed records can take as long as their old TTL.",
+        "pending": "Some records have not been checked yet. Check again in a moment."
+      }
     }
   },
   "commonExt": {
