@@ -27,18 +27,20 @@ runs:
   steps:
     - name: Install GlitchTip CLI
       shell: bash
+      env:
+        # Pinned release and checksum. To upgrade, download the new
+        # linux-x86_64 asset from https://gitlab.com/glitchtip/glitchtip-cli/-/releases
+        # and update both values.
+        GLITCHTIP_CLI_VERSION: v1.0.0
+        GLITCHTIP_CLI_SHA256: de1c035aa61931a6265d7b29b1614781dfee925466142a907508cb097082dfef
       run: |
         set -euo pipefail
-        curl -fsSL https://glitchtip.com/install.sh -o "${RUNNER_TEMP}/install-glitchtip-cli.sh"
-        sh "${RUNNER_TEMP}/install-glitchtip-cli.sh"
-        if command -v glitchtip-cli >/dev/null 2>&1; then
-          echo "GLITCHTIP_CLI=$(command -v glitchtip-cli)" >> "$GITHUB_ENV"
-        elif [ -x "$HOME/.local/bin/glitchtip-cli" ]; then
-          echo "GLITCHTIP_CLI=$HOME/.local/bin/glitchtip-cli" >> "$GITHUB_ENV"
-        else
-          echo "GlitchTip CLI was not installed in an expected location" >&2
-          exit 1
-        fi
+        bin="${RUNNER_TEMP}/glitchtip-cli"
+        curl -fsSL --retry 3 -o "$bin" \
+          "https://gitlab.com/glitchtip/glitchtip-cli/-/jobs/artifacts/${GLITCHTIP_CLI_VERSION}/raw/artifacts/glitchtip-cli-linux-x86_64?job=build-linux-x86_64"
+        echo "${GLITCHTIP_CLI_SHA256}  ${bin}" | sha256sum --check --strict
+        chmod +x "$bin"
+        echo "GLITCHTIP_CLI=$bin" >> "$GITHUB_ENV"
 
     - name: Inject debug IDs and upload sourcemaps
       shell: bash
