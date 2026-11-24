@@ -523,6 +523,19 @@ CREATE TABLE IF NOT EXISTS scheduled_notifications (
   sent_at timestamptz
 );
 
+-- Hosts listed by public malware and phishing feeds (threat_intel module). Kept apart
+-- from staff blocklist entries and expired when a feed stops listing them.
+CREATE TABLE IF NOT EXISTS threat_feed_hosts (
+  host text NOT NULL,
+  source text NOT NULL,
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (host, source)
+);
+
+CREATE INDEX IF NOT EXISTS threat_feed_hosts_host_idx ON threat_feed_hosts(host);
+CREATE INDEX IF NOT EXISTS threat_feed_hosts_last_seen_idx ON threat_feed_hosts(last_seen_at);
+
 -- The retired Google Drive integration stored OAuth credentials in module
 -- settings. Remove those credentials and its short-lived authorization state
 -- when upgrading an installation that tested the previous backup provider.

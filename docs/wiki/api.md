@@ -65,7 +65,7 @@ Documented endpoints are served from:
 - `GET /api/v1/openapi.json`
 - UI route `/api-docs`
 
-The code defines API version `1.2.0`, bearer token parsing, token rate-limit keys, pagination, public record/request serializers, token scopes, hostname restrictions, DNS record restrictions, and Dynamic DNS IP validation.
+The code defines API version `1.3.0`, bearer token parsing, token rate-limit keys, pagination, public record/request serializers, token scopes, hostname restrictions, DNS record restrictions, and Dynamic DNS IP validation.
 
 Token scopes include:
 
@@ -75,10 +75,13 @@ Token scopes include:
 - `dns:read`
 - `dns:write`
 - `dns:dynamic`
+- `dns:acme`
 - `analytics:read`
 - `analytics:write`
 
 Dynamic DNS requires tokens restricted to owned hostnames and A/AAAA record types. The API rejects private, loopback, documentation, multicast, and link-local addresses.
+
+ACME tokens (`dns:acme`) must be restricted to owned hostnames and can only publish and remove TXT records at `_acme-challenge.<hostname>` through `POST /api/v1/acme/present` and `/api/v1/acme/cleanup`. See [ACME DNS-01 certificates](../acme-dns-01.md).
 
 ## MCP Remote Control Plane
 

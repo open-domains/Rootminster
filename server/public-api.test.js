@@ -54,9 +54,11 @@ test('v1 publishes a machine-readable OpenAPI document with CORS and version hea
   const response = await app.inject({ method: 'GET', url: '/api/v1/openapi.json' });
   assert.equal(response.statusCode, 200);
   assert.equal(response.headers['access-control-allow-origin'], '*');
-  assert.equal(response.headers['x-api-version'], '1.2.0');
+  assert.equal(response.headers['x-api-version'], '1.3.0');
   assert.equal(response.json().openapi, '3.1.0');
   assert.ok(response.json().paths['/dynamic-dns']);
+  assert.ok(response.json().paths['/acme/present']);
+  assert.ok(response.json().paths['/acme/cleanup']);
   assert.ok(response.json().paths['/analytics']);
   assert.ok(response.json().paths['/analytics/{subdomain}/tracking-code']);
   assert.ok(response.json().paths['/analytics/{subdomain}/stats']);

@@ -6,6 +6,9 @@ import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { scanObserverRequestTarget } from '../observer.js';
 import { tryInstantApproval } from '../lib/instant-approval.js';
 import { protectedBrandRefusal } from '../lib/brand-protection.js';
+import { pool } from '../database.js';
+import { blockedFeedTarget, blockedTargetMessage } from '../lib/threat-intel.js';
+import { checkRequestThreats } from '../lib/threat-intel-scan.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
 const HOSTNAME_TYPES = ['NS', 'CNAME', 'MX'];
 const SINGLE_VALUE_TYPES = ['CNAME'];
@@ -212,6 +215,12 @@ export default async function (req) {
             return Response.json({ error: `This record value is not permitted${blockedReason}` }, { status: 403 });
         }
     }
+    // Imported threat feeds (hostname targets only)
+    const threatSettings = await getModuleConfig('threat_intel').catch(() => null);
+    for (const r of recordList) {
+        const feedBlock = await blockedFeedTarget({ db: pool, settings: threatSettings, type: r.record_type, content: r.record_value }).catch(() => null);
+        if (feedBlock) return Response.json({ error: blockedTargetMessage(feedBlock) }, { status: 403 });
+    }
     // Domain check
     const domain = await platform.asServiceRole.entities.Domain.filter({ name: root_domain });
     if (!domain.length)
@@ -299,10 +308,28 @@ export default async function (req) {
             description: `Observer scan failed for ${subdomain}.${root_domain}: ${error.message}`
         }).catch(() => {});
     }
+    // Threat intelligence: a match never blocks the submission, but it keeps the request
+    // out of instant approval and is shown to reviewers.
+    const threats = await checkRequestThreats({ db: pool, settings: threatSettings, request: created[0] });
+    if (threats.matches.length || threats.error) {
+        const threatFields = {
+            threat_intel_matches: threats.matches.map(({ indicator, kind, source, detail }) => ({ indicator, kind, source, detail })),
+            threat_intel_error: threats.error || '',
+            threat_intel_checked_at: new Date().toISOString(),
+        };
+        await platform.asServiceRole.entities.SubdomainRequest.update(created[0].id, threatFields).catch(() => {});
+        Object.assign(created[0], threatFields);
+    }
     // Instant approval must never block a submission: on any unexpected error the
     // request simply stays in the staff queue.
-    const instant = await tryInstantApproval(platform, created[0], user, observerForApproval)
-        .catch(() => ({ decision: 'error' }));
+    const instant = threats.matches.length
+        ? await platform.asServiceRole.entities.SubdomainRequest.update(created[0].id, {
+            safety_auto_decision: 'manual',
+            safety_auto_reasons: ['A threat intelligence check matched this request.'],
+            safety_auto_decided_at: new Date().toISOString(),
+        }).then(() => ({ decision: 'manual' })).catch(() => ({ decision: 'error' }))
+        : await tryInstantApproval(platform, created[0], user, observerForApproval)
+            .catch(() => ({ decision: 'error' }));
     const instantApproved = instant.decision === 'approved';
     if (instantApproved) created[0].status = 'approved';
     // Discord notification
@@ -312,6 +339,7 @@ export default async function (req) {
         { name: 'Values', value: valueList.join(', ') },
         { name: 'Requested By', value: String(user.email) },
         { name: 'Status', value: instantApproved ? 'Instantly approved' : 'Pending Review' },
+        ...(created[0].threat_intel_matches?.length ? [{ name: 'Threat intelligence', value: created[0].threat_intel_matches.map(match => match.detail).join('\n').slice(0, 1000) }] : []),
         { name: 'Observer automated screening', value: created[0].observer_status ? `${created[0].observer_status}${created[0].observer_score !== undefined ? ` (${created[0].observer_score}/100)` : ''}${created[0].observer_finding_count ? ` · ${created[0].observer_finding_count} finding${created[0].observer_finding_count === 1 ? '' : 's'}` : ''}` : 'Scan pending or unavailable' }
     ], 'New Subdomain Request', 0x6366f1);
     await platform.asServiceRole.entities.AuditLog.create({

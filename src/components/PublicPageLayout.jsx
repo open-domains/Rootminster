@@ -89,6 +89,7 @@ export function PublicFooter() {
             <div className="space-y-2">
               <Link to="/guides" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.allGuides')}</Link>
               <Link to="/blog" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('nav.blog')}</Link>
+              <Link to="/showcase" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">Showcase</Link>
               <Link to="/guides/dns-basics/what-is-dns" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.whatIsDns')}</Link>
             </div>
           </div>

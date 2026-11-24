@@ -4,7 +4,7 @@ import { SEO_ROUTES, publicSitemapEntries, resolveSeo } from '../shared/seo.js';
 
 const PUBLIC_ROUTES = [
   '/', '/how-it-works', '/faq', '/about', '/contact', '/privacy-policy', '/cookie-policy',
-  '/terms-of-service', '/report-abuse', '/rdap', '/api-docs', '/guides', '/blog',
+  '/terms-of-service', '/report-abuse', '/showcase', '/rdap', '/api-docs', '/guides', '/blog',
 ];
 
 test('public pages have complete unique social metadata', () => {

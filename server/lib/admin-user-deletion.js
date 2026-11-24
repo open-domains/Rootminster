@@ -111,7 +111,7 @@ export async function deleteUserAccounts(rawIds, actor) {
          SELECT id::text
          FROM entity_records
          WHERE
-           (entity_type IN ('DnsRecord', 'SubdomainOwnership')
+           (entity_type IN ('DnsRecord', 'SubdomainOwnership', 'ShowcaseEntry')
              AND ((data->>'owner_id') = ANY($1::text[]) OR lower(data->>'owner_email') = ANY($2::text[])))
            OR (entity_type IN ('SubdomainRequest', 'EditRequest')
              AND ((data->>'requester_id') = ANY($1::text[]) OR lower(data->>'requester_email') = ANY($2::text[])))

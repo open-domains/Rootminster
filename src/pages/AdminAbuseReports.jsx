@@ -38,13 +38,9 @@ function AbuseReportRow({ report, onUpdated }) {const { t } = useTranslation();
   const save = async () => {
     setSaving(true);
     try {
-      const me = await rootminster.auth.me();
-      await rootminster.entities.AbuseReport.update(report.id, {
-        status,
-        admin_notes: notes,
-        actioned_by: me.email
-      });
-      toast.success(t("operational.admin_abuse_reports.report_updated_3ddeb2"));
+      const response = await rootminster.functions.invoke('updateAbuseReport', { id: report.id, status, admin_notes: notes });
+      const notified = response?.data?.notified || 0;
+      toast.success(notified ? `${t("operational.admin_abuse_reports.report_updated_3ddeb2")} ${notified === 1 ? '1 reporter was' : `${notified} reporters were`} notified.` : t("operational.admin_abuse_reports.report_updated_3ddeb2"));
       onUpdated();
       setExpanded(false);
     } catch {
@@ -70,6 +66,11 @@ function AbuseReportRow({ report, onUpdated }) {const { t } = useTranslation();
             <span className="bg-muted text-muted-foreground inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
               {report.abuse_type}
             </span>
+            {Number(report.report_count) > 1 &&
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400">
+                {report.report_count} reports
+              </span>
+            }
           </div>
           <p className="text-muted-foreground text-sm line-clamp-2">{report.description}</p>
           <p className="text-muted-foreground/70 text-xs mt-1">
@@ -93,6 +94,23 @@ function AbuseReportRow({ report, onUpdated }) {const { t } = useTranslation();
               <p className="text-foreground text-sm whitespace-pre-wrap break-all">{report.evidence}</p>
             </div>
         }
+
+          {Array.isArray(report.merged_reports) && report.merged_reports.length > 0 &&
+        <div>
+              <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide mb-2">Later reports about this site ({report.merged_reports.length})</p>
+              <ul className="space-y-2">
+                {[...report.merged_reports].reverse().map((item, index) =>
+            <li key={`${item.submitted_at}-${index}`} className="rounded-md border border-border bg-card px-3 py-2">
+                    <p className="text-xs text-muted-foreground">{item.abuse_type} · {item.reporter_email || 'Anonymous'} · {new Date(item.submitted_at).toLocaleString()}</p>
+                    <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{item.description}</p>
+                    {item.evidence && <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap break-all">{item.evidence}</p>}
+                  </li>
+            )}
+              </ul>
+            </div>
+        }
+
+          <p className="text-muted-foreground text-xs">Reporters who left an email are told when you set the status to Resolved or Dismissed. They see the status only, never these notes.</p>
 
           <div className="space-y-3">
             <div className="space-y-1.5">

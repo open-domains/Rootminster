@@ -29,3 +29,7 @@ New health-panel chrome uses the English i18n catalog with existing fallback beh
 The DNS manager labels search, filters, record selection, proxy state and edit actions. Validation is connected to the content field; keyboard focus returns to the edit button when editing ends. The record table remains horizontally scrollable by keyboard and touch, with sticky name columns disabled on narrow screens. Controls use larger mobile targets and long hostnames wrap in the surrounding content.
 
 The dashboard navigation drawer traps focus, supports Escape and restores focus to its trigger. Skip links are available in the dashboard and landing page. Reduced-motion preferences suppress movement. Empty toast containers no longer intercept mobile header taps, and status text uses mode-appropriate contrast.
+
+## After applying a DNS template
+
+When you apply a template from **DNS templates** (GitHub Pages, Vercel, Netlify, Cloudflare Pages, Render, Fastmail, Proton Mail, Bluesky, Minecraft or a verification TXT), the dialog moves to a **Check it worked** step. It runs this same health check a few seconds later and shows, for each record the template created, whether public DNS already returns it. It also repeats the provider's next step, such as adding the custom domain on the provider's side. The usual 30 second limit between checks applies.

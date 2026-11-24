@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { Copy, Download, ExternalLink, Key, Loader2, Plus, Radio, ScanLine, ShieldCheck, Terminal, Trash2 } from 'lucide-react';
+import { Copy, Download, ExternalLink, Key, Loader2, Lock, Plus, Radio, ScanLine, ShieldCheck, Terminal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import { rootminster } from '@/api/rootminsterClient';
@@ -10,13 +10,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 const SCOPE_OPTIONS = [
   ['account:read', 'Read account'], ['requests:read', 'Read requests'], ['requests:write', 'Submit requests'],
-  ['dns:read', 'Read DNS'], ['dns:write', 'Manage DNS'], ['dns:dynamic', 'Dynamic DNS updates'],
+  ['dns:read', 'Read DNS'], ['dns:write', 'Manage DNS'], ['dns:dynamic', 'Dynamic DNS updates'], ['dns:acme', 'ACME certificate challenges'],
   ['analytics:read', 'Read analytics'], ['analytics:write', 'Create analytics'],
 ];
 const PRESETS = {
   full: ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'analytics:read', 'analytics:write'],
   read: ['account:read', 'requests:read', 'dns:read', 'analytics:read'],
   dynamic: ['dns:read', 'dns:dynamic'],
+  acme: ['dns:acme'],
 };
 
 export default function ApiTokenManager({ user }) {
@@ -112,7 +113,7 @@ export default function ApiTokenManager({ user }) {
     {newToken && <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4">
       <div><p className="text-sm font-semibold text-emerald-300">Copy this token now</p><p className="mt-0.5 text-xs text-muted-foreground">It is stored as a hash and cannot be shown again.</p></div>
       <div className="flex items-center gap-2"><code className="min-w-0 flex-1 break-all rounded-md bg-background px-3 py-2 text-xs text-emerald-300">{newToken.token}</code><Button size="icon" variant="outline" onClick={() => copy(newToken.token)} aria-label="Copy API token"><Copy size={14} /></Button></div>
-      <div className="rounded-md border border-border bg-background/60 p-3"><p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Terminal size={12} /> Example</p><code className="mt-2 block break-all text-xs text-foreground">{newToken.scopes?.includes('dns:dynamic') ? `curl -X POST -H "Authorization: Bearer ${newToken.token}" -H "Content-Type: application/json" -d '{"hostname":"${newToken.allowed_hostnames?.[0] || 'host.example.com'}","use_request_ip":true}' ${window.location.origin}/api/v1/dynamic-dns` : `curl -H "Authorization: Bearer ${newToken.token}" ${window.location.origin}/api/v1/me`}</code></div>
+      <div className="rounded-md border border-border bg-background/60 p-3"><p className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><Terminal size={12} /> Example</p><code className="mt-2 block break-all text-xs text-foreground">{newToken.scopes?.includes('dns:acme') ? `HTTPREQ_ENDPOINT=${window.location.origin}/api/v1/acme HTTPREQ_USERNAME=token HTTPREQ_PASSWORD=${newToken.token} lego --dns httpreq -d ${newToken.allowed_hostnames?.[0] || 'host.example.com'} -m you@example.com run` : newToken.scopes?.includes('dns:dynamic') ? `curl -X POST -H "Authorization: Bearer ${newToken.token}" -H "Content-Type: application/json" -d '{"hostname":"${newToken.allowed_hostnames?.[0] || 'host.example.com'}","use_request_ip":true}' ${window.location.origin}/api/v1/dynamic-dns` : `curl -H "Authorization: Bearer ${newToken.token}" ${window.location.origin}/api/v1/me`}</code></div>
       {ddnsSetup && <div className="grid gap-4 rounded-md border border-sky-500/30 bg-background/70 p-4 sm:grid-cols-[180px_1fr]">
         <div className="flex items-center justify-center rounded-lg bg-white p-2">{ddnsQr ? <img src={ddnsQr} alt="Dynamic DNS setup QR code" className="h-40 w-40" /> : <Loader2 className="animate-spin text-slate-700" />}</div>
         <div className="space-y-3"><div><p className="flex items-center gap-2 text-sm font-semibold"><ScanLine size={15} /> Scan to configure DDNS</p><p className="mt-1 text-xs text-muted-foreground">For Rootminster-compatible mobile and router helpers. It includes the endpoint, permitted hostnames, record types and this one-time-visible token.</p></div>
@@ -125,12 +126,12 @@ export default function ApiTokenManager({ user }) {
 
     {!newToken && <div className="rounded-lg border border-border bg-muted/20 p-4">
       <div className="space-y-4">
-        <div className="grid gap-2 sm:grid-cols-3">{[['full', 'Full API', ShieldCheck], ['read', 'Read only', Key], ['dynamic', 'Dynamic DNS', Radio]].map(([value, label, Icon]) => <button key={value} type="button" onClick={() => selectPreset(value)} className={`flex items-center gap-2 rounded-lg border p-3 text-left text-xs transition-colors ${preset === value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><Icon size={15} /><span className="font-medium">{label}</span></button>)}</div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{[['full', 'Full API', ShieldCheck], ['read', 'Read only', Key], ['dynamic', 'Dynamic DNS', Radio], ['acme', 'ACME certificates', Lock]].map(([value, label, Icon]) => <button key={value} type="button" onClick={() => selectPreset(value)} className={`flex items-center gap-2 rounded-lg border p-3 text-left text-xs transition-colors ${preset === value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}><Icon size={15} /><span className="font-medium">{label}</span></button>)}</div>
         <button type="button" onClick={() => selectPreset('custom')} className="text-xs font-medium text-primary hover:underline">Custom permissions</button>
         {preset === 'custom' && <div className="grid gap-2 rounded-lg border border-border bg-background/40 p-3 sm:grid-cols-2">{SCOPE_OPTIONS.map(([value, label]) => <label key={value} className="flex cursor-pointer items-center gap-2 text-xs text-foreground"><Checkbox checked={scopes.includes(value)} onCheckedChange={() => toggleScope(value)} />{label}<code className="ml-auto text-[9px] text-muted-foreground">{value}</code></label>)}</div>}
-        {(preset === 'dynamic' || preset === 'custom') && <div className="space-y-2"><label className="text-xs font-medium text-foreground">Allowed hostnames {scopes.includes('dns:dynamic') && '*'}</label><Input value={hostnames} onChange={(event) => setHostnames(event.target.value)} placeholder="home.example.com, vpn.example.com" className="font-mono text-xs" /><p className="text-[11px] text-muted-foreground">Exact hostnames only. You must already own them.</p></div>}
+        {(preset === 'dynamic' || preset === 'acme' || preset === 'custom') && <div className="space-y-2"><label className="text-xs font-medium text-foreground">Allowed hostnames {(scopes.includes('dns:dynamic') || scopes.includes('dns:acme')) && '*'}</label><Input value={hostnames} onChange={(event) => setHostnames(event.target.value)} placeholder="home.example.com, vpn.example.com" className="font-mono text-xs" /><p className="text-[11px] text-muted-foreground">Exact hostnames only. You must already own them.</p></div>}
         {(preset === 'dynamic' || (preset === 'custom' && (scopes.includes('dns:write') || scopes.includes('dns:dynamic')))) && <div><p className="mb-2 text-xs font-medium text-foreground">Allowed record types</p><div className="flex flex-wrap gap-3">{(preset === 'dynamic' ? ['A', 'AAAA'] : ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA']).map((type) => <label key={type} className="flex cursor-pointer items-center gap-1.5 text-xs"><Checkbox checked={recordTypes.includes(type)} onCheckedChange={() => toggleRecordType(type)} />{type}</label>)}</div></div>}
-        <div className="grid gap-2 sm:grid-cols-[1fr_130px_auto]"><Input value={tokenName} onChange={(event) => setTokenName(event.target.value)} maxLength={80} placeholder="Token name" /><Input type="number" min="1" max="365" value={expiresDays} onChange={(event) => setExpiresDays(event.target.value)} aria-label="Token lifetime in days" /><Button onClick={createToken} disabled={creating || !tokenName.trim() || !scopes.length || (scopes.includes('dns:dynamic') && !hostnames.trim())} className="gap-2">{creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create token</Button></div>
+        <div className="grid gap-2 sm:grid-cols-[1fr_130px_auto]"><Input value={tokenName} onChange={(event) => setTokenName(event.target.value)} maxLength={80} placeholder="Token name" /><Input type="number" min="1" max="365" value={expiresDays} onChange={(event) => setExpiresDays(event.target.value)} aria-label="Token lifetime in days" /><Button onClick={createToken} disabled={creating || !tokenName.trim() || !scopes.length || ((scopes.includes('dns:dynamic') || scopes.includes('dns:acme')) && !hostnames.trim())} className="gap-2">{creating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Create token</Button></div>
         <p className="text-[11px] text-muted-foreground">Token lifetime in days: 1–365. Dynamic DNS tokens require a hostname restriction.</p>
       </div>
     </div>}
