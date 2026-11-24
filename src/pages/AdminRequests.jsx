@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { AdminHeader, AdminPage } from '@/components/AdminPageShell';
 import HeldDnsChangesPanel from '@/components/HeldDnsChangesPanel';
+import ShowcaseReviewPanel from '@/components/ShowcaseReviewPanel';
 
 
 const hostnameForRequest = (request) => `${request.subdomain}.${request.root_domain}`.toLowerCase();
@@ -206,6 +207,7 @@ export default function AdminRequests() {
       />
 
       <HeldDnsChangesPanel />
+      <ShowcaseReviewPanel />
 
       <div className="flex gap-1 overflow-x-auto border-b border-border">
         {tabs.map(tl => (

@@ -5,6 +5,7 @@ import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DomainHealthPanel from '@/components/dns/DomainHealthPanel';
+import ShowcasePanel from '@/components/dns/ShowcasePanel';
 import DnsToolbar from '@/components/dns/DnsToolbar';
 import DnsRecordRow from '@/components/dns/DnsRecordRow';
 import DnsAddRow from '@/components/dns/DnsAddRow';
@@ -466,6 +467,7 @@ export default function SubdomainDnsManager() {
 
       {loadError && <div role="alert" className="rounded-lg border border-destructive p-4"><p>{loadError}</p><Button variant="outline" onClick={load} className="mt-3">Retry loading records</Button></div>}
       {!loading && !loadError && <DomainHealthPanel key={subdomainName} name={subdomainName} revision={records} />}
+      {!loading && !loadError && <ShowcasePanel key={`showcase-${subdomainName}`} hostname={subdomainName} />}
 
       {/* ── Secondary actions ── */}
       <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-3 sm:flex sm:flex-wrap sm:items-center">

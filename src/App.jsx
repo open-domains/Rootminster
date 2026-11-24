@@ -39,6 +39,7 @@ const CookiePolicy = lazy(() => import('@/pages/CookiePolicy'));
 const TermsOfService = lazy(() => import('@/pages/TermsOfService'));
 const ReportAbuse = lazy(() => import('@/pages/ReportAbuse'));
 const AbuseReportStatus = lazy(() => import('@/pages/AbuseReportStatus'));
+const Showcase = lazy(() => import('@/pages/Showcase'));
 const RdapLookup = lazy(() => import('@/pages/RdapLookup'));
 const Activate = lazy(() => import('@/pages/Activate'));
 const ApiDocs = lazy(() => import('@/pages/ApiDocs'));
@@ -137,6 +138,7 @@ const AuthenticatedApp = () => {
       <Route path="/terms-of-service" element={<TermsOfService />} />
       <Route path="/report-abuse" element={<ReportAbuse />} />
       <Route path="/report-abuse/status/:token" element={<AbuseReportStatus />} />
+      <Route path="/showcase" element={<Showcase />} />
       <Route path="/rdap" element={<RdapLookup />} />
       <Route path="/activate" element={<Activate />} />
       <Route path="/api-docs" element={<ApiDocs />} />

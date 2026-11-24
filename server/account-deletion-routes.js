@@ -75,7 +75,7 @@ async function userCaseSnapshot(user) {
     `SELECT entity_type, id, data, created_at, updated_at
      FROM entity_records
      WHERE
-       (entity_type IN ('DnsRecord', 'SubdomainOwnership')
+       (entity_type IN ('DnsRecord', 'SubdomainOwnership', 'ShowcaseEntry')
          AND ((data->>'owner_id') = $1 OR lower(data->>'owner_email') = $2))
        OR (entity_type IN ('SubdomainRequest', 'EditRequest')
          AND ((data->>'requester_id') = $1 OR lower(data->>'requester_email') = $2))
@@ -133,6 +133,7 @@ async function userCaseSnapshot(user) {
     },
     subdomains: groups.SubdomainOwnership || [],
     dns_records: groups.DnsRecord || [],
+    showcase_listings: groups.ShowcaseEntry || [],
     requests: groups.SubdomainRequest || [],
     edit_requests: groups.EditRequest || [],
     request_comments: groups.RequestComment || [],

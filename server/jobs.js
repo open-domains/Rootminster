@@ -12,6 +12,7 @@ import { runInactiveAccountCleanup } from './lib/inactive-accounts.js';
 import { cleanupExpiredAcmeChallenges } from './lib/acme-challenges.js';
 import { syncFeeds } from './lib/threat-intel.js';
 import { scanLiveSubdomains } from './lib/threat-intel-scan.js';
+import { refreshShowcaseHealth } from './lib/showcase-health.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Jobs' };
 
@@ -66,6 +67,15 @@ cron.schedule('10 5 * * *', () => withAdvisoryLock('rootminster:threatIntel', as
     console.log('[jobs] threat intelligence', { feeds, scan });
   } catch (error) {
     console.error('[jobs] threat intelligence failed', error);
+  }
+}), { timezone: 'UTC' });
+// Showcase listings hide themselves while their subdomain fails its DNS health check.
+cron.schedule('40 5 * * *', () => withAdvisoryLock('rootminster:showcaseHealth', async () => {
+  try {
+    const summary = await refreshShowcaseHealth({ store });
+    if (summary.checked) console.log('[jobs] showcase health', summary);
+  } catch (error) {
+    console.error('[jobs] showcase health failed', error);
   }
 }), { timezone: 'UTC' });
 // Notify inactive accounts with no domains, and close them after the grace period.

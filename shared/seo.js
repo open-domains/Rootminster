@@ -13,6 +13,7 @@ export const SEO_ROUTES = {
   '/cookie-policy': { title: 'Cookie Policy', description: 'Understand which cookies OpenDomains uses for sessions, preferences, security, and optional analytics.' },
   '/terms-of-service': { title: 'Terms of Service', description: 'Review the rules for using OpenDomains, requesting subdomains, managing DNS, and keeping projects safe.' },
   '/report-abuse': { title: 'Report abuse', description: 'Report phishing, malware, spam, impersonation, policy violations, or other abuse on an OpenDomains subdomain.' },
+  '/showcase': { title: 'Showcase', description: 'Browse projects people have built and hosted on free OpenDomains subdomains, each one reviewed by our team.' },
   '/rdap': { title: 'RDAP lookup', description: 'Look up public registration and delegation information for domains using the OpenDomains RDAP utility.' },
   '/activate': { title: 'Activate a code', description: 'Redeem an activation code to unlock OpenDomains account features securely from the official OpenDomains site.', noindex: true },
   '/api-docs': { title: 'API documentation', description: 'Build against the OpenDomains API for requests, DNS records, analytics, dynamic DNS, and account data.' },
