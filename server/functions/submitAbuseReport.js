@@ -2,8 +2,13 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
 import { getModuleConfig } from '../module-settings.js';
 import { createZammadTicket } from '../zammad.js';
-function escapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+import { acknowledgementEmail, escapeHtml, isOpenReport, mergedReportUpdate, newReporterSecret, reportedHostname, reporterEntry, statusToken } from '../lib/abuse-reports.js';
+
+async function sendAcknowledgement(platform, email, host, token) {
+    if (!email) return;
+    const statusUrl = `${config.appUrl}/report-abuse/status/${encodeURIComponent(token)}`;
+    const message = acknowledgementEmail({ host, statusUrl });
+    await platform.asServiceRole.integrations.Core.SendEmail({ to: email, subject: message.subject, body: message.body }).catch(() => null);
 }
 export default async function (req) {
     try {
@@ -11,6 +16,10 @@ export default async function (req) {
         const { subdomain, abuse_type, description, evidence, reporter_email, turnstile_token } = body;
         if (!subdomain || !abuse_type || !description) {
             return Response.json({ error: "Missing required fields" }, { status: 400 });
+        }
+        const host = reportedHostname(subdomain);
+        if (!host) {
+            return Response.json({ error: "Enter the subdomain or URL you are reporting" }, { status: 400 });
         }
         const platform = createPlatformClientFromRequest(req);
         // Require and validate Turnstile whenever it is configured.
@@ -31,13 +40,40 @@ export default async function (req) {
                 return Response.json({ error: "Security check failed" }, { status: 400 });
             }
         }
+        const reporterEmail = String(reporter_email || '').trim();
+        const { secret, hash: secretHash } = newReporterSecret();
+        const reporter = reporterEntry({ email: reporterEmail, tokenHash: secretHash });
+        const statusResponse = (id, merged) => {
+            const token = statusToken(id, secret);
+            return Response.json({
+                success: true,
+                id,
+                merged,
+                status_token: token,
+                status_url: `${config.appUrl}/report-abuse/status/${encodeURIComponent(token)}`,
+            });
+        };
+        // A report about a host that already has an open report joins that report, so staff
+        // see one item with a reporter count instead of a new ticket and email each time.
+        const sameHost = await platform.asServiceRole.entities.AbuseReport.filter({ normalized_host: host });
+        const existing = sameHost.filter(isOpenReport).sort((a, b) => String(a.created_date).localeCompare(String(b.created_date)))[0];
+        if (existing) {
+            await platform.asServiceRole.entities.AbuseReport.update(existing.id, mergedReportUpdate(existing, { abuse_type, description, evidence, reporter_email: reporterEmail }, reporter));
+            await sendAcknowledgement(platform, reporterEmail, host, statusToken(existing.id, secret));
+            return statusResponse(existing.id, true);
+        }
         // Save the abuse report
         const report = await platform.asServiceRole.entities.AbuseReport.create({
             subdomain,
+            normalized_host: host,
             abuse_type,
             description,
             evidence: evidence || "",
-            reporter_email: reporter_email || "",
+            reporter_email: reporterEmail,
+            reporters: [reporter],
+            merged_reports: [],
+            report_count: 1,
+            last_reported_at: new Date().toISOString(),
             status: "open",
         });
         let actor = null;
@@ -115,7 +151,8 @@ export default async function (req) {
         catch (_) {
             // Non-fatal — report is already saved
         }
-        return Response.json({ success: true, id: report.id });
+        await sendAcknowledgement(platform, reporterEmail, host, statusToken(report.id, secret));
+        return statusResponse(report.id, false);
     }
     catch (error) {
         return Response.json({ error: error.message }, { status: 500 });

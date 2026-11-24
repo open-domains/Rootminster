@@ -9,13 +9,13 @@ const FUNCTION_NAMES = new Set([
   'adminAssignDomainProvider', 'adminDirectCfOp', 'adminListUsers', 'adminMigrateDomains', 'analyticsManager',
   'appealRequest', 'approveRequest', 'checkAvailability', 'checkDomainHealth', 'cleanupPendingDonations',
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
-  'deviceAuth', 'getCloudflareZones', 'getQueueStatus',
+  'deviceAuth', 'getAbuseReportStatus', 'getCloudflareZones', 'getQueueStatus',
   'getRecaptchaSiteKey', 'getTurnstileSiteKey', 'githubMigrate',
   'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'manageProtectedBrands', 'observerScanAll', 'postComment', 'publicApi',
   'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
   'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest', 'submitSupportTicket',
-  'syncCloudflare', 'twoFactorAuth', 'updateDnsRecord', 'verifyDnsRecords',
+  'syncCloudflare', 'twoFactorAuth', 'updateAbuseReport', 'updateDnsRecord', 'verifyDnsRecords',
   'weeklyStatsDiscord',
 ]);
 
@@ -132,6 +132,7 @@ export async function registerFunctionRoutes(app) {
     app.get(`${prefix}/publicApi`, { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, (request, reply) => executeHttp('publicApi', request, reply));
     app.post(`${prefix}/twoFactorAuth`, { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, (request, reply) => executeHttp('twoFactorAuth', request, reply));
     app.post(`${prefix}/deviceAuth`, { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, (request, reply) => executeHttp('deviceAuth', request, reply));
+    app.post(`${prefix}/getAbuseReportStatus`, { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, (request, reply) => executeHttp('getAbuseReportStatus', request, reply));
     app.options(`${prefix}/*`, { config: { rateLimit: false } }, async (_request, reply) => reply.code(204).send());
     app.post(`${prefix}/:name`, (request, reply) => executeHttp(request.params.name, request, reply));
   }

@@ -1,5 +1,6 @@
 import { PublicNav } from '@/components/PublicPageLayout';
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Shield, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,7 @@ export default function ReportAbuse() {
     }
     setSending(true);
     try {
-      await rootminster.functions.invoke('submitAbuseReport', {
+      const response = await rootminster.functions.invoke('submitAbuseReport', {
         subdomain: form.subdomain,
         abuse_type: form.abuse_type,
         description: form.description,
@@ -74,7 +75,7 @@ export default function ReportAbuse() {
         reporter_email: form.reporter_email,
         turnstile_token: turnstileToken,
       });
-      setSent(true);
+      setSent(response?.data || { success: true });
     } catch {
       toast.error('Failed to submit. Please try emailing hello@open-domains.net directly.');
     } finally {
@@ -111,6 +112,13 @@ export default function ReportAbuse() {
             <Shield size={32} className="text-emerald-400 mx-auto mb-3" />
             <h2 className="text-white font-bold text-lg mb-2">Report Received</h2>
             <p className="text-slate-400 text-sm">Thank you for helping keep Open Domains safe. Our team will investigate this report within 24 hours on business days.</p>
+            {sent.merged && <p className="text-slate-400 text-sm mt-2">Someone has already reported this site, so we added your report to the open case.</p>}
+            {sent.status_token && (
+              <div className="mt-5 space-y-2">
+                <Link to={`/report-abuse/status/${encodeURIComponent(sent.status_token)}`} className="inline-block rounded-lg bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/30">View report status</Link>
+                <p className="text-slate-500 text-xs">{form.reporter_email ? 'We also emailed you this link.' : 'Save this link if you want to check back. We cannot send it again.'}</p>
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={submit} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-4">
