@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS dependencies
+FROM node:25-bookworm-slim AS dependencies
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --include=dev --no-audit --no-fund
@@ -10,7 +10,7 @@ RUN if [ ! -f dist/.rootminster-prebuilt ]; then npm run build; fi \
   && find dist -type f -name '*.map' -delete \
   && npm prune --omit=dev
 
-FROM node:24-bookworm-slim AS runtime
+FROM node:25-bookworm-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 RUN apt-get update \
