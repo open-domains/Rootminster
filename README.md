@@ -233,6 +233,8 @@ It will **not** silently create a new DNS record if the target record does not a
 
 The account token manager can also render a local QR setup payload for compatible mobile and router helpers. The QR uses `rootminster-ddns://setup?config=<base64url>`; the decoded JSON contains `version`, `service`, `endpoint`, `token`, `hostnames`, `record_types`, and `use_request_ip`. The QR is generated in the browser and includes the secret, so it is only available while the newly-created token is visible.
 
+ACME DNS-01 certificates (including wildcards) use the narrow `dns:acme` permission, which can only publish TXT records at `_acme-challenge.<allowed hostname>`. The endpoints work with lego's `httpreq` provider and ship with a certbot hook. See [ACME DNS-01 certificates](docs/acme-dns-01.md).
+
 ### Rate limiting
 
 Default limits include:

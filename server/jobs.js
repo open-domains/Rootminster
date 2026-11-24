@@ -9,6 +9,7 @@ import { getModuleConfig } from './module-settings.js';
 import { store } from './store.js';
 import { deleteUserAccounts } from './lib/admin-user-deletion.js';
 import { runInactiveAccountCleanup } from './lib/inactive-accounts.js';
+import { cleanupExpiredAcmeChallenges } from './lib/acme-challenges.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Jobs' };
 
@@ -33,6 +34,18 @@ cron.schedule('0 4,12,20 * * *', () => run('observerScanAll'), { timezone: 'UTC'
 // Re-scan instantly approved subdomains during their monitoring period.
 cron.schedule('*/5 * * * *', () => run('instantApprovalRecheck'), { timezone: 'UTC' });
 cron.schedule('0 23 * * 0', () => run('weeklyStatsDiscord'), { timezone: 'UTC' });
+// ACME DNS-01 challenge TXT records live for at most a day.
+cron.schedule('20 * * * *', () => withAdvisoryLock('rootminster:acmeChallengeCleanup', async () => {
+  try {
+    const summary = await cleanupExpiredAcmeChallenges({
+      store,
+      deleteRecord: (record) => invokeInternal('manageDnsRecord', { action: 'delete', record_id: record.id }, systemActor),
+    });
+    if (summary.deleted || summary.failed) console.log('[jobs] ACME challenge cleanup', summary);
+  } catch (error) {
+    console.error('[jobs] ACME challenge cleanup failed', error);
+  }
+}), { timezone: 'UTC' });
 // Notify inactive accounts with no domains, and close them after the grace period.
 cron.schedule('45 3 * * *', () => withAdvisoryLock('rootminster:inactiveAccountCleanup', async () => {
   try {

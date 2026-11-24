@@ -5,12 +5,13 @@ import { invokeInternal } from './function-runner.js';
 import { recordUserActivity } from './lib/inactive-accounts.js';
 import { randomToken, sha256 } from './security.js';
 import { store } from './store.js';
+import { ACME_CHALLENGE_LIFETIME_MS, ACME_TTL_SECONDS, acmeCredential, challengeBaseHostname, challengeName, validChallengeValue } from './lib/acme-challenges.js';
 import { isIP } from 'node:net';
 
-const API_VERSION = '1.2.0';
+const API_VERSION = '1.3.0';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIVE_REQUEST_STATUSES = ['pending', 'needs_info', 'user_responded'];
-const USER_TOKEN_SCOPES = new Set(['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'dns:dynamic', 'analytics:read', 'analytics:write']);
+const USER_TOKEN_SCOPES = new Set(['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'dns:dynamic', 'dns:acme', 'analytics:read', 'analytics:write']);
 const DNS_RECORD_TYPES = new Set(['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'PTR']);
 const DEFAULT_TOKEN_SCOPES = ['account:read', 'requests:read', 'requests:write', 'dns:read', 'dns:write', 'analytics:read', 'analytics:write'];
 
@@ -77,8 +78,7 @@ function publicRequest(record) {
   };
 }
 
-export async function apiIdentity(request) {
-  const raw = bearerToken(request.headers.authorization);
+export async function apiIdentity(request, raw = bearerToken(request.headers.authorization)) {
   if (!raw) return null;
   const tokens = await store.filter('ApiToken', { token_hash: sha256(raw) }, '-created_date', 10);
   const token = tokens.find((item) => item.revoked !== true && (!item.expires_at || new Date(item.expires_at) > new Date()));
@@ -98,7 +98,14 @@ export function tokenHasScope(identity, scope) {
   if (scopes.includes(scope)) return true;
   if (scopes.length) return false;
   // Legacy tokens retain normal user API access, but never inherit staff/admin powers.
-  return scope !== 'dns:dynamic' && !scope.startsWith('staff:');
+  return scope !== 'dns:dynamic' && scope !== 'dns:acme' && !scope.startsWith('staff:');
+}
+
+// ACME challenges may be published by a narrow `dns:acme` token (hostname restriction only)
+// or by a general `dns:write` token that is allowed to manage TXT at that hostname.
+export function tokenAllowsAcme(identity, baseHostname) {
+  if (tokenHasScope(identity, 'dns:acme')) return tokenAllowsHostname(identity.token, baseHostname);
+  return tokenHasScope(identity, 'dns:write') && tokenAllowsRecord(identity.token, { name: baseHostname, record_type: 'TXT' });
 }
 
 function normalHostname(value) {
@@ -154,8 +161,8 @@ export function publicIp(value) {
   return { address, family };
 }
 
-async function requireApiIdentity(request, reply, roles, scope) {
-  const identity = await apiIdentity(request);
+async function requireApiIdentity(request, reply, roles, scope, raw) {
+  const identity = await apiIdentity(request, raw);
   if (!identity) {
     error(reply, 401, 'invalid_token', 'Provide a valid API token using Authorization: Bearer <token>');
     return null;
@@ -200,6 +207,7 @@ async function createBrowserToken(request, reply) {
   if (scopes.includes('dns:dynamic') && (!allowedRecordTypes.length || allowedRecordTypes.some((type) => !['A', 'AAAA'].includes(type)))) {
     return error(reply, 400, 'dynamic_scope_requires_address_records', 'Dynamic DNS tokens must be restricted to A, AAAA, or both');
   }
+  if (scopes.includes('dns:acme') && !allowedHostnames.length) return error(reply, 400, 'acme_scope_requires_hostname', 'ACME tokens must be restricted to at least one hostname');
   if (allowedHostnames.length) {
     const [byId, byEmail] = await Promise.all([
       store.filter('DnsRecord', { owner_id: user.id }, 'name', 10_000),
@@ -271,6 +279,21 @@ function openApiDocument() {
             { name: 'timezone', in: 'query', required: false, schema: { type: 'string', default: 'UTC' } },
           ],
           responses: { 200: { description: 'Summary, traffic history, active visitors, pages, referrers, countries, and devices' }, 400: { description: 'Invalid date range or timezone' }, 401: { description: 'Invalid token' }, 403: { description: 'Token scope or subdomain ownership check failed' }, 409: { description: 'Analytics is not enabled' } },
+        },
+      },
+      '/acme/present': {
+        post: {
+          summary: 'Publish an ACME DNS-01 challenge TXT record', tags: ['ACME'], security: [{ bearerAuth: [] }],
+          description: 'Compatible with the lego httpreq provider. The token may also be sent as the HTTP Basic password. Records expire after 24 hours.',
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fqdn', 'value'], properties: { fqdn: { type: 'string', example: '_acme-challenge.home.example.com.' }, value: { type: 'string' } } } } } },
+          responses: { 200: { description: 'Challenge record published' }, 400: { description: 'Invalid challenge name or value' }, 403: { description: 'Token scope or hostname restriction failed' } },
+        },
+      },
+      '/acme/cleanup': {
+        post: {
+          summary: 'Remove an ACME DNS-01 challenge TXT record', tags: ['ACME'], security: [{ bearerAuth: [] }],
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fqdn', 'value'], properties: { fqdn: { type: 'string' }, value: { type: 'string' } } } } } },
+          responses: { 200: { description: 'Challenge record removed, or it was already gone' }, 403: { description: 'Token scope or hostname restriction failed' } },
         },
       },
       '/device/code': { post: { summary: 'Start device authorization', tags: ['Device authorization'], responses: { 200: { description: 'Device and user codes' } } } },
@@ -463,6 +486,77 @@ export async function registerPublicApiRoutes(app) {
     }
     await store.update('ApiToken', identity.token.id, { last_used: new Date().toISOString(), last_used_ip: request.ip }).catch(() => {});
     return data(reply, { hostname, updated, unchanged, checked_at: new Date().toISOString() });
+  });
+
+  const acmeLimit = { max: 30, timeWindow: '1 minute', keyGenerator: (request) => {
+    const raw = acmeCredential(request.headers?.authorization);
+    return raw ? `token:${sha256(raw)}` : `ip:${request.ip}`;
+  } };
+
+  async function acmeContext(request, reply) {
+    const raw = acmeCredential(request.headers.authorization);
+    const identity = await requireApiIdentity(request, reply, null, null, raw);
+    if (!identity) return null;
+    const base = challengeBaseHostname(request.body?.fqdn);
+    if (!base) {
+      error(reply, 400, 'invalid_fqdn', 'fqdn must be _acme-challenge.<hostname>');
+      return null;
+    }
+    if (!validChallengeValue(request.body?.value)) {
+      error(reply, 400, 'invalid_value', 'value must be the base64url challenge digest');
+      return null;
+    }
+    if (!tokenAllowsAcme(identity, base)) {
+      error(reply, 403, 'token_restricted', 'This token is not permitted to publish ACME challenges for that hostname');
+      return null;
+    }
+    return { identity, base, name: challengeName(base), value: request.body.value };
+  }
+
+  async function ownedChallenges(identity, name) {
+    const [byId, byEmail] = await Promise.all([
+      store.filter('DnsRecord', { owner_id: identity.user.id, name, record_type: 'TXT' }, 'created_date', 100),
+      store.filter('DnsRecord', { owner_email: identity.user.email, name, record_type: 'TXT' }, 'created_date', 100),
+    ]);
+    return [...new Map([...byId, ...byEmail].map((record) => [record.id, record])).values()];
+  }
+
+  app.post('/api/v1/acme/present', { config: { rateLimit: acmeLimit } }, async (request, reply) => {
+    const context = await acmeContext(request, reply);
+    if (!context) return;
+    const { identity, name, value } = context;
+    const expiresAt = new Date(Date.now() + ACME_CHALLENGE_LIFETIME_MS).toISOString();
+    const existing = (await ownedChallenges(identity, name)).find((record) => record.content === value);
+    if (existing) {
+      if (existing.acme_challenge) await store.update('DnsRecord', existing.id, { acme_expires_at: expiresAt });
+      return data(reply, { fqdn: `${name}.`, value, record_id: existing.id, expires_at: existing.acme_challenge ? expiresAt : null });
+    }
+    try {
+      const result = await invokeInternal('manageDnsRecord', {
+        action: 'create', name, record_type: 'TXT', content: value, ttl: ACME_TTL_SECONDS,
+      }, { ...identity.user, trusted_source: 'acme' });
+      const record = result.record;
+      await store.update('DnsRecord', record.id, { acme_challenge: true, acme_expires_at: expiresAt });
+      return data(reply, { fqdn: `${name}.`, value, record_id: record.id, expires_at: expiresAt });
+    } catch (cause) {
+      return error(reply, cause.status || 422, 'acme_present_failed', cause.message, cause.data);
+    }
+  });
+
+  app.post('/api/v1/acme/cleanup', { config: { rateLimit: acmeLimit } }, async (request, reply) => {
+    const context = await acmeContext(request, reply);
+    if (!context) return;
+    const { identity, name, value } = context;
+    // Only remove records this endpoint created, never a TXT record the owner added by hand.
+    const matches = (await ownedChallenges(identity, name)).filter((record) => record.acme_challenge === true && record.content === value);
+    try {
+      for (const record of matches) {
+        await invokeInternal('manageDnsRecord', { action: 'delete', record_id: record.id }, { ...identity.user, trusted_source: 'acme' });
+      }
+      return data(reply, { fqdn: `${name}.`, value, removed: matches.length });
+    } catch (cause) {
+      return error(reply, cause.status || 422, 'acme_cleanup_failed', cause.message, cause.data);
+    }
   });
 
   app.post('/api/v1/analytics', { config: { rateLimit: writeLimit } }, async (request, reply) => {

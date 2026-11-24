@@ -21,7 +21,7 @@ Rootminster has a versioned public REST API under `/api/v1` and a role-aware MCP
 
 ## Public API Token Model
 
-Tokens are generated with an `od_` prefix, stored only as SHA-256 hashes, and exposed once at creation. User-created scopes are selected from `account:read`, `requests:read`, `requests:write`, `dns:read`, `dns:write`, `dns:dynamic`, `analytics:read`, and `analytics:write`.
+Tokens are generated with an `od_` prefix, stored only as SHA-256 hashes, and exposed once at creation. User-created scopes are selected from `account:read`, `requests:read`, `requests:write`, `dns:read`, `dns:write`, `dns:dynamic`, `dns:acme`, `analytics:read`, and `analytics:write`.
 
 Hostname restrictions must be exact DNS hostnames. Dynamic DNS additionally requires hostname restrictions and A/AAAA record-type restrictions.
 
@@ -36,6 +36,6 @@ The MCP server advertises user tools and staff tools. OAuth clients use authoriz
 
 ## Gotchas
 
-- Legacy tokens with no scopes retain normal user API access, but never inherit `dns:dynamic` or staff scopes.
+- Legacy tokens with no scopes retain normal user API access, but never inherit `dns:dynamic`, `dns:acme` or staff scopes.
 - Token rate limiting keys use a SHA-256 hash of the presented token when present, otherwise client IP.
 - MCP tools can call approval/rejection handlers, so tool schemas and role/MFA checks are part of the security boundary.
