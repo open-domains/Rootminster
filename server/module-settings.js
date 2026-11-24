@@ -82,6 +82,19 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: false, inactivity_days: 365, grace_days: 30, reminder_days: 7, closure_action: 'delete', max_notices_per_run: 100, max_closures_per_run: 50 }),
   },
+  threat_intel: {
+    name: 'Threat intelligence', description: 'Check live subdomains and new requests against Google Safe Browsing and public malware and phishing feeds. Matches open an abuse report for staff; nothing is suspended automatically.', defaultEnabled: false,
+    fields: [
+      { key: 'safe_browsing_api_key', label: 'Google Safe Browsing API key', type: 'secret', description: 'Optional. Safe Browsing Lookup API v4 key from Google Cloud. The free API is for non-commercial use.' },
+      { key: 'feed_urlhaus', label: 'Import the URLhaus malware host list', type: 'boolean' },
+      { key: 'feed_openphish', label: 'Import the OpenPhish phishing feed', type: 'boolean' },
+      { key: 'block_feed_targets', label: 'Refuse new DNS records that point at a listed hostname', type: 'boolean', description: 'Applies to CNAME, MX, NS and SRV targets. Listed IP addresses are only flagged, since many sites share hosting IPs. Shared hosts such as github.io are never blocked as a whole.' },
+      { key: 'feed_expiry_days', label: 'Drop feed entries not seen for (days)', type: 'number', min: 1, max: 90, step: 1 },
+      { key: 'ignored_hosts', label: 'Hosts to ignore', type: 'text', description: 'Comma-separated hostnames or IPs that feeds list wrongly. They are never flagged or blocked.' },
+      { key: 'notify_staff', label: 'Email staff a summary of new matches', type: 'boolean' },
+    ],
+    env: () => ({ enabled: false, safe_browsing_api_key: process.env.SAFE_BROWSING_API_KEY || '', feed_urlhaus: true, feed_openphish: true, block_feed_targets: true, feed_expiry_days: 7, ignored_hosts: '', notify_staff: true }),
+  },
   glitchtip: {
     name: 'GlitchTip monitoring', description: 'Optional privacy-conscious browser and server error reporting with browser performance traces.', defaultEnabled: false,
     fields: [

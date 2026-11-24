@@ -1,6 +1,8 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
 import { getModuleConfig } from '../module-settings.js';
+import { pool } from '../database.js';
+import { blockedFeedTarget, blockedTargetMessage } from '../lib/threat-intel.js';
 import {
   findNamespaceConflict,
   hostnameWithin,
@@ -144,6 +146,9 @@ async function assertNotBlocked(platform, type, content) {
     return String(entry.value || '').toLowerCase() === value;
   });
   if (blocked) throw new Error(`This record value is not permitted${blocked.reason ? `: ${blocked.reason}` : ''}`);
+  const threatSettings = await getModuleConfig('threat_intel').catch(() => null);
+  const feedBlock = await blockedFeedTarget({ db: pool, settings: threatSettings, type, content: value }).catch(() => null);
+  if (feedBlock) throw new Error(blockedTargetMessage(feedBlock));
 }
 
 async function assertNoConflict(platform, candidate, excludeId) {

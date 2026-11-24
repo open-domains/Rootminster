@@ -4,6 +4,7 @@ import { rootminster } from '@/api/rootminsterClient';
 import { AdminHeader, AdminPage } from '@/components/AdminPageShell';
 import BlocklistManager from '@/components/BlocklistManager';
 import ProtectedBrandsManager from '@/components/ProtectedBrandsManager';
+import ThreatFeedPanel from '@/components/ThreatFeedPanel';
 
 export default function StaffBlocklist() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -20,7 +21,7 @@ export default function StaffBlocklist() {
         description="Stop users registering names that imitate protected brands, and block values from being used in DNS records. Staff and admins can add, edit and remove blocklist entries."
       />
       {currentUser
-        ? <div className="max-w-2xl space-y-6"><ProtectedBrandsManager /><BlocklistManager currentUser={currentUser} /></div>
+        ? <div className="max-w-2xl space-y-6"><ProtectedBrandsManager /><ThreatFeedPanel isAdmin={currentUser?.role === 'admin'} /><BlocklistManager currentUser={currentUser} /></div>
         : <div className="flex justify-center py-8"><Loader2 className="animate-spin text-muted-foreground" /></div>}
     </AdminPage>
   );

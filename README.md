@@ -161,6 +161,7 @@ Rootminster currently exposes modules for:
 - Discord OAuth — see [social sign-in and linked accounts](docs/social-sign-in.md)
 - Discord
 - automated safety screening
+- threat intelligence (Google Safe Browsing, URLhaus and OpenPhish) — see [threat intelligence](docs/threat-intelligence.md)
 - MCP server — see [bundled requests, conversations, and hostname lookup](docs/request-bundles.md)
 - Umami analytics
 

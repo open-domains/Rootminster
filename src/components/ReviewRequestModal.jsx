@@ -288,6 +288,16 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
 
             <InstantApprovalPanel request={request} onChanged={async () => { await onSuccess?.(); onClose(); }} />
 
+            {requestRows.some((row) => row.threat_intel_matches?.length) && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
+                <p className="flex items-center gap-2 text-sm font-medium text-foreground"><ShieldAlert size={15} className="text-destructive" /> Threat intelligence match</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  {requestRows.flatMap((row) => row.threat_intel_matches || []).map((match, index) => <li key={`${match.source}-${match.indicator}-${index}`} className="break-words">{match.detail}</li>)}
+                </ul>
+                <p className="mt-2 text-muted-foreground">This request was kept out of instant approval. Feeds can be wrong, so check the target yourself before deciding.</p>
+              </div>
+            )}
+
             <div className="overflow-hidden rounded-lg border border-border bg-card">
               <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                 <div className="flex items-center gap-2">

@@ -10,6 +10,8 @@ import { store } from './store.js';
 import { deleteUserAccounts } from './lib/admin-user-deletion.js';
 import { runInactiveAccountCleanup } from './lib/inactive-accounts.js';
 import { cleanupExpiredAcmeChallenges } from './lib/acme-challenges.js';
+import { syncFeeds } from './lib/threat-intel.js';
+import { scanLiveSubdomains } from './lib/threat-intel-scan.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Jobs' };
 
@@ -44,6 +46,26 @@ cron.schedule('20 * * * *', () => withAdvisoryLock('rootminster:acmeChallengeCle
     if (summary.deleted || summary.failed) console.log('[jobs] ACME challenge cleanup', summary);
   } catch (error) {
     console.error('[jobs] ACME challenge cleanup failed', error);
+  }
+}), { timezone: 'UTC' });
+// Threat intelligence: refresh the imported feeds, then check every live subdomain.
+cron.schedule('10 5 * * *', () => withAdvisoryLock('rootminster:threatIntel', async () => {
+  try {
+    const settings = await getModuleConfig('threat_intel', { fresh: true });
+    if (!settings.enabled) return;
+    const feeds = await syncFeeds({ db: pool, settings });
+    const scan = await scanLiveSubdomains({
+      store,
+      db: pool,
+      settings,
+      sendStaffEmail: async ({ subject, body }) => {
+        const staff = (await store.list('User', 'email', 10_000)).filter((user) => ['admin', 'staff'].includes(user.role) && user.status === 'active');
+        await Promise.all(staff.map((user) => sendEmail({ to: user.email, subject, body }).catch(() => null)));
+      },
+    });
+    console.log('[jobs] threat intelligence', { feeds, scan });
+  } catch (error) {
+    console.error('[jobs] threat intelligence failed', error);
   }
 }), { timezone: 'UTC' });
 // Notify inactive accounts with no domains, and close them after the grace period.
