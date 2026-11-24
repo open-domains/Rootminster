@@ -108,7 +108,7 @@
     "@types/node": "^24.19.2",
     "@types/react": "^18.3.32",
     "@types/react-dom": "^18.3.7",
-    "@vitejs/plugin-react": "^4.7.0",
+    "@vitejs/plugin-react": "^6.3.0",
     "autoprefixer": "^10.7.0",
     "baseline-browser-mapping": "^2.11.39",
     "concurrently": "^10.0.7",
