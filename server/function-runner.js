@@ -13,7 +13,7 @@ const FUNCTION_NAMES = new Set([
   'getRecaptchaSiteKey', 'getThreatIntelSummary', 'getTurnstileSiteKey', 'githubMigrate',
   'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'manageProtectedBrands', 'observerScanAll', 'postComment', 'publicApi',
   'getRequestConversation',
-  'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'scheduledSync',
+  'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'reviewHeldDnsChange', 'scheduledSync',
   'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest', 'submitSupportTicket',
   'syncCloudflare', 'twoFactorAuth', 'updateAbuseReport', 'updateDnsRecord', 'verifyDnsRecords',
   'weeklyStatsDiscord',

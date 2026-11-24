@@ -26,3 +26,11 @@ Feeds are downloaded daily into the `threat_feed_hosts` table, separate from the
 - Shared hosting suffixes such as `github.io`, `pages.dev`, `vercel.app` and `herokuapp.com` are never imported or blocked as a whole (see `SHARED_HOST_SUFFIXES` in `server/lib/threat-intel.js`).
 - Listed IP addresses are flagged but never block a record, because many sites share hosting IPs.
 - Add wrongly listed hosts or IPs to **Hosts to ignore**.
+
+## Re-screening DNS changes after approval
+
+Approval checks where a request points. A later edit could point the same name somewhere else, so when a user creates a record or changes where one points (its type or content) on an approved subdomain, the new target goes through the same feed and Safe Browsing lookup.
+
+- If it matches, the change is **not applied**. It is saved as a held change, the user is told it went to staff, and it appears at the top of **Admin → Requests** under "DNS changes held for review". Approving applies it exactly as submitted; either way the user is emailed.
+- This covers the dashboard, the public API and MCP. Dynamic DNS IP updates, ACME challenge records, TXT and CAA records, TTL or proxy-only changes, and staff edits are exempt.
+- Re-screening only holds changes when this module is on. Account age is recorded as a signal for reviewers but never holds a change on its own.

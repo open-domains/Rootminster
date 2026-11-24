@@ -3,6 +3,7 @@ import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
 import { getModuleConfig } from '../module-settings.js';
 import { pool } from '../database.js';
 import { blockedFeedTarget, blockedTargetMessage } from '../lib/threat-intel.js';
+import { heldChangeMessage, screenRecordChange, shouldRescreen } from '../lib/record-rescreen.js';
 import {
   findNamespaceConflict,
   hostnameWithin,
@@ -209,6 +210,48 @@ function cnameFlattenMode(record, zone) {
   return 'per_record';
 }
 
+// Holds a risky change as an EditRequest for staff instead of applying it.
+async function holdIfRisky(platform, { user, action, old, candidate, siteHost, body }) {
+  if (!shouldRescreen({ user, action, old, candidate })) return null;
+  const settings = await getModuleConfig('threat_intel').catch(() => null);
+  const assessment = await screenRecordChange({ db: pool, settings, user, candidate, siteHost });
+  if (!assessment.hold) return null;
+  const proposed = {
+    name: candidate.name,
+    record_type: candidate.record_type,
+    content: candidate.content,
+    ttl: candidate.ttl,
+    proxied: candidate.proxied,
+    priority: candidate.priority,
+    cname_flatten: candidate.cname_flatten,
+    ...(body.base_name ? { base_name: normalizeName(body.base_name) } : {}),
+  };
+  const held = await platform.asServiceRole.entities.EditRequest.create({
+    requester_id: user.id,
+    requester_email: user.email,
+    status: 'pending',
+    kind: 'dns_change',
+    action,
+    record_id: old?.id || null,
+    hostname: candidate.name,
+    site_hostname: siteHost || candidate.name,
+    proposed,
+    previous: old ? { name: old.name, record_type: old.record_type, content: old.content, ttl: old.ttl, proxied: old.proxied } : null,
+    source: user.trusted_source || 'web',
+    safety_score: assessment.score,
+    safety_signals: assessment.signals,
+  });
+  await platform.asServiceRole.entities.AuditLog.create({
+    actor_email: user.email,
+    actor_role: user.role || 'user',
+    action: 'dns_change_held',
+    entity_type: 'EditRequest',
+    entity_id: held.id,
+    description: `Held ${action} of ${candidate.name} (${candidate.record_type} ${candidate.content}) for staff review`,
+  }).catch(() => null);
+  return Response.json({ error: heldChangeMessage(assessment), code: 'held_for_review', held_for_review: true, edit_request_id: held.id }, { status: 409 });
+}
+
 export default async function (req) {
   const donations = await getModuleConfig('donations');
   try {
@@ -317,6 +360,8 @@ export default async function (req) {
       const newBase = nameChanged
         ? await resolveOwnershipBase(platform, recordOwner, candidate.name, permissionBase, zone.name)
         : oldBase;
+      const heldUpdate = await holdIfRisky(platform, { user, action: 'update', old, candidate, siteHost: newBase, body });
+      if (heldUpdate) return heldUpdate;
 
       const cf = await cfFetch('PUT', `/zones/${old.zone_id}/dns_records/${old.cloudflare_record_id}`, cloudflarePayload(candidate, zone));
       if (!cf.success) return Response.json({ error: `Cloudflare update failed: ${cf.errors?.[0]?.message || 'unknown error'}` }, { status: 502 });
@@ -391,6 +436,8 @@ export default async function (req) {
     const flattenError = validateFlatten(candidate);
     if (flattenError) return Response.json({ error: flattenError }, { status: 400 });
     await assertNoConflict(platform, candidate);
+    const heldCreate = await holdIfRisky(platform, { user, action: 'create', candidate, siteHost: permissionBase, body });
+    if (heldCreate) return heldCreate;
 
     const cf = await cfFetch('POST', `/zones/${zone.zone_id}/dns_records`, cloudflarePayload(candidate, zone));
     if (!cf.success) return Response.json({ error: `Cloudflare create failed: ${cf.errors?.[0]?.message || 'unknown error'}` }, { status: 502 });
