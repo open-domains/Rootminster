@@ -225,7 +225,7 @@ export default function Layout() {
         </div>
         <TwoFactorSetup user={user} onUpdated={() => { setUser(u => ({ ...u, totp_enabled: true, mfa_verified: true })); finishMfa(); }} />
         <PasskeyManager onUpdated={() => { setUser(u => ({ ...u, passkey_enabled: true, mfa_verified: true })); finishMfa(); }} />
-        <button onClick={() => rootminster.auth.logout()} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">Sign out</button>
+        <button onClick={() => rootminster.auth.logout()} className="w-full text-center text-sm text-muted-foreground hover:text-foreground">Sign Out</button>
       </div>
     </div>
   );
@@ -235,14 +235,14 @@ export default function Layout() {
   if (user?.status === 'disabled') return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background px-6 text-center">
       <Ban size={32} className="mb-5 text-destructive" /><h1 className="text-xl font-semibold">Account Disabled</h1><p className="mt-2 max-w-md text-sm text-muted-foreground">Your account has been disabled. Contact support if you think this is a mistake.</p>
-      <button onClick={() => rootminster.auth.logout()} className="mt-6 text-sm text-muted-foreground underline">Sign out</button>
+      <button onClick={() => rootminster.auth.logout()} className="mt-6 text-sm text-muted-foreground underline">Sign Out</button>
     </div>
   );
 
   if (maintenanceMode && !isAdmin) return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-background px-6 text-center">
       <Wrench size={30} className="mb-5 text-primary" /><h1 className="text-xl font-semibold">Maintenance</h1><p className="mt-2 max-w-md text-sm text-muted-foreground">{maintenanceMessage || 'OpenDomains is temporarily unavailable while maintenance is completed.'}</p>
-      <button onClick={() => rootminster.auth.logout()} className="mt-6 text-sm text-muted-foreground underline">Sign out</button>
+      <button onClick={() => rootminster.auth.logout()} className="mt-6 text-sm text-muted-foreground underline">Sign Out</button>
     </div>
   );
 
@@ -267,14 +267,14 @@ export default function Layout() {
   return (
     <Sheet open={mobileNav} onOpenChange={setMobileNav}>
     <div className="min-h-screen bg-background text-foreground">
-      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <a className="skip-link" href="#main-content">Skip to Main Content</a>
       <TosModal open={showTos} isUpdate={tosIsUpdate} terms={currentTerms} onAccepted={(updatedUser) => { setUser(updatedUser); setShowTos(false); }} />
 
       <div className="flex min-h-screen">
         <ProductSidebar user={user} />
 
         <SheetContent side="left" aria-describedby={undefined} className="mobile-navigation w-[min(86vw,280px)] p-0 [&>button]:hidden">
-          <SheetTitle className="sr-only">Main navigation</SheetTitle>
+          <SheetTitle className="sr-only">Main Navigation</SheetTitle>
           <ProductSidebar user={user} mobile onClose={() => setMobileNav(false)} />
         </SheetContent>
 
@@ -315,7 +315,7 @@ export default function Layout() {
                   <DropdownMenuItem asChild><Link to="/settings"><Settings size={14} className="mr-2" />Settings</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild><Link to="/contact"><CircleHelp size={14} className="mr-2" />Support</Link></DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => rootminster.auth.logout()} className="text-destructive"><LogOut size={14} className="mr-2" />Sign out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => rootminster.auth.logout()} className="text-destructive"><LogOut size={14} className="mr-2" />Sign Out</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -325,10 +325,10 @@ export default function Layout() {
             <div className="border-b-2 border-red-700 bg-red-600 px-4 py-3 text-white shadow-lg sm:px-6 lg:px-7" role="alert">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="flex-1">
-                  <p className="text-sm font-extrabold uppercase tracking-wide">Admin view-as session active</p>
+                  <p className="text-sm font-extrabold uppercase tracking-wide">Admin View-As Session Active</p>
                   <p className="text-xs text-red-50">You are viewing Rootminster as <strong>{user.email}</strong>. Started by {user.impersonation.actor_email}. Reason: {user.impersonation.reason}</p>
                 </div>
-                <Button onClick={stopImpersonation} variant="outline" className="shrink-0 border-white bg-white font-bold text-red-700 hover:bg-red-50">Stop viewing as user</Button>
+                <Button onClick={stopImpersonation} variant="outline" className="shrink-0 border-white bg-white font-bold text-red-700 hover:bg-red-50">Stop Viewing as User</Button>
               </div>
             </div>
           )}

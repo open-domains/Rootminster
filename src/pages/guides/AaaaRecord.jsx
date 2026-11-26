@@ -9,11 +9,11 @@ export default function AaaaRecord() {
       category="DNS Record Types"
       lastUpdated="April 2026"
     >
-      <H2>What is an AAAA Record?</H2>
+      <H2>What Is an AAAA Record?</H2>
       <P>
         An AAAA record (pronounced "quad-A") maps a domain name to an IPv6 address, the next-generation IP addressing system. Just as an A record points a domain to an IPv4 address like <InlineCode>203.0.113.42</InlineCode>, an AAAA record points it to an IPv6 address like <InlineCode>2606:4700:4700::1111</InlineCode>.
       </P>
-      <CodeBlock label="AAAA Record example">
+      <CodeBlock label="AAAA Record Example">
 {`example.com. 3600 IN AAAA 2001:0db8:85a3:0000:0000:8a2e:0370:7334`}
       </CodeBlock>
 
@@ -29,7 +29,7 @@ export default function AaaaRecord() {
 
       <H2>IPv6 Address Format</H2>
       <P>IPv6 addresses are 128-bit numbers written as eight groups of four hexadecimal digits, separated by colons:</P>
-      <CodeBlock label="IPv6 address formats">
+      <CodeBlock label="IPv6 Address Formats">
 {`Full:       2001:0db8:85a3:0000:0000:8a2e:0370:7334
 Compressed: 2001:db8:85a3::8a2e:370:7334  (leading zeros & :: for consecutive zeros)
 Loopback:   ::1  (equivalent to 127.0.0.1 in IPv4)`}
@@ -46,7 +46,7 @@ Loopback:   ::1  (equivalent to 127.0.0.1 in IPv4)`}
       <Note>Browsers implement "Happy Eyeballs" (RFC 6555) — they try IPv6 first and fall back to IPv4 almost instantly if IPv6 fails. This means adding a valid AAAA record never hurts performance.</Note>
 
       <H2>How to Create an AAAA Record</H2>
-      <CodeBlock label="AAAA record setup (Cloudflare-style)">
+      <CodeBlock label="AAAA Record Setup (Cloudflare-Style)">
 {`Type:    AAAA
 Name:    @          (root) or  www  (subdomain)
 Content: 2606:4700:4700::1111

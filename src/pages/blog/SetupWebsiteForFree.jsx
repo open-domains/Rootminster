@@ -38,16 +38,16 @@ export default function SetupWebsiteForFree() {
 
       <H2>Step 1: Build Your Website</H2>
       <P>If you don't have a website yet, here's the quickest path:</P>
-      <H3>For a simple HTML site:</H3>
-      <CodeBlock label="Basic HTML site structure">
+      <H3>For a Simple HTML Site:</H3>
+      <CodeBlock label="Basic HTML Site Structure">
 {`my-website/
 ├── index.html      ← Your homepage
 ├── about.html      ← About page
 ├── style.css       ← Your styles
 └── script.js       ← Optional JavaScript`}
       </CodeBlock>
-      <H3>For a React/Vite app:</H3>
-      <CodeBlock label="Create a Vite React app">
+      <H3>For a React/Vite App:</H3>
+      <CodeBlock label="Create a Vite React App">
 {`npm create vite@latest my-website -- --template react
 cd my-website
 npm install
@@ -71,7 +71,7 @@ npm run build     # Build for deployment (outputs to /dist)`}
       <P>Visit Open Domains and request a subdomain. You'll get a URL like <InlineCode>myproject.is-a.dev</InlineCode>. Then create a CNAME record pointing it to your Netlify/Vercel deployment URL.</P>
 
       <H2>Step 4: Connect the Domain to Your Hosting</H2>
-      <CodeBlock label="Add custom domain on Netlify/Vercel">
+      <CodeBlock label="Add Custom Domain on Netlify/Vercel">
 {`# In Netlify: Site Settings → Domain Management → Add Custom Domain
 # In Vercel: Project Settings → Domains → Add Domain
 

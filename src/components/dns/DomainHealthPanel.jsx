@@ -5,7 +5,7 @@ import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 
 const icons = { pass: CheckCircle2, warning: AlertTriangle, unknown: CircleHelp, info: Info };
-const labels = { pass: 'Passed', warning: 'Needs attention', unknown: 'Incomplete', info: 'Review details' };
+const labels = { pass: 'Passed', warning: 'Needs Attention', unknown: 'Incomplete', info: 'Review Details' };
 export default function DomainHealthPanel({ name, revision }) {
   const { t } = useTranslation();
   const [report, setReport] = useState(null);

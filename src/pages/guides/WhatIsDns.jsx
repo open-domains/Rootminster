@@ -4,7 +4,7 @@ import { H2, P, UL, LI, Note, Tip, CodeBlock, InlineCode, Divider, InArticleAd, 
 export default function WhatIsDns() {
   return (
     <GuideLayout
-      title="What is DNS and How Does It Work?"
+      title="What Is DNS and How Does It Work?"
       description="A complete beginner's guide to the Domain Name System — the internet's phonebook that turns domain names into IP addresses."
       category="DNS Basics"
       lastUpdated="April 2026"
@@ -99,7 +99,7 @@ export default function WhatIsDns() {
 
       <Divider />
       <RelatedArticles articles={[
-        { href: '/guides/dns-basics/what-is-a-nameserver', title: 'What is a Nameserver?', desc: 'Learn how nameservers control your DNS zone' },
+        { href: '/guides/dns-basics/what-is-a-nameserver', title: 'What Is a Nameserver?', desc: 'Learn how nameservers control your DNS zone' },
         { href: '/guides/dns-basics/dns-propagation', title: 'DNS Propagation Explained', desc: 'Why DNS changes take time and how to check them' },
         { href: '/guides/dns-record-types/a-record', title: 'A Records (IPv4)', desc: 'How to point your domain to a server IP address' },
         { href: '/guides/dns-record-types/mx-record', title: 'MX Records', desc: 'Set up email routing for your domain' },

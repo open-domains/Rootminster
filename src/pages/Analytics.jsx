@@ -30,7 +30,7 @@ function metricValue(row) {
   return Number(row?.y ?? row?.count ?? row?.value ?? 0);
 }
 
-function MetricList({ title, rows, empty = 'No data yet' }) {
+function MetricList({ title, rows, empty = 'No Data Yet' }) {
   const max = Math.max(1, ...rows.map(metricValue));
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
@@ -78,7 +78,7 @@ function Setup({ domain, status, onEnable, enabling }) {
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="border-b border-border p-5 sm:p-7">
             <span className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary"><BarChart3 size={20} /></span>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">Enable analytics for {domain}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Enable Analytics for {domain}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Get privacy-friendly traffic analytics directly inside OpenDomains. Analytics is powered by our own Umami instance and is opt-in for each domain.
             </p>
@@ -108,7 +108,7 @@ function Setup({ domain, status, onEnable, enabling }) {
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><Check size={15} /></span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-foreground">Analytics is enabled</h2>
+          <h2 className="text-sm font-semibold text-foreground">Analytics Is Enabled</h2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">Add this script before the closing <code>&lt;/head&gt;</code> tag on your site. Data will start appearing after visitors load a tracked page.</p>
           <div className="mt-4 flex min-w-0 flex-col gap-2 sm:flex-row">
             <pre className="min-w-0 flex-1 overflow-x-auto rounded-md border border-border bg-muted/40 p-3 text-[11px] text-foreground"><code>{snippet}</code></pre>
@@ -228,7 +228,7 @@ export default function Analytics() {
   if (!domains.length) return (
     <div className="mx-auto max-w-xl py-16 text-center">
       <Globe2 size={28} className="mx-auto text-muted-foreground" />
-      <h1 className="mt-4 text-lg font-semibold text-foreground">No domains available</h1>
+      <h1 className="mt-4 text-lg font-semibold text-foreground">No Domains Available</h1>
       <p className="mt-2 text-sm text-muted-foreground">Register a subdomain before enabling analytics.</p>
     </div>
   );
@@ -277,7 +277,7 @@ export default function Analytics() {
             <div className="flex items-center gap-2">
               <Select value={days} onValueChange={async value => { setDays(value); await loadStats(domain, value); }}>
                 <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="1">Last 24 hours</SelectItem><SelectItem value="7">Last 7 days</SelectItem><SelectItem value="30">Last 30 days</SelectItem><SelectItem value="90">Last 90 days</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="1">Last 24 Hours</SelectItem><SelectItem value="7">Last 7 Days</SelectItem><SelectItem value="30">Last 30 Days</SelectItem><SelectItem value="90">Last 90 Days</SelectItem></SelectContent>
               </Select>
               <Button size="sm" variant="outline" onClick={() => loadStats()} disabled={refreshing} className="h-8 gap-2"><RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} /> Refresh</Button>
             </div>
@@ -287,13 +287,13 @@ export default function Analytics() {
             <Stat icon={Users} label="Visitors" value={number(summary.visitors)} />
             <Stat icon={Eye} label="Pageviews" value={number(summary.pageviews)} />
             <Stat icon={Activity} label="Visits" value={number(summary.visits)} />
-            <Stat icon={ArrowUpRight} label="Bounce rate" value={`${bounce}%`} />
-            <Stat icon={Timer} label="Avg. visit" value={duration(summary.totaltime, summary.visits)} sub={`${number(active)} active now`} />
+            <Stat icon={ArrowUpRight} label="Bounce Rate" value={`${bounce}%`} />
+            <Stat icon={Timer} label="Avg. Visit" value={duration(summary.totaltime, summary.visits)} sub={`${number(active)} active now`} />
           </div>
 
           <section className="overflow-hidden rounded-lg border border-border bg-card">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <div><h2 className="text-sm font-semibold text-foreground">Traffic</h2><p className="mt-0.5 text-[11px] text-muted-foreground">Pageviews and visitors over time</p></div>
+              <div><h2 className="text-sm font-semibold text-foreground">Traffic</h2><p className="mt-0.5 text-[11px] text-muted-foreground">Pageviews and Visitors Over Time</p></div>
               <BarChart3 size={16} className="text-muted-foreground" />
             </div>
             <div className="h-[260px] w-full p-3 sm:h-[320px] sm:p-5">
@@ -312,8 +312,8 @@ export default function Analytics() {
           </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <MetricList title="Top pages" rows={stats?.metrics?.pages || []} />
-            <MetricList title="Top referrers" rows={stats?.metrics?.referrers || []} empty="No referrer data yet" />
+            <MetricList title="Top Pages" rows={stats?.metrics?.pages || []} />
+            <MetricList title="Top Referrers" rows={stats?.metrics?.referrers || []} empty="No Referrer Data Yet" />
             <MetricList title="Countries" rows={stats?.metrics?.countries || []} />
             <MetricList title="Devices" rows={stats?.metrics?.devices || []} />
           </div>

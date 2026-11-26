@@ -177,7 +177,7 @@ export default function DnsRecordRow({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem onClick={() => onCopy(record)} className="text-xs cursor-pointer gap-2"><Copy size={13} /> Copy content</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onCopy(record)} className="text-xs cursor-pointer gap-2"><Copy size={13} /> Copy Content</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onDuplicate(record)} className="text-xs cursor-pointer gap-2"><Pencil size={13} /> Duplicate</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => onDelete(record)} className="text-xs cursor-pointer gap-2 text-destructive focus:text-destructive"><Trash2 size={13} /> Delete</DropdownMenuItem>
               </DropdownMenuContent>

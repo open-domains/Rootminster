@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
-export default function DataTable({ columns, data, searchKeys = [], emptyMessage = 'No records found', pageSize = 20, searchPlaceholder = 'Search...', density = 'comfortable' }) {
+export default function DataTable({ columns, data, searchKeys = [], emptyMessage = 'No Records Found', pageSize = 20, searchPlaceholder = 'Search...', density = 'comfortable' }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 

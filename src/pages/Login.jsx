@@ -53,13 +53,13 @@ export default function Login() {
   return (
     <AuthLayout
       icon={LogIn}
-      title="Welcome back"
-      subtitle="Log in to your account"
+      title="Welcome Back"
+      subtitle="Log In to Your Account"
       footer={
         <>
           Don't have an account?{" "}
           <Link to="/register" className="text-primary font-medium hover:underline">
-            Create one
+            Create One
           </Link>
         </>
       }
@@ -72,7 +72,7 @@ export default function Login() {
 
       {typeof window !== 'undefined' && window.PublicKeyCredential && <>
         <Button type="button" variant="outline" className="mb-4 h-12 w-full gap-3 font-medium" onClick={loginWithPasskey} disabled={loading}>
-          <Fingerprint className="h-5 w-5" /> Sign in with a passkey
+          <Fingerprint className="h-5 w-5" /> Sign In with a Passkey
         </Button>
         <div className="relative mb-4"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div><div className="relative flex justify-center text-xs text-muted-foreground"><span className="bg-card px-2">or use another method</span></div></div>
       </>}
@@ -125,7 +125,7 @@ export default function Login() {
           <div className="flex items-center justify-between">
             <Label htmlFor="password">Password</Label>
             <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-              Forgot password?
+              Forgot Password?
             </Link>
           </div>
           <div className="relative">
@@ -149,7 +149,7 @@ export default function Login() {
               Logging in...
             </>
           ) : (
-            "Log in"
+            "Log In"
           )}
         </Button>
       </form>

@@ -460,12 +460,12 @@ export default function SubdomainDnsManager() {
             <p className="mt-1 text-xs text-muted-foreground">Add a record during the 7-day grace period to reactivate it immediately.</p>
           </div>
           <Button onClick={() => openAddRow()} className="h-9 shrink-0 gap-2 px-4">
-            <Plus size={15} /> Add record and reactivate
+            <Plus size={15} /> Add Record and Reactivate
           </Button>
         </div>
       )}
 
-      {loadError && <div role="alert" className="rounded-lg border border-destructive p-4"><p>{loadError}</p><Button variant="outline" onClick={load} className="mt-3">Retry loading records</Button></div>}
+      {loadError && <div role="alert" className="rounded-lg border border-destructive p-4"><p>{loadError}</p><Button variant="outline" onClick={load} className="mt-3">Retry Loading Records</Button></div>}
       {!loading && !loadError && <DomainHealthPanel key={subdomainName} name={subdomainName} revision={records} />}
       {!loading && !loadError && <ShowcasePanel key={`showcase-${subdomainName}`} hostname={subdomainName} />}
 

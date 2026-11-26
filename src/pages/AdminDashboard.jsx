@@ -91,7 +91,7 @@ export default function AdminDashboard() {
         eyebrow={t('adminDashboard.eyebrow')}
         title={user?.role === 'admin' ? t('adminDashboard.titleAdmin') : t('adminDashboard.titleStaff')}
         description={t('adminDashboard.subtitle')}
-        meta={user?.role === 'admin' ? 'Full access' : 'Staff review console'}
+        meta={user?.role === 'admin' ? 'Full Access' : 'Staff Review Console'}
         actions={user?.role === 'admin' && (
           <Button onClick={syncAll} disabled={syncing} variant="outline" className="h-9 gap-2">
             <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />

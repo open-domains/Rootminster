@@ -21,7 +21,7 @@ export default function ThemeToggle({ className, compact = false }) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="appearance-menu w-72 p-2">
-        <DropdownMenuLabel>Site theme</DropdownMenuLabel>
+        <DropdownMenuLabel>Site Theme</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={style} onValueChange={setStyle} aria-label="Site theme">
           {THEMES.map(theme => (
             <DropdownMenuRadioItem key={theme.id} value={theme.id} className="min-h-16 gap-3 pr-3">
@@ -31,7 +31,7 @@ export default function ThemeToggle({ className, compact = false }) {
           ))}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Color mode</DropdownMenuLabel>
+        <DropdownMenuLabel>Color Mode</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={mode} onValueChange={setMode} aria-label="Color mode">
           {[[Sun, 'light', 'Light'], [Moon, 'dark', 'Dark'], [Monitor, 'system', 'System']].map(([Icon, value, label]) => (
             <DropdownMenuRadioItem key={value} value={value} className="min-h-11 gap-2"><Icon size={16} aria-hidden="true" />{label}</DropdownMenuRadioItem>

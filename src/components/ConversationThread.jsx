@@ -44,7 +44,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
   const roleLabel = (role) => role ? role.charAt(0).toUpperCase() + role.slice(1) : '';
   const authorLabel = (comment) => {
     if (!comment) return '';
-    if (!isStaffOrAdmin && (comment.author_role === 'staff' || comment.author_role === 'admin')) return comment.author_name || 'Open Domains staff';
+    if (!isStaffOrAdmin && (comment.author_role === 'staff' || comment.author_role === 'admin')) return comment.author_name || 'Open Domains Staff';
     return comment.author_name || userNames[comment.author_email] || comment.author_email || roleLabel(comment.author_role);
   };
 

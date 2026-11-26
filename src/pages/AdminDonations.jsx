@@ -53,7 +53,7 @@ export default function AdminDonations() {const { t } = useTranslation();
         eyebrow={t("operational.admin_donations.funding_6ff171")}
         title={t("operational.admin_donations.donations_a2e2ff")}
         description={t("operational.admin_donations.track_supporter_payments_unlocks_and_strip_0c801d")}
-        meta="Stripe + supporter benefits"
+        meta="Stripe + Supporter Benefits"
       />
 
       <AdminStatsGrid stats={stats} />

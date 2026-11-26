@@ -51,7 +51,7 @@ export default function GuidesIndex() {
                 to={`/guides/${section.slug}/${section.items[0].slug}`}
                 className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
               >
-                Start reading →
+                Start Reading →
               </Link>
             </div>
           ))}

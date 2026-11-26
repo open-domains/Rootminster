@@ -61,7 +61,7 @@ export default function TwoFactorChallenge({ onVerified, onLogout, hasPasskey = 
         </div>
 
         <div className="space-y-3">
-          {hasPasskey && window.PublicKeyCredential && <Button variant="outline" onClick={verifyPasskey} disabled={loading} className="h-11 w-full gap-2 border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20"><Fingerprint size={17} /> Use a passkey</Button>}
+          {hasPasskey && window.PublicKeyCredential && <Button variant="outline" onClick={verifyPasskey} disabled={loading} className="h-11 w-full gap-2 border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20"><Fingerprint size={17} /> Use a Passkey</Button>}
           {hasPasskey && hasTotp && window.PublicKeyCredential && <div className="flex items-center gap-3 text-[11px] uppercase tracking-wider text-slate-600"><span className="h-px flex-1 bg-slate-800" />or use a code<span className="h-px flex-1 bg-slate-800" /></div>}
           {hasTotp && <Input
             value={code}
@@ -88,7 +88,7 @@ export default function TwoFactorChallenge({ onVerified, onLogout, hasPasskey = 
             className="mt-0.5 border-slate-600 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
           />
           <span className="text-slate-300 text-sm leading-snug">
-            Trust this browser for 30 days
+            Trust This Browser for 30 Days
             <span className="block text-slate-500 text-xs mt-0.5">You won't be asked for a code on this device until the trust expires or is revoked.</span>
           </span>
         </label>}
@@ -97,7 +97,7 @@ export default function TwoFactorChallenge({ onVerified, onLogout, hasPasskey = 
           onClick={onLogout}
           className="w-full text-slate-500 hover:text-slate-300 text-sm text-center"
         >
-          Sign out
+          Sign Out
         </button>
       </div>
     </div>

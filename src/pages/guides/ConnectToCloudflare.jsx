@@ -73,7 +73,7 @@ export default function ConnectToCloudflare() {
       <Divider />
       <RelatedArticles articles={[
         { href: '/guides/hosting-providers/cloudflare-pages', title: 'Cloudflare Pages', desc: 'Host websites directly on Cloudflare' },
-        { href: '/guides/dns-basics/what-is-a-nameserver', title: 'What is a Nameserver?', desc: 'How nameservers work' },
+        { href: '/guides/dns-basics/what-is-a-nameserver', title: 'What Is a Nameserver?', desc: 'How nameservers work' },
         { href: '/guides/troubleshooting/cloudflare-proxy-problems', title: 'Cloudflare Proxy Problems', desc: 'Fix common proxy-related issues' },
       ]} />
     </GuideLayout>

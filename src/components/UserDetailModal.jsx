@@ -78,9 +78,9 @@ export default function UserDetailModal({ user, subdomains, subdomainsLoading, o
         </div>
 
         {user.role === 'user' && user.status === 'active' && <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
-          <div className="mb-3"><p className="flex items-center gap-2 text-sm font-semibold text-amber-300"><Eye size={15} /> View as this user</p><p className="mt-1 text-xs text-slate-400">Actions will use the user’s permissions. The start, stop, administrator, target, reason, IP and browser are written to the audit log.</p></div>
+          <div className="mb-3"><p className="flex items-center gap-2 text-sm font-semibold text-amber-300"><Eye size={15} /> View as This User</p><p className="mt-1 text-xs text-slate-400">Actions will use the user’s permissions. The start, stop, administrator, target, reason, IP and browser are written to the audit log.</p></div>
           <textarea value={impersonationReason} onChange={(event) => setImpersonationReason(event.target.value)} maxLength={500} rows={3} placeholder="Required reason for audit trail…" className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
-          <div className="mt-3 flex justify-end"><Button onClick={viewAsUser} disabled={loading || impersonationReason.trim().length < 10} className="gap-2 bg-amber-600 text-white hover:bg-amber-700"><Eye size={14} /> Start view-as session</Button></div>
+          <div className="mt-3 flex justify-end"><Button onClick={viewAsUser} disabled={loading || impersonationReason.trim().length < 10} className="gap-2 bg-amber-600 text-white hover:bg-amber-700"><Eye size={14} /> Start View-As Session</Button></div>
         </div>}
 
         <div>

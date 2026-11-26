@@ -35,7 +35,7 @@ export default function CloudflareProTips() {
 
       <H2>3. Page Rules (Redirects and Overrides)</H2>
       <P>Page Rules let you override settings and create redirects based on URL patterns. Free accounts get 3 rules — use them wisely:</P>
-      <CodeBlock label="Page Rule examples">
+      <CodeBlock label="Page Rule Examples">
 {`# Redirect www to non-www
 URL: www.yourdomain.com/*
 Setting: Forwarding URL (301) → https://yourdomain.com/$1

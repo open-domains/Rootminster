@@ -62,7 +62,7 @@ export default function AdminAuditLogs() {const { t } = useTranslation();
         eyebrow={t("operational.admin_audit_logs.security_compliance_081f97")}
         title={t("operational.admin_audit_logs.audit_logs_676e58")}
         description={t("operational.admin_audit_logs.trace_administrative_actions_system_events_9de7b0")}
-        meta={`${logs.length} events loaded`}
+        meta={`${logs.length} Events Loaded`}
       />
       {loading ?
       <AdminLoading label="Loading audit events…" /> :

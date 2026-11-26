@@ -68,7 +68,7 @@ function AbuseReportRow({ report, onUpdated }) {const { t } = useTranslation();
             </span>
             {Number(report.report_count) > 1 &&
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400">
-                {report.report_count} reports
+                {report.report_count} Reports
               </span>
             }
           </div>
@@ -97,7 +97,7 @@ function AbuseReportRow({ report, onUpdated }) {const { t } = useTranslation();
 
           {Array.isArray(report.merged_reports) && report.merged_reports.length > 0 &&
         <div>
-              <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide mb-2">Later reports about this site ({report.merged_reports.length})</p>
+              <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide mb-2">Later Reports About This Site ({report.merged_reports.length})</p>
               <ul className="space-y-2">
                 {[...report.merged_reports].reverse().map((item, index) =>
             <li key={`${item.submitted_at}-${index}`} className="rounded-md border border-border bg-card px-3 py-2">
@@ -194,7 +194,7 @@ export default function AdminAbuseReports() {const { t } = useTranslation();
         </div>
         <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
           <span className={`h-2 w-2 rounded-full ${(counts.open || 0) > 0 ? 'bg-destructive' : 'bg-emerald-400'}`} />
-          {(counts.open || 0) > 0 ? `${counts.open} open case${counts.open === 1 ? '' : 's'}` : 'Queue clear'}
+          {(counts.open || 0) > 0 ? `${counts.open} Open Case${counts.open === 1 ? '' : 's'}` : 'Queue Clear'}
         </div>
       </div>
 

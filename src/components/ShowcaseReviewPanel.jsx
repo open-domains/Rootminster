@@ -33,7 +33,7 @@ export default function ShowcaseReviewPanel() {
   if (!pending.length) return null;
   return (
     <section className="rounded-lg border border-border bg-card p-4">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Sparkles size={15} /> Showcase submissions ({pending.length})</h2>
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Sparkles size={15} /> Showcase Submissions ({pending.length})</h2>
       <p className="mt-1 text-xs text-muted-foreground">Approved listings appear on the public showcase page. Check the site itself before approving: the platform vouches for this page.</p>
       <ul className="mt-3 space-y-3">
         {pending.map((item) => (

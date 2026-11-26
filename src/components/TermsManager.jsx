@@ -11,7 +11,7 @@ import TermsContent from '@/components/TermsContent';
 const emptyDraft = { version: '', title: 'Terms of Service', summary: '', content: '' };
 
 function displayDate(value) {
-  if (!value) return 'Not published';
+  if (!value) return 'Not Published';
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
@@ -104,7 +104,7 @@ export default function TermsManager() {
       <aside className="rounded-lg border border-border bg-card p-4">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Version history</h2>
+            <h2 className="text-sm font-semibold text-foreground">Version History</h2>
             <p className="text-xs text-muted-foreground">Published versions cannot be edited.</p>
           </div>
           <Button size="sm" onClick={startDraft} className="gap-1.5"><FilePlus2 size={13} /> New</Button>
@@ -135,26 +135,26 @@ export default function TermsManager() {
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary"><FileClock size={16} /></div>
               <div>
-                <h2 className="text-sm font-semibold text-foreground">{selected ? `${selected.status === 'draft' ? 'Edit' : 'View'} version ${selected.version}` : 'Create a Terms draft'}</h2>
+                <h2 className="text-sm font-semibold text-foreground">{selected ? `${selected.status === 'draft' ? 'Edit' : 'View'} Version ${selected.version}` : 'Create a Terms Draft'}</h2>
                 <p className="text-xs text-muted-foreground">Use Markdown for headings, lists and links.</p>
               </div>
             </div>
-            {selected?.status === 'draft' && <Button variant="destructive" size="sm" onClick={remove} disabled={saving} className="gap-1.5"><Trash2 size={13} /> Delete draft</Button>}
+            {selected?.status === 'draft' && <Button variant="destructive" size="sm" onClick={remove} disabled={saving} className="gap-1.5"><Trash2 size={13} /> Delete Draft</Button>}
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5"><Label htmlFor="terms-version">Version</Label><Input id="terms-version" value={draft.version} onChange={(event) => setDraft((state) => ({ ...state, version: event.target.value }))} placeholder="2026-09" disabled={!editable} /></div>
             <div className="space-y-1.5"><Label htmlFor="terms-title">Title</Label><Input id="terms-title" value={draft.title} onChange={(event) => setDraft((state) => ({ ...state, title: event.target.value }))} disabled={!editable} /></div>
-            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="terms-summary">Acceptance summary</Label><Textarea id="terms-summary" value={draft.summary} onChange={(event) => setDraft((state) => ({ ...state, summary: event.target.value }))} placeholder="Briefly explain the important rules or what changed." disabled={!editable} className="min-h-20" /></div>
-            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="terms-content">Terms content</Label><Textarea id="terms-content" value={draft.content} onChange={(event) => setDraft((state) => ({ ...state, content: event.target.value }))} placeholder={'## 1. Acceptance\n\nBy using the service...'} disabled={!editable} className="min-h-[420px] font-mono text-xs" /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="terms-summary">Acceptance Summary</Label><Textarea id="terms-summary" value={draft.summary} onChange={(event) => setDraft((state) => ({ ...state, summary: event.target.value }))} placeholder="Briefly explain the important rules or what changed." disabled={!editable} className="min-h-20" /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="terms-content">Terms Content</Label><Textarea id="terms-content" value={draft.content} onChange={(event) => setDraft((state) => ({ ...state, content: event.target.value }))} placeholder={'## 1. Acceptance\n\nBy using the service...'} disabled={!editable} className="min-h-[420px] font-mono text-xs" /></div>
           </div>
 
-          {editable && <div className="mt-4 flex justify-end"><Button onClick={save} disabled={saving} className="gap-2">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save draft</Button></div>}
+          {editable && <div className="mt-4 flex justify-end"><Button onClick={save} disabled={saving} className="gap-2">{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Draft</Button></div>}
         </div>
 
         {selected?.status === 'draft' && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-5">
-            <h3 className="text-sm font-semibold text-foreground">Publish this version</h3>
+            <h3 className="text-sm font-semibold text-foreground">Publish This Version</h3>
             <p className="mt-1 text-xs text-muted-foreground">Publishing makes this the current Terms, locks its content, and asks every user who accepted an older version to accept again.</p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <Input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={`Type ${selected.version} to confirm`} />

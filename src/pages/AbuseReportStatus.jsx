@@ -6,7 +6,7 @@ import { rootminster } from '@/api/rootminsterClient';
 
 const STEPS = [
   { status: 'open', label: 'Received', Icon: Clock },
-  { status: 'investigating', label: 'Under investigation', Icon: Search },
+  { status: 'investigating', label: 'Under Investigation', Icon: Search },
   { status: 'closed', label: 'Closed', Icon: CheckCircle2 },
 ];
 
@@ -39,7 +39,7 @@ export default function AbuseReportStatus() {
             <Shield size={22} className="text-red-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Abuse report status</h1>
+            <h1 className="text-2xl font-bold text-white">Abuse Report Status</h1>
             <p className="text-slate-400 text-sm">This private page shows where your report is.</p>
           </div>
         </div>
@@ -47,17 +47,17 @@ export default function AbuseReportStatus() {
         {error && (
           <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 p-6 text-sm text-slate-300">
             <p role="alert">{error}</p>
-            <Link to="/report-abuse" className="mt-3 inline-block text-emerald-300 hover:underline">Submit a new report</Link>
+            <Link to="/report-abuse" className="mt-3 inline-block text-emerald-300 hover:underline">Submit a New Report</Link>
           </div>
         )}
         {!error && !report && <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 size={14} className="animate-spin" /> Loading…</div>}
         {report && (
           <div className="rounded-xl border border-slate-700/50 bg-slate-800/50 p-6 space-y-6">
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-xs text-slate-500">Reported site</dt><dd className="mt-0.5 break-all font-mono text-white">{report.subdomain}</dd></div>
+              <div><dt className="text-xs text-slate-500">Reported Site</dt><dd className="mt-0.5 break-all font-mono text-white">{report.subdomain}</dd></div>
               <div><dt className="text-xs text-slate-500">Type</dt><dd className="mt-0.5 text-white">{report.abuse_type}</dd></div>
               {report.submitted_at && <div><dt className="text-xs text-slate-500">Submitted</dt><dd className="mt-0.5 text-white">{new Date(report.submitted_at).toLocaleString()}</dd></div>}
-              {report.updated_at && <div><dt className="text-xs text-slate-500">Last update</dt><dd className="mt-0.5 text-white">{new Date(report.updated_at).toLocaleString()}</dd></div>}
+              {report.updated_at && <div><dt className="text-xs text-slate-500">Last Update</dt><dd className="mt-0.5 text-white">{new Date(report.updated_at).toLocaleString()}</dd></div>}
             </dl>
             <ol className="space-y-3" aria-label="Report progress">
               {STEPS.map((step, index) => {

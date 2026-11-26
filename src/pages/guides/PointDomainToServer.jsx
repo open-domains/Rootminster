@@ -24,7 +24,7 @@ export default function PointDomainToServer() {
 
       <H2>Step 1: Find Your Server's IP Address</H2>
       <P>Log into your VPS or cloud provider (e.g., DigitalOcean, Linode, AWS EC2) and find the public IP address. It will look something like <InlineCode>203.0.113.42</InlineCode>.</P>
-      <CodeBlock label="Finding your server IP (SSH)">
+      <CodeBlock label="Finding Your Server IP (SSH)">
 {`# Check your server's public IP
 curl ifconfig.me
 # or
@@ -33,7 +33,7 @@ curl ipinfo.io/ip`}
 
       <H2>Step 2: Create an A Record in DNS</H2>
       <P>Log into your DNS provider (Cloudflare, Namecheap, GoDaddy, etc.) and create an A record:</P>
-      <CodeBlock label="DNS A record setup">
+      <CodeBlock label="DNS A Record Setup">
 {`Type:    A
 Name:    @        (for yourdomain.com)
 Value:   203.0.113.42
@@ -50,7 +50,7 @@ TTL:     3600`}
 
       <H2>Step 3: Wait for DNS Propagation</H2>
       <P>DNS changes take time. With a 3600 TTL, expect changes to propagate globally within 1–4 hours. You can check progress with:</P>
-      <CodeBlock label="Check DNS propagation">
+      <CodeBlock label="Check DNS Propagation">
 {`# Command line check
 dig yourdomain.com A +short
 
@@ -61,8 +61,8 @@ dig yourdomain.com A +short
 
       <H2>Step 4: Configure Your Web Server</H2>
       <P>Once DNS resolves to your server, make sure your web server is configured to respond to your domain:</P>
-      <H3>NGINX configuration</H3>
-      <CodeBlock label="NGINX server block">
+      <H3>NGINX Configuration</H3>
+      <CodeBlock label="NGINX Server Block">
 {`server {
     listen 80;
     listen [::]:80;
@@ -76,7 +76,7 @@ dig yourdomain.com A +short
     }
 }`}
       </CodeBlock>
-      <H3>Apache configuration</H3>
+      <H3>Apache Configuration</H3>
       <CodeBlock label="Apache VirtualHost">
 {`<VirtualHost *:80>
     ServerName yourdomain.com

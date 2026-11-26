@@ -21,7 +21,7 @@ export default function PageNotFound() {
         </p>
 
         <h1 className="text-2xl sm:text-3xl font-bold text-white mt-2 mb-3">
-          Page not found
+          Page Not Found
         </h1>
         <p className="text-slate-400 leading-relaxed mb-8">
           The page{' '}
@@ -47,7 +47,7 @@ export default function PageNotFound() {
 
         {/* Quick links */}
         <div className="border-t border-slate-800 pt-8">
-          <p className="text-slate-500 text-xs uppercase tracking-wider mb-4">Popular pages</p>
+          <p className="text-slate-500 text-xs uppercase tracking-wider mb-4">Popular Pages</p>
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {[
               { to: '/how-it-works', label: 'How It Works' },

@@ -66,7 +66,7 @@ export default function LinkedAccounts({ linkedProvider, linkError }) {
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="border-b border-border px-5 py-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Link2 size={14} /> Linked accounts</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Link2 size={14} /> Linked Accounts</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">Sign in with any of these accounts, even if its email is different from your Rootminster email. Each account can only be linked to one user.</p>
       </div>
       <div className="space-y-2 p-5">
@@ -85,7 +85,7 @@ export default function LinkedAccounts({ linkedProvider, linkError }) {
                   <p className="truncate text-[11px] text-muted-foreground">
                     {item.linked
                       ? [item.linked.username || item.linked.email, `Linked ${new Date(item.linked.linked_at).toLocaleDateString()}`].filter(Boolean).join(' · ')
-                      : 'Not linked'}
+                      : 'Not Linked'}
                   </p>
                 </div>
               </div>

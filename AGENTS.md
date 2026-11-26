@@ -31,6 +31,8 @@ Use Node.js 24 and PostgreSQL 17. Run `npm ci`, copy `.env.example` to `.env`, a
 
 Use ES modules, two-space indentation, and surrounding quote/semicolon conventions. Name React components in PascalCase (`ThemeToggle.jsx`), hooks with `use`, and utility modules descriptively (`cookie-consent.js`). Prefer `@/` imports within the frontend. Reuse existing Radix/Tailwind components and semantic color tokens. ESLint checks React hooks and unused imports; avoid unrelated formatting changes.
 
+Write English UI labels in Title Case: buttons, page/card/dialog titles, eyebrows, short subtitles, tabs, navigation items, form labels, table headers, badges and empty-state headings (`Cookie Settings`, `Get Started`, `Add Domain`). Keep minor words lowercase unless first or last (a, an, the, and, but, or, for, as, at, by, in, of, on, per, to, via, from, into, with) and preserve technical casing (DNS, API, TTL, GitHub). Sentences, help text, toasts, error messages, placeholders and aria-labels stay in sentence case. Apply this to `src/i18n/locales/en.json` and hardcoded strings; other locales follow their own conventions.
+
 ## Testing Guidelines
 
 Tests use `node:test` and `node:assert/strict`; name files `*.test.js`. Add focused regressions for changed behavior, especially authorization, DNS validation, and persistence. No coverage threshold is configured. Check affected UI at desktop/mobile sizes and in both themes and color modes.

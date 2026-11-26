@@ -39,9 +39,9 @@ export default function Settings() {
   const sections = [
     { id: 'profile', label: t('settings.navProfile'), icon: User },
     { id: 'security', label: t('settings.navSecurity'), icon: Shield },
-    { id: 'accounts', label: 'Linked accounts', icon: Link2 },
+    { id: 'accounts', label: 'Linked Accounts', icon: Link2 },
     { id: 'api', label: t('settings.navApi'), icon: KeyRound },
-    { id: 'privacy', label: 'Privacy & deletion', icon: Trash2 },
+    { id: 'privacy', label: 'Privacy & Deletion', icon: Trash2 },
     ...(publicConfig.features.donations ? [{ id: 'support', label: t('settings.navSupport'), icon: HeartHandshake }] : []),
   ];
 
@@ -266,20 +266,20 @@ export default function Settings() {
             <>
               <section className="overflow-hidden rounded-lg border border-border bg-card">
                 <div className="border-b border-border px-5 py-4">
-                  <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Download size={14} /> Export my data</h2>
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Download size={14} /> Export My Data</h2>
                   <p className="mt-0.5 text-xs text-muted-foreground">Download a JSON copy of your account, subdomains, DNS records, requests, comments, donations, abuse reports, API token metadata and trusted-device metadata.</p>
                 </div>
                 <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground">Secret values such as password hashes, API token hashes and trusted-device tokens are never included.</p>
                   <Button variant="outline" onClick={exportMyData} disabled={exportingData} className="shrink-0">
-                    <Download size={14} /> {exportingData ? 'Preparing export…' : 'Export my data'}
+                    <Download size={14} /> {exportingData ? 'Preparing export…' : 'Export My Data'}
                   </Button>
                 </div>
               </section>
 
               <section className="overflow-hidden rounded-lg border border-destructive/30 bg-card">
               <div className="border-b border-border px-5 py-4">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Trash2 size={14} className="text-destructive" /> Account deletion</h2>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Trash2 size={14} className="text-destructive" /> Account Deletion</h2>
                 <p className="mt-0.5 text-xs text-muted-foreground">Accounts with no active subdomains are deleted automatically after confirmation. Accounts with subdomains require staff review so you can cancel mistakes and staff can review legal or abuse concerns.</p>
               </div>
               <div className="space-y-4 p-5">
@@ -288,7 +288,7 @@ export default function Settings() {
                     <div className="rounded-lg border border-border bg-muted/30 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="text-sm font-medium text-foreground">Deletion request: {deletionView.status}</p>
+                          <p className="text-sm font-medium text-foreground">Deletion Request: {deletionView.status}</p>
                           <p className="mt-1 text-xs text-muted-foreground">Submitted {deletionView.requestedAt}</p>
                         </div>
                         <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400">{deletionView.status}</span>
@@ -296,7 +296,7 @@ export default function Settings() {
                       {deletionView.decisionReason && <p className="mt-3 text-xs text-muted-foreground"><strong>Decision note:</strong> {deletionView.decisionReason}</p>}
                     </div>
                     <div className="flex justify-end">
-                      <Button variant="outline" disabled={deletionBusy} onClick={cancelDeletionRequest}>Cancel request</Button>
+                      <Button variant="outline" disabled={deletionBusy} onClick={cancelDeletionRequest}>Cancel Request</Button>
                     </div>
                   </>
                 ) : (
@@ -306,7 +306,7 @@ export default function Settings() {
                       <p className="mt-1">Your account and associated managed Rootminster data, including your subdomains and DNS records, will be permanently deleted. The decision is irreversible.</p>
                     </div>
                     <div>
-                      <Label className="text-xs">Reason (optional)</Label>
+                      <Label className="text-xs">Reason (Optional)</Label>
                       <textarea
                         value={deletionReason}
                         onChange={(e) => setDeletionReason(e.target.value)}
@@ -317,7 +317,7 @@ export default function Settings() {
                       />
                     </div>
                     <div className="flex justify-end">
-                      <Button variant="destructive" disabled={deletionBusy} onClick={submitDeletionRequest}>Request account deletion</Button>
+                      <Button variant="destructive" disabled={deletionBusy} onClick={submitDeletionRequest}>Request Account Deletion</Button>
                     </div>
                   </>
                 )}

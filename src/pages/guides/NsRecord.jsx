@@ -9,11 +9,11 @@ export default function NsRecord() {
       category="DNS Record Types"
       lastUpdated="April 2026"
     >
-      <H2>What is an NS Record?</H2>
+      <H2>What Is an NS Record?</H2>
       <P>
         An NS (Nameserver) record specifies which nameservers are authoritative for a domain or subdomain. In other words, NS records tell the DNS system: "go ask this server for records about this domain." Every domain on the internet has at least two NS records for redundancy.
       </P>
-      <CodeBlock label="NS Record example">
+      <CodeBlock label="NS Record Example">
 {`example.com. 86400 IN NS ns1.cloudflare.com.
 example.com. 86400 IN NS ns2.cloudflare.com.`}
       </CodeBlock>
@@ -30,7 +30,7 @@ example.com. 86400 IN NS ns2.cloudflare.com.`}
 
       <H2>Subdomain Delegation Example</H2>
       <P>Imagine your main domain uses Cloudflare, but you want your <InlineCode>dev</InlineCode> subdomain to be managed separately by your development team:</P>
-      <CodeBlock label="Delegating a subdomain">
+      <CodeBlock label="Delegating a Subdomain">
 {`# In your main zone (Cloudflare), add NS records for the subdomain:
 dev.example.com. 3600 NS ns1.devteam-dns.com.
 dev.example.com. 3600 NS ns2.devteam-dns.com.
@@ -52,7 +52,7 @@ dev.example.com. 3600 NS ns2.devteam-dns.com.
 
       <Divider />
       <RelatedArticles articles={[
-        { href: '/guides/dns-basics/what-is-a-nameserver', title: 'What is a Nameserver?', desc: 'Deep dive on nameservers' },
+        { href: '/guides/dns-basics/what-is-a-nameserver', title: 'What Is a Nameserver?', desc: 'Deep dive on nameservers' },
         { href: '/guides/domain-management/connect-to-cloudflare', title: 'Connect to Cloudflare', desc: 'Change your NS records to Cloudflare' },
         { href: '/guides/dns-basics/dns-propagation', title: 'DNS Propagation', desc: 'Why NS changes take time' },
       ]} />

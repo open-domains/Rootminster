@@ -290,7 +290,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
 
             {requestRows.some((row) => row.threat_intel_matches?.length) && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
-                <p className="flex items-center gap-2 text-sm font-medium text-foreground"><ShieldAlert size={15} className="text-destructive" /> Threat intelligence match</p>
+                <p className="flex items-center gap-2 text-sm font-medium text-foreground"><ShieldAlert size={15} className="text-destructive" /> Threat Intelligence Match</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
                   {requestRows.flatMap((row) => row.threat_intel_matches || []).map((match, index) => <li key={`${match.source}-${match.indicator}-${index}`} className="break-words">{match.detail}</li>)}
                 </ul>
@@ -302,30 +302,30 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
               <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
                 <div className="flex items-center gap-2">
                   <ShieldAlert size={15} className="text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Observer automated screening</span>
+                  <span className="text-sm font-medium text-foreground">Observer Automated Screening</span>
                 </div>
                 <SafetyBadge verdict={observerVerdict} score={observerScore} />
               </div>
               <div className="space-y-4 p-4">
                 <div className="grid gap-2 text-xs sm:grid-cols-3">
-                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Observer status</p><p className="mt-1 font-semibold capitalize text-foreground">{observerStatus}</p></div>
+                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Observer Status</p><p className="mt-1 font-semibold capitalize text-foreground">{observerStatus}</p></div>
                   <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Severity</p><p className="mt-1 font-mono capitalize text-foreground">{observerSeverity || '—'}</p></div>
                   <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Findings</p><p className="mt-1 text-foreground">{observerFindingCount} · {observerScore}/100</p></div>
                 </div>
                 <p className="text-xs text-muted-foreground">Observer is triggered automatically for every new request. Flagged requests list the matched policy/category below, with screenshot evidence when Observer provides it.</p>
                 {observerFindings.length > 0 ? (
                   <div className="space-y-2 border-t border-border pt-4">
-                    <p className="text-xs font-medium text-foreground">Flagged against</p>
+                    <p className="text-xs font-medium text-foreground">Flagged Against</p>
                     {observerFindings.map((finding) => (
                       <div key={finding.id || `${finding.finding_type}-${finding.observed_at}`} className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-xs">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-medium text-foreground">{finding.policy_section || finding.finding_type || 'Observer policy finding'}</p>
+                          <p className="font-medium text-foreground">{finding.policy_section || finding.finding_type || 'Observer Policy Finding'}</p>
                           <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-mono text-amber-700 dark:text-amber-300">{finding.severity || 'unknown'} · {Number(finding.score) || 0}</span>
                         </div>
                         {finding.evidence && <p className="mt-2 whitespace-pre-line break-words leading-relaxed text-muted-foreground">{readableEvidence(finding.evidence)}</p>}
                         {finding.screenshot_url && (
                           <button type="button" onClick={() => openExternal(finding.screenshot_url)} className="mt-2 text-primary underline hover:opacity-80">
-                            Open Observer screenshot
+                            Open Observer Screenshot
                           </button>
                         )}
                       </div>
@@ -336,7 +336,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
                 )}
                 <div className="border-t border-border pt-4">
                   <Button type="button" size="sm" variant="outline" disabled={safetyLoading} onClick={handleObserverRerun} className="gap-2">
-                    {safetyLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-run Observer scan
+                    {safetyLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-Run Observer Scan
                   </Button>
                 </div>
               </div>
@@ -390,7 +390,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
             />
 
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-200">
-              <p className="font-medium">Required review step</p>
+              <p className="font-medium">Required Review Step</p>
               <p className="mt-1">Approval and rejection controls are enabled only after staff scroll through the request details, DNS records, project description, Observer screening and conversation context.</p>
             </div>
 

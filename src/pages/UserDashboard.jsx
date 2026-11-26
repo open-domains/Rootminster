@@ -220,9 +220,9 @@ export default function UserDashboard() {
   if (loadError) return (
     <div className="mx-auto max-w-md rounded-lg border border-destructive/30 bg-card p-6 text-center">
       <AlertTriangle size={24} className="mx-auto mb-3 text-destructive" />
-      <h1 className="text-base font-semibold text-foreground">Dashboard unavailable</h1>
+      <h1 className="text-base font-semibold text-foreground">Dashboard Unavailable</h1>
       <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
-      <Button className="mt-4" onClick={load}>Try again</Button>
+      <Button className="mt-4" onClick={load}>Try Again</Button>
     </div>
   );
 
@@ -273,7 +273,7 @@ export default function UserDashboard() {
     ...requests.map(r => ({
       id: 'q' + r.id, date: r.created_date, type: 'request', status: r.status,
       label: `Request for ${r.subdomain}.${r.root_domain}`,
-      sub: r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : r.status === 'needs_info' ? 'Needs your reply' : 'Pending review',
+      sub: r.status === 'approved' ? 'Approved' : r.status === 'rejected' ? 'Rejected' : r.status === 'needs_info' ? 'Needs Your Reply' : 'Pending Review',
       icon: r.status === 'needs_info' ? AlertTriangle : r.status === 'approved' ? CheckCircle2 : Activity,
     })),
   ].sort((a, b) => (safeDate(b.date)?.getTime() || 0) - (safeDate(a.date)?.getTime() || 0)).slice(0, 7);
@@ -303,7 +303,7 @@ export default function UserDashboard() {
             <Github size={14} /> Migrate
           </Button>
           <Button onClick={() => setShowModal(true)} className="h-9 gap-2 px-4">
-            <Plus size={15} /> Add domain
+            <Plus size={15} /> Add Domain
           </Button>
         </div>
       </div>
@@ -328,7 +328,7 @@ export default function UserDashboard() {
           { label: 'Domains', value: groupedRecords.length, detail: 'registered' },
           { label: 'Approved', value: approved, detail: 'requests' },
           { label: 'Pending', value: pending, detail: 'under review' },
-          { label: 'Needs attention', value: needsInfo, detail: needsInfo ? 'reply required' : 'all clear' },
+          { label: 'Needs Attention', value: needsInfo, detail: needsInfo ? 'reply required' : 'all clear' },
         ].map((stat, index) => (
           <div key={stat.label} className={cn('px-4 py-3.5', index > 0 && 'border-l border-border')}>
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{stat.label}</p>
@@ -455,7 +455,7 @@ export default function UserDashboard() {
             </Card>
 
             {/* Activity Feed (timeline) */}
-            <Card icon={Activity} title="Activity" description="Recent account activity">
+            <Card icon={Activity} title="Activity" description="Recent Account Activity">
               <div className="p-4">
                 {activity.length === 0 ? (
                   <p className="text-muted-foreground text-sm text-center py-6">No activity yet.</p>
@@ -485,7 +485,7 @@ export default function UserDashboard() {
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <span className={cn('w-2.5 h-2.5 rounded-full', hasIssues ? 'bg-accent' : 'bg-emerald-400')} />
-                  <p className="text-sm font-medium text-foreground">{hasIssues ? 'Attention needed' : 'All Systems Operational'}</p>
+                  <p className="text-sm font-medium text-foreground">{hasIssues ? 'Attention Needed' : 'All Systems Operational'}</p>
                 </div>
                 <div className="space-y-2 pt-1">
                   {[

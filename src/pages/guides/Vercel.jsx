@@ -9,7 +9,7 @@ export default function Vercel() {
       category="Hosting Providers"
       lastUpdated="April 2026"
     >
-      <H2>What is Vercel?</H2>
+      <H2>What Is Vercel?</H2>
       <P>Vercel is a cloud platform for deploying frontend applications and serverless functions. It was built by the creators of Next.js and has first-class support for it, but also works excellently with React, Vue, Svelte, Nuxt, SvelteKit, Astro, and more.</P>
       <H3>Pros</H3>
       <UL>
@@ -51,14 +51,14 @@ vercel
 
       <H2>DNS Configuration for Custom Domain</H2>
       <P>Vercel gives you two options for custom domain DNS:</P>
-      <H3>Option 1: CNAME (Recommended for subdomains)</H3>
-      <CodeBlock label="CNAME record for Vercel">
+      <H3>Option 1: CNAME (Recommended for Subdomains)</H3>
+      <CodeBlock label="CNAME Record for Vercel">
 {`Type:  CNAME
 Name:  www
 Value: cname.vercel-dns.com.`}
       </CodeBlock>
-      <H3>Option 2: A Record (For root domain)</H3>
-      <CodeBlock label="A record for Vercel root domain">
+      <H3>Option 2: A Record (For Root Domain)</H3>
+      <CodeBlock label="A Record for Vercel Root Domain">
 {`Type:  A
 Name:  @
 Value: 76.76.21.21`}

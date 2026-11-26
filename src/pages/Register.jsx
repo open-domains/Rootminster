@@ -58,7 +58,7 @@ export default function Register() {
     return (
       <AuthLayout
         icon={Mail}
-        title="Verify your email"
+        title="Verify Your Email"
         subtitle={`We sent a verification link to ${email}`}
       >
         {error && (
@@ -67,7 +67,7 @@ export default function Register() {
           </div>
         )}
         <p className="text-sm text-muted-foreground text-center mb-6">Open the email and click the button inside. The link is single-use and expires after 24 hours.</p>
-        <Button asChild className="w-full h-12 font-medium"><Link to="/login">Back to login</Link></Button>
+        <Button asChild className="w-full h-12 font-medium"><Link to="/login">Back to Login</Link></Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
           Didn't receive the email?{" "}
           <button onClick={handleResend} className="text-primary font-medium hover:underline">
@@ -81,13 +81,13 @@ export default function Register() {
   return (
     <AuthLayout
       icon={UserPlus}
-      title="Create your account"
-      subtitle="Sign up to get started"
+      title="Create Your Account"
+      subtitle="Sign Up to Get Started"
       footer={
         <>
           Already have an account?{" "}
           <Link to="/login" className="text-primary font-medium hover:underline">
-            Log in
+            Log In
           </Link>
         </>
       }
@@ -126,7 +126,7 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="firstName">First name</Label>
+          <Label htmlFor="firstName">First Name</Label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <Input id="firstName" name="given-name" autoComplete="given-name" autoFocus maxLength={80} placeholder="Andy" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="pl-10 h-12" required />
@@ -187,7 +187,7 @@ export default function Register() {
               Creating account...
             </>
           ) : (
-            "Create account"
+            "Create Account"
           )}
         </Button>
       </form>

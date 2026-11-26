@@ -9,11 +9,11 @@ export default function TxtRecord() {
       category="DNS Record Types"
       lastUpdated="April 2026"
     >
-      <H2>What is a TXT Record?</H2>
+      <H2>What Is a TXT Record?</H2>
       <P>
         A TXT (text) record stores human-readable or machine-readable text in DNS. Originally intended for general notes, TXT records have become the backbone of email authentication, domain verification, and site ownership checks. They're incredibly versatile — if you've ever added a verification code to prove you own a domain, it was almost certainly a TXT record.
       </P>
-      <CodeBlock label="TXT Record examples">
+      <CodeBlock label="TXT Record Examples">
 {`yourdomain.com.  TXT "v=spf1 include:_spf.google.com ~all"
 yourdomain.com.  TXT "google-site-verification=abc123xyz"
 _dmarc.yourdomain.com. TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com"`}
@@ -26,7 +26,7 @@ _dmarc.yourdomain.com. TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.
       <P>
         SPF tells the world which servers are authorised to send email on behalf of your domain. Without it, spammers can easily forge your domain in the "From" address. SPF is a TXT record on your root domain.
       </P>
-      <CodeBlock label="SPF examples">
+      <CodeBlock label="SPF Examples">
 {`# Only Google Workspace can send email from yourdomain.com
 yourdomain.com. TXT "v=spf1 include:_spf.google.com ~all"
 
@@ -45,18 +45,18 @@ yourdomain.com. TXT "v=spf1 include:_spf.google.com include:sendgrid.net include
       <P>
         DKIM adds a cryptographic signature to every outgoing email. The receiving server uses the public key published in your DNS to verify the email wasn't tampered with in transit. It's set up as a TXT record at a specific subdomain provided by your email service.
       </P>
-      <CodeBlock label="DKIM TXT record">
+      <CodeBlock label="DKIM TXT Record">
 {`# DKIM selector record format: selector._domainkey.yourdomain.com
 google._domainkey.yourdomain.com. TXT "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUA..."
 
 # The "p=" value is the public key — your email provider generates this`}
       </CodeBlock>
 
-      <H3>DMARC (Domain-based Message Authentication, Reporting & Conformance)</H3>
+      <H3>DMARC (Domain-Based Message Authentication, Reporting & Conformance)</H3>
       <P>
         DMARC builds on SPF and DKIM, telling receivers what to do when an email fails authentication — reject it, quarantine it, or deliver it anyway. It also requests reports sent back to you about email authentication failures, helping you detect spoofing attempts.
       </P>
-      <CodeBlock label="DMARC TXT record">
+      <CodeBlock label="DMARC TXT Record">
 {`_dmarc.yourdomain.com. TXT "v=DMARC1; p=none; rua=mailto:dmarc@yourdomain.com"
 
 # p= policies:

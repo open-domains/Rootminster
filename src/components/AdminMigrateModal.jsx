@@ -90,7 +90,7 @@ export default function AdminMigrateModal({ open, onClose, onSuccess }) {
 
             {/* User picker */}
             <div className="space-y-2">
-              <Label className="text-slate-300 text-xs">Assign To User</Label>
+              <Label className="text-slate-300 text-xs">Assign to User</Label>
               <div className="relative">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <Input
@@ -114,7 +114,7 @@ export default function AdminMigrateModal({ open, onClose, onSuccess }) {
                   {loadingUsers ? (
                     <div className="flex justify-center py-4"><Loader2 size={16} className="animate-spin text-slate-500" /></div>
                   ) : filteredUsers.length === 0 ? (
-                    <p className="text-slate-500 text-xs text-center py-4">No users found</p>
+                    <p className="text-slate-500 text-xs text-center py-4">No Users Found</p>
                   ) : filteredUsers.map(u => (
                     <button key={u.id} onClick={() => setSelectedUser(u)}
                       className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-700/50 transition-colors text-left">

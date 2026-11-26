@@ -47,7 +47,7 @@ export default function PasskeyManager({ onUpdated }) {
     <div className="space-y-4 p-5">
       <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
         <Input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Passkey name" />
-        <Button onClick={add} disabled={busy || !name.trim()} className="gap-2">{busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Add passkey</Button>
+        <Button onClick={add} disabled={busy || !name.trim()} className="gap-2">{busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Add Passkey</Button>
       </div>
       {items.length === 0 ? <p className="rounded-lg border border-dashed border-border py-6 text-center text-xs text-muted-foreground">No passkeys registered.</p> : <div className="space-y-2">{items.map((item) => <div key={item.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
         <Fingerprint size={17} className="text-primary" />

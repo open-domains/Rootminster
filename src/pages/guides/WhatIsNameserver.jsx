@@ -4,19 +4,19 @@ import { H2, H3, P, UL, LI, Tip, Warning, CodeBlock, InlineCode, Divider, InArti
 export default function WhatIsNameserver() {
   return (
     <GuideLayout
-      title="What is a Nameserver?"
+      title="What Is a Nameserver?"
       description="Nameservers are the backbone of DNS delegation. Learn how they work, why they matter, and how to change them."
       category="DNS Basics"
       lastUpdated="April 2026"
     >
-      <H2>What is a Nameserver?</H2>
+      <H2>What Is a Nameserver?</H2>
       <P>
         A nameserver is a server that stores DNS records for a domain and answers DNS queries about it. When someone types your domain into a browser, the DNS resolution process eventually reaches your nameserver to find out where your website, email, and other services live.
       </P>
       <P>
         Every domain has at least two nameservers (primary and secondary) for redundancy. These are set at your domain registrar and look something like this:
       </P>
-      <CodeBlock label="Example nameservers">
+      <CodeBlock label="Example Nameservers">
 {`ns1.cloudflare.com
 ns2.cloudflare.com`}
       </CodeBlock>
@@ -70,7 +70,7 @@ ns2.cloudflare.com`}
 
       <Divider />
       <RelatedArticles articles={[
-        { href: '/guides/dns-basics/what-is-dns', title: 'What is DNS?', desc: 'The complete beginner guide to how DNS works' },
+        { href: '/guides/dns-basics/what-is-dns', title: 'What Is DNS?', desc: 'The complete beginner guide to how DNS works' },
         { href: '/guides/dns-basics/dns-propagation', title: 'DNS Propagation Explained', desc: 'Why changes take time to appear globally' },
         { href: '/guides/domain-management/connect-to-cloudflare', title: 'Connect a Domain to Cloudflare', desc: 'Step-by-step guide to using Cloudflare DNS' },
         { href: '/guides/dns-record-types/ns-record', title: 'NS Records', desc: 'How NS records delegate DNS control' },
