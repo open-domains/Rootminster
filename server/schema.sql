@@ -174,6 +174,30 @@ CREATE TABLE IF NOT EXISTS discord_tickets (
 CREATE INDEX IF NOT EXISTS discord_tickets_user_idx ON discord_tickets(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS discord_tickets_status_idx ON discord_tickets(status, created_at DESC);
 
+-- Redeploys started from Discord /deploy and carried out by the host-side
+-- deploy runner. The partial unique index allows one active run at a time.
+-- interaction_token lets the result edit the original Discord message; it is
+-- cleared when the run finishes and expires on Discord's side after 15 minutes.
+CREATE TABLE IF NOT EXISTS deploy_runs (
+  id uuid PRIMARY KEY,
+  requested_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  requested_by_email text,
+  discord_user_id text,
+  discord_username text,
+  interaction_token text,
+  channel_id text,
+  status text NOT NULL CHECK (status IN ('starting', 'running', 'succeeded', 'failed', 'unknown')),
+  exit_code integer,
+  error text,
+  log_tail text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  started_at timestamptz,
+  finished_at timestamptz
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS deploy_runs_one_active ON deploy_runs((true)) WHERE status IN ('starting', 'running');
+CREATE INDEX IF NOT EXISTS deploy_runs_created_idx ON deploy_runs(created_at DESC);
+
 CREATE TABLE IF NOT EXISTS email_verifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

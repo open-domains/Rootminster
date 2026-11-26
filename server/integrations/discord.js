@@ -1,6 +1,7 @@
 import { createDiscordRequests, discordMessage, discordModal } from '../lib/discord-requests.js';
 import { platformName } from '../lib/platform-name.js';
 import { createDiscordApi, createDiscordTickets, transcriptText, updatesInPlace } from '../lib/discord-tickets.js';
+import { createDiscordDeploys, createRunnerClient } from '../lib/discord-deploy.js';
 import crypto from 'node:crypto';
 import { authenticateRequest } from '../routes/auth.js';
 import { config } from '../core/config.js';
@@ -19,14 +20,25 @@ async function botApi() {
   if (!bot) throw Object.assign(new Error('Discord bot is disabled.'), { userMessage: true });
   return createDiscordApi(bot.bot_token);
 }
+const discordApi = { call: async (...args) => (await botApi()).call(...args), upload: async (...args) => (await botApi()).upload(...args) };
 export const tickets = createDiscordTickets({
   db: { query: (text, values) => pool.query(text, values), transaction },
   database: store,
   settings: () => getModuleConfig('discord_tickets'),
-  api: { call: async (...args) => (await botApi()).call(...args), upload: async (...args) => (await botApi()).upload(...args) },
+  api: discordApi,
   // A bot user's ID is its application's ID.
   botUserId: async () => (await botConfigured())?.application_id,
   platformName,
+});
+
+export const deploys = createDiscordDeploys({
+  db: { query: (text, values) => pool.query(text, values) },
+  settings: () => getModuleConfig('discord_deploy'),
+  runner: createRunnerClient(),
+  api: discordApi,
+  audit: (entry, actor) => store.create('AuditLog', entry, actor),
+  platformName,
+  applicationId: async () => (await botConfigured())?.application_id,
 });
 
 const commandList = (site) => [
@@ -35,6 +47,7 @@ const commandList = (site) => [
   { name: 'ticket', description: 'Open a private support ticket with the staff team', dm_permission: false },
   { name: 'tickets', description: 'List your tickets, or open tickets for staff', dm_permission: false },
   { name: 'ticket-panel', description: 'Staff: post an "Open a ticket" button in this channel', dm_permission: false, default_member_permissions: String(1 << 5) },
+  { name: 'deploy', description: `Staff: redeploy the latest version of ${site}`.slice(0, 100), dm_permission: false },
   {
     name: 'request', description: 'Submit a subdomain request using your linked account', options: [
       { name: 'name', description: 'Subdomain name', type: 3, required: true },
@@ -155,10 +168,12 @@ async function commandResponse(interaction) {
     return { ...link, content: `To open a ticket, first link your ${await platformName()} account so we can see your subdomains. ${link.content}` };
   }
   const actor = await requireLinked(interaction);
+  if (String(interaction.data?.custom_id || '').startsWith('dp:')) return deploys.component(interaction, actor, identity);
   if ([3, 5].includes(interaction.type)) return ticketControl ? tickets.component(interaction, actor, identity) : requestUi.component(interaction, actor);
   if (interaction.data?.name === 'ticket') return tickets.start();
   if (interaction.data?.name === 'tickets') return tickets.list(actor);
   if (interaction.data?.name === 'ticket-panel') return tickets.postPanel(actor, interaction.channel_id);
+  if (interaction.data?.name === 'deploy') return deploys.panel(actor);
   if (interaction.data?.name === 'panel') return requestUi.list(actor, ['staff', 'admin'].includes(actor.role) ? 'pending' : 'mine');
   if (interaction.data?.name === 'request') return submitRequest(interaction, actor);
   if (interaction.data?.name === 'requests') return requestUi.list(actor, optionsMap(interaction).scope || 'mine');
@@ -289,7 +304,8 @@ export async function registerDiscordRoutes(app) {
       return { type: 4, data: { content: error.userMessage ? error.message : 'The form could not open. Try again shortly.', flags: EPHEMERAL } };
     }
     if (modal) return modal;
-    reply.send(updatesInPlace(interaction) ? { type: 6 } : { type: 5, data: { flags: EPHEMERAL } });
+    const deployControl = interaction.type === 3 && String(interaction.data?.custom_id || '').startsWith('dp:');
+    reply.send(updatesInPlace(interaction) || deployControl ? { type: 6 } : { type: 5, data: { flags: EPHEMERAL } });
     const context = { interactionId: interaction.id, command: interaction.data?.name, control: interaction.data?.custom_id };
     void commandResponse(interaction)
       .catch((error) => {
@@ -306,4 +322,6 @@ export async function registerDiscordRoutes(app) {
   });
 
   void registerCommands(app.log);
+  // The update script restarts this process, so pick up any run still going.
+  void deploys.resume().catch((error) => app.log.error(error, 'Resuming Discord deploys failed'));
 }
