@@ -77,7 +77,7 @@
     "autoprefixer": "^10.7.0",
     "baseline-browser-mapping": "^2.11.39",
     "concurrently": "^10.0.7",
-    "eslint": "^9.39.5",
+    "eslint": "^10.15.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
