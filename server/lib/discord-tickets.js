@@ -119,7 +119,7 @@ function channelName(ticket) {
  * (the linked account's own names) → intake form → private channel. Every step
  * after the menus re-checks the linked account, its ownership and its role.
  */
-export function createDiscordTickets({ db, database, settings, api, botUserId }) {
+export function createDiscordTickets({ db, database, settings, api, botUserId, platformName = async () => 'Open Domains' }) {
   async function ownedSubdomains(actor) {
     const [byId, byEmail, requests] = await Promise.all([
       database.filter('DnsRecord', { owner_id: actor.id }, 'name', 1000),
@@ -171,7 +171,7 @@ export function createDiscordTickets({ db, database, settings, api, botUserId })
       ...subdomains.map((item) => ({ label: item.name.slice(0, 100), value: item.name, description: item.kind === 'live' ? `${item.records.length} DNS record${item.records.length === 1 ? '' : 's'}` : `Request ${item.status.replace('_', ' ')}` })),
       { label: 'Not about a specific subdomain', value: NO_SUBDOMAIN },
     ];
-    return message(`**${safe(category.label, 80)}.** Which subdomain is this about? The list comes from your Rootminster account.`, [row({
+    return message(`**${safe(category.label, 80)}.** Which subdomain is this about? The list comes from your ${safe(await platformName(), 80)} account.`, [row({
       type: 3, custom_id: `tk:sub:${category.id}`, placeholder: 'Choose a subdomain', options,
     })]);
   }
@@ -241,17 +241,17 @@ export function createDiscordTickets({ db, database, settings, api, botUserId })
     }
     await db.query("UPDATE discord_tickets SET status = 'open', channel_id = $2, updated_at = now() WHERE id = $1", [ticket.id, channel.id]);
     const opened = { ...ticket, status: 'open', channel_id: channel.id };
-    await api.call('POST', `/channels/${channel.id}/messages`, openingMessage(opened, actor, subdomain, current.staff_role_id));
+    await api.call('POST', `/channels/${channel.id}/messages`, await openingMessage(opened, actor, subdomain, current.staff_role_id));
     return message(`Ticket #${ticket.number} is open: <#${channel.id}>. Staff will reply there.`);
   }
 
-  function openingMessage(ticket, actor, subdomain, staffRoleId) {
+  async function openingMessage(ticket, actor, subdomain, staffRoleId) {
     const role = SNOWFLAKE.test(staffRoleId || '') ? staffRoleId : null;
     const fields = [
       { name: 'Subdomain', value: subdomain ? `${safe(subdomain.name, 200)}${subdomain.kind === 'request' ? ` (request ${subdomain.status.replace('_', ' ')})` : ''}` : 'Not about a specific subdomain' },
       ...(subdomain?.records?.length ? [{ name: 'DNS records', value: clip(subdomain.records.slice(0, 8).map((record) => `${record.record_type || record.type}${record.status === 'suspended' ? ' (suspended)' : ''}: ${safe(record.content || record.record_value, 100)}`).join('\n'), 1000) }] : []),
       ...ticket.answers.map((answer) => ({ name: clip(answer.question, 256), value: safe(answer.answer, 1024) })),
-      { name: 'Rootminster account', value: `${safe(actor.email, 200)} · joined ${actor.created_date ? new Date(actor.created_date).toISOString().slice(0, 10) : 'unknown'}` },
+      { name: clip(`${await platformName()} account`, 256), value: `${safe(actor.email, 200)} · joined ${actor.created_date ? new Date(actor.created_date).toISOString().slice(0, 10) : 'unknown'}` },
     ];
     return message(`<@${ticket.discord_user_id}> thanks, a staff member will be with you soon.${role ? ` <@&${role}>` : ''}`, [
       row(button('Claim', `tk:claim:${ticket.id}`, 1), button('Close ticket', `tk:close:${ticket.id}`, 4), { type: 2, style: 5, label: 'View on website', url: `${config.appUrl}/tickets?ticket=${ticket.id}` }),
@@ -337,7 +337,7 @@ export function createDiscordTickets({ db, database, settings, api, botUserId })
     if (!SNOWFLAKE.test(String(channelId || ''))) fail('Run this command in a server channel.');
     await api.call('POST', `/channels/${channelId}/messages`, message('', [row(button('Open a ticket', 'tk:open', 1))], [{
       title: 'Need help?', color: 0x2563eb,
-      description: 'Open a private support ticket with the staff team. You will pick a category and the subdomain it is about, then answer a few questions.\n\nYou need a linked Rootminster account: run `/link` if you have not linked yet.',
+      description: `Open a private support ticket with the staff team. You will pick a category and the subdomain it is about, then answer a few questions.\n\nYou need a linked ${await platformName()} account: run \`/link\` if you have not linked yet.`,
     }]));
     return message('Ticket panel posted in this channel.');
   }

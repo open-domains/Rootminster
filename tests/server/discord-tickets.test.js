@@ -255,3 +255,21 @@ test('transcript text includes the intake answers', () => {
   assert.match(text, /How can we help\?\n {2}Line one\n {2}Line two/);
   assert.match(text, /No messages were recorded/);
 });
+
+test('ticket text uses the branded site name', async () => {
+  const db = fakeDb();
+  const calls = [];
+  const tickets = createDiscordTickets({
+    db, database: { filter: async () => [], searchRequests: async () => [] },
+    settings: async () => ({ enabled: true, open_category_id: OPEN_CATEGORY, closed_category_id: CLOSED_CATEGORY, categories: DEFAULT_TICKET_CATEGORIES }),
+    api: { call: async (method, path, body) => { calls.push(body); return { id: '300000000000000001' }; } },
+    botUserId: async () => BOT, platformName: async () => 'Acme Hosting',
+  });
+  const menu = await tickets.component({ type: 3, data: { custom_id: 'tk:cat', values: ['other'] } }, owner, ownerIdentity);
+  assert.match(menu.content, /your Acme Hosting account/);
+  await tickets.postPanel(staffUser, '400000000000000001');
+  assert.match(calls.at(-1).embeds[0].description, /linked Acme Hosting account/);
+  await tickets.component(submitEvent('other', 'none'), owner, ownerIdentity);
+  assert.ok(calls.at(-1).embeds[0].fields.some((field) => field.name === 'Acme Hosting account'));
+  assert.ok(!JSON.stringify(calls).includes('Rootminster'));
+});

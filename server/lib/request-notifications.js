@@ -1,4 +1,5 @@
 // Notifications sent when a subdomain request is approved, by staff or automatically.
+import { platformName } from './platform-name.js';
 export function approvalEmailHtml(subdomain, domain, recordType, recordValue) {
     const escape = value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
     [subdomain, domain, recordType, recordValue] = [subdomain, domain, recordType, recordValue].map(escape);
@@ -75,7 +76,7 @@ export async function notifyRequestApproved(platform, r, bundle, reviewerName, a
                     { name: 'Approved By', value: String(reviewerName), inline: true }
                 ],
                 timestamp: new Date().toISOString(),
-                footer: { text: 'Open Domains Platform' }
+                footer: { text: `${await platformName()} Platform` }
             };
             await fetch(discordUrl, {
                 method: 'POST',

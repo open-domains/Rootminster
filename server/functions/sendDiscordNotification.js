@@ -1,4 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { platformName } from '../lib/platform-name.js';
 const COLORS = {
     new_request: 0x6366f1, // indigo
     edit_request: 0x8b5cf6, // purple
@@ -32,13 +33,14 @@ export default async function (req) {
     if (!webhookUrl) {
         return Response.json({ success: false, message: 'Discord webhook not configured' });
     }
+    const site = await platformName();
     const embed = {
-        title: title || 'Open Domains Notification',
+        title: title || `${site} Notification`,
         description: description || '',
         color: color || COLORS[event_type] || 0x6366f1,
         fields: fields.map(f => ({ name: f.name, value: String(f.value || '—'), inline: f.inline !== false })),
         timestamp: new Date().toISOString(),
-        footer: { text: 'Open Domains Platform' }
+        footer: { text: `${site} Platform` }
     };
     const res = await fetch(webhookUrl, {
         method: 'POST',
