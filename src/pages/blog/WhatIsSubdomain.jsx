@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 export default function WhatIsSubdomain() {
   return (
     <BlogLayout
-      title="What is a Subdomain and Why Should You Use One?"
+      title="What Is a Subdomain and Why Should You Use One?"
       description="Subdomains are one of the most useful tools in a developer's toolkit. Here's everything you need to know, in plain English."
       author="Open Domains Team"
       date="April 2026"
@@ -24,7 +24,7 @@ export default function WhatIsSubdomain() {
       <P>
         From a DNS perspective, a subdomain is simply a hostname at a lower level in the DNS hierarchy. You create it by adding a DNS record (usually an A or CNAME record) with the subdomain name in the Name/Host field.
       </P>
-      <CodeBlock label="Common subdomain examples">
+      <CodeBlock label="Common Subdomain Examples">
 {`www.example.com       → Traditional website prefix
 blog.example.com      → Blog or content section  
 app.example.com       → Web application

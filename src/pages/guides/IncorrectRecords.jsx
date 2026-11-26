@@ -11,7 +11,7 @@ export default function IncorrectRecords() {
     >
       <H2>How to Audit Your DNS Records</H2>
       <P>Start by listing all current DNS records for your domain and compare them against what they should be:</P>
-      <CodeBlock label="Audit DNS records with dig">
+      <CodeBlock label="Audit DNS Records with dig">
 {`# List all record types
 dig yourdomain.com ANY
 
@@ -36,7 +36,7 @@ dig yourdomain.com CNAME`}
       <InArticleAd />
 
       <H2>Diagnosing Email Delivery Problems</H2>
-      <CodeBlock label="Check MX and email authentication records">
+      <CodeBlock label="Check MX and Email Authentication Records">
 {`# Check MX records
 dig yourdomain.com MX
 

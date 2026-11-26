@@ -71,7 +71,7 @@ function RecordTable({ records }) {
     return (
       <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
         <Database size={26} className="mx-auto mb-2 text-muted-foreground/50" />
-        <p className="text-sm font-medium text-foreground">No DNS records</p>
+        <p className="text-sm font-medium text-foreground">No DNS Records</p>
         <p className="mt-1 text-xs text-muted-foreground">This subdomain currently has no managed records.</p>
       </div>
     );
@@ -203,10 +203,10 @@ export default function AdminSubdomains() {
   return (
     <AdminPage>
       <AdminHeader
-        eyebrow="Platform ownership"
-        title="User subdomains"
+        eyebrow="Platform Ownership"
+        title="User Subdomains"
         description="View every owned subdomain, its account holder, and the DNS records inside its namespace."
-        meta={`${zones.length} root zones`}
+        meta={`${zones.length} Root Zones`}
       />
 
       {!loading && (
@@ -214,7 +214,7 @@ export default function AdminSubdomains() {
           { label: 'Subdomains', value: subdomains.length, icon: Globe2 },
           { label: 'Active', value: activeCount, icon: ShieldCheck, className: 'text-emerald-500' },
           { label: 'Suspended', value: suspendedCount, icon: AlertTriangle, className: suspendedCount ? 'text-amber-500' : undefined },
-          { label: 'DNS records', value: recordCount, icon: Database },
+          { label: 'DNS Records', value: recordCount, icon: Database },
         ]} />
       )}
 
@@ -231,14 +231,14 @@ export default function AdminSubdomains() {
         <Select value={zoneFilter} onValueChange={setZoneFilter}>
           <SelectTrigger className="h-8 w-full text-xs lg:w-52"><SelectValue placeholder="All zones" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All zones</SelectItem>
+            <SelectItem value="all">All Zones</SelectItem>
             {zones.map(zone => <SelectItem key={zone} value={zone}>{zone}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="h-8 w-full text-xs lg:w-40"><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="suspended">Suspended</SelectItem>
           </SelectContent>
@@ -363,7 +363,7 @@ export default function AdminSubdomains() {
               <section className="rounded-lg border border-border bg-card p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">Observer scan</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Observer Scan</h2>
                     <p className="mt-1 text-xs text-muted-foreground">Trigger Observer to scan this subdomain for policy issues. Current reported status: {selectedItem.observerStatus ? (selectedItem.observerStatus.status === 'clear' ? 'clear' : `${selectedItem.observerStatus.severity} finding`) : 'undetermined'}.</p>
                   </div>
                   <Button
@@ -374,7 +374,7 @@ export default function AdminSubdomains() {
                     onClick={() => triggerObserverScan(selectedItem)}
                   >
                     {scanningId === selectedItem.id ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
-                    {scanningId === selectedItem.id ? 'Triggering…' : 'Trigger Observer scan'}
+                    {scanningId === selectedItem.id ? 'Triggering…' : 'Trigger Observer Scan'}
                   </Button>
                 </div>
                 {selectedItem.status === 'suspended' && <p className="mt-3 text-xs text-amber-500">Suspended subdomains cannot be scanned manually.</p>}
@@ -383,10 +383,10 @@ export default function AdminSubdomains() {
               <section>
                 <div className="mb-3 flex items-end justify-between">
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">DNS records</h2>
+                    <h2 className="text-sm font-semibold text-foreground">DNS Records</h2>
                     <p className="mt-1 text-xs text-muted-foreground">All managed records at or below this owned subdomain.</p>
                   </div>
-                  <span className="text-xs font-medium text-muted-foreground">{selectedItem.records.length} total</span>
+                  <span className="text-xs font-medium text-muted-foreground">{selectedItem.records.length} Total</span>
                 </div>
                 <RecordTable records={selectedItem.records} />
               </section>

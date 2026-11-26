@@ -37,7 +37,7 @@ export default function CommonDnsMistakes() {
         You're using Google Workspace for email, and you also just added Mailchimp. So you add a second TXT record: <InlineCode>v=spf1 include:mailchimp.com ~all</InlineCode>. Now you have two SPF records. This breaks SPF — receivers only look at the first SPF record and ignore the rest, or mark your emails as failing SPF.
       </P>
       <P><strong>Fix:</strong> Merge all your sending services into a single SPF record:</P>
-      <CodeBlock label="Correct: one SPF record with multiple includes">
+      <CodeBlock label="Correct: One SPF Record with Multiple Includes">
 {`v=spf1 include:_spf.google.com include:mailchimp.com include:sendgrid.net ~all`}
       </CodeBlock>
 

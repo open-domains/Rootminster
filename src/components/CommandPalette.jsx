@@ -52,7 +52,7 @@ export default function CommandPalette({ open, onClose, items }) {
         </div>
         <div className="max-h-80 overflow-y-auto review-modal-scroll py-2">
           {filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground text-sm py-10">No results</p>
+            <p className="text-center text-muted-foreground text-sm py-10">No Results</p>
           ) : filtered.map((it, i) => (
             <Link
               key={it.to}

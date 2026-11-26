@@ -9,11 +9,11 @@ export default function WildcardDns() {
       category="Domain Management"
       lastUpdated="April 2026"
     >
-      <H2>What is a Wildcard DNS Record?</H2>
+      <H2>What Is a Wildcard DNS Record?</H2>
       <P>
         A wildcard DNS record uses an asterisk (<InlineCode>*</InlineCode>) as the leftmost label to match any subdomain that doesn't have a more specific record. For example, <InlineCode>*.example.com</InlineCode> would match <InlineCode>anything.example.com</InlineCode>, <InlineCode>random.example.com</InlineCode>, <InlineCode>test.example.com</InlineCode> — any subdomain that isn't explicitly defined.
       </P>
-      <CodeBlock label="Wildcard DNS record">
+      <CodeBlock label="Wildcard DNS Record">
 {`*.example.com. 3600 IN A 203.0.113.42
 # All subdomains of example.com resolve to 203.0.113.42
 # unless a more specific record exists`}
@@ -21,7 +21,7 @@ export default function WildcardDns() {
 
       <H2>How Wildcard Records Work</H2>
       <P>Wildcards follow DNS specificity rules — more specific records always win:</P>
-      <CodeBlock label="Wildcard vs. specific records">
+      <CodeBlock label="Wildcard vs. Specific Records">
 {`*.example.com   A  203.0.113.42   # wildcard (catch-all)
 www.example.com A  203.0.113.1    # specific (takes priority for www)
 app.example.com A  203.0.113.99   # specific (takes priority for app)
@@ -47,7 +47,7 @@ app.example.com A  203.0.113.99   # specific (takes priority for app)
       <P>
         A wildcard SSL certificate covers all first-level subdomains of a domain. A certificate for <InlineCode>*.example.com</InlineCode> covers <InlineCode>www.example.com</InlineCode>, <InlineCode>blog.example.com</InlineCode>, <InlineCode>app.example.com</InlineCode>, etc. — but not deeper nesting like <InlineCode>dev.api.example.com</InlineCode>.
       </P>
-      <CodeBlock label="Getting a wildcard certificate with Certbot">
+      <CodeBlock label="Getting a Wildcard Certificate with Certbot">
 {`# Requires DNS challenge (not HTTP challenge)
 sudo certbot certonly --manual --preferred-challenges dns -d "*.example.com" -d example.com
 

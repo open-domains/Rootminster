@@ -10,11 +10,11 @@ export default function SubdomainsExplained() {
       category="Domain Management"
       lastUpdated="April 2026"
     >
-      <H2>What is a Subdomain?</H2>
+      <H2>What Is a Subdomain?</H2>
       <P>
         A subdomain is a prefix added to your root domain, separated by a dot. If your domain is <InlineCode>example.com</InlineCode>, then <InlineCode>blog.example.com</InlineCode>, <InlineCode>app.example.com</InlineCode>, and <InlineCode>api.example.com</InlineCode> are all subdomains. Subdomains are a free, flexible way to organise your web presence without buying additional domains.
       </P>
-      <CodeBlock label="Subdomain examples">
+      <CodeBlock label="Subdomain Examples">
 {`www.example.com        → Main website (traditional)
 blog.example.com       → Blog section
 app.example.com        → Web application
@@ -38,7 +38,7 @@ cdn.example.com        → Content delivery`}
 
       <H2>How to Create a Subdomain</H2>
       <P>Creating a subdomain is as simple as adding a DNS record:</P>
-      <CodeBlock label="Creating subdomains in DNS">
+      <CodeBlock label="Creating Subdomains in DNS">
 {`# Point blog subdomain to a server
 Type: A
 Name: blog

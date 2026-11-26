@@ -9,7 +9,7 @@ export default function CloudflarePages() {
       category="Hosting Providers"
       lastUpdated="April 2026"
     >
-      <H2>What is Cloudflare Pages?</H2>
+      <H2>What Is Cloudflare Pages?</H2>
       <P>Cloudflare Pages is a JAMstack hosting platform built directly into Cloudflare's global network. Unlike competitors, your site is served from Cloudflare's edge — meaning it's delivered from data centres near your visitors worldwide, not from a single server. The free plan is very generous.</P>
       <H3>Pros</H3>
       <UL>
@@ -44,7 +44,7 @@ export default function CloudflarePages() {
         <LI>Connect your GitHub/GitLab account and select the repository</LI>
         <LI>Configure the build settings for your framework</LI>
       </UL>
-      <CodeBlock label="Build settings by framework">
+      <CodeBlock label="Build Settings by Framework">
 {`# React (Create React App)
 Build command: npm run build
 Build output: /build
@@ -64,7 +64,7 @@ Build output: /out`}
 
       <H2>DNS Configuration for Custom Domain</H2>
       <P>After deploying, add a custom domain in the Pages dashboard. Cloudflare provides CNAME targets:</P>
-      <CodeBlock label="DNS setup for Cloudflare Pages">
+      <CodeBlock label="DNS Setup for Cloudflare Pages">
 {`# For root domain (Cloudflare auto-configures with CNAME flattening)
 Type: CNAME
 Name: @

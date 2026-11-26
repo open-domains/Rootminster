@@ -38,11 +38,11 @@ export default function ResetPassword() {
     return (
       <AuthLayout
         icon={AlertTriangle}
-        title="Invalid reset link"
+        title="Invalid Reset Link"
         subtitle="This password reset link is missing or invalid"
         footer={
           <Link to="/forgot-password" className="text-primary font-medium hover:underline">
-            Request a new link
+            Request a New Link
           </Link>
         }
       >
@@ -56,8 +56,8 @@ export default function ResetPassword() {
   return (
     <AuthLayout
       icon={Lock}
-      title="New password"
-      subtitle="Enter your new password below"
+      title="New Password"
+      subtitle="Enter Your New Password Below"
     >
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -105,7 +105,7 @@ export default function ResetPassword() {
               Resetting...
             </>
           ) : (
-            "Reset password"
+            "Reset Password"
           )}
         </Button>
       </form>

@@ -30,10 +30,10 @@ export default function VerifyEmail() {
 
   const icon = status === 'loading' ? Loader2 : status === 'success' ? CheckCircle2 : MailWarning;
   return (
-    <AuthLayout icon={icon} title={status === 'success' ? 'Email verified' : status === 'error' ? 'Verification failed' : 'Verifying email'} subtitle={message}>
+    <AuthLayout icon={icon} title={status === 'success' ? 'Email Verified' : status === 'error' ? 'Verification Failed' : 'Verifying Email'} subtitle={message}>
       {status === 'loading' && <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />}
-      {status === 'success' && <Button asChild className="w-full h-12"><Link to="/user-dashboard">Continue to dashboard</Link></Button>}
-      {status === 'error' && <Button asChild variant="outline" className="w-full h-12"><Link to="/login">Back to login</Link></Button>}
+      {status === 'success' && <Button asChild className="w-full h-12"><Link to="/user-dashboard">Continue to Dashboard</Link></Button>}
+      {status === 'error' && <Button asChild variant="outline" className="w-full h-12"><Link to="/login">Back to Login</Link></Button>}
     </AuthLayout>
   );
 }

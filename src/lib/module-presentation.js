@@ -17,6 +17,6 @@ export function moduleStatus(module) {
     ? !field.configured
     : field.value == null || String(field.value).trim() === ''));
   return missing.length
-    ? { key: 'attention', label: 'Needs attention', missing }
+    ? { key: 'attention', label: 'Needs Attention', missing }
     : { key: 'configured', label: 'Configured', missing: [] };
 }

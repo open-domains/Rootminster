@@ -157,7 +157,7 @@ export default function BlocklistManager({ currentUser }) {const { t } = useTran
                 <SelectContent>
                   {RECORD_TYPES.map((t) =>
                   <SelectItem key={t} value={t}>
-                      {t === 'ANY' ? 'ANY (all types)' : t}
+                      {t === 'ANY' ? 'ANY (All Types)' : t}
                     </SelectItem>
                   )}
                 </SelectContent>
@@ -230,7 +230,7 @@ export default function BlocklistManager({ currentUser }) {const { t } = useTran
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {RECORD_TYPES.map((type) =>
-                    <SelectItem key={type} value={type}>{type === 'ANY' ? 'ANY (all types)' : type}</SelectItem>
+                    <SelectItem key={type} value={type}>{type === 'ANY' ? 'ANY (All Types)' : type}</SelectItem>
                     )}
                       </SelectContent>
                     </Select>

@@ -34,7 +34,7 @@ export default function BeginnersGuideHosting() {
         <LI>You can't install custom software</LI>
         <LI>Security risks from sharing infrastructure</LI>
       </UL>
-      <H3>Best for</H3>
+      <H3>Best For</H3>
       <UL>
         <LI>WordPress blogs with moderate traffic</LI>
         <LI>Small business informational websites</LI>
@@ -77,7 +77,7 @@ export default function BeginnersGuideHosting() {
         <LI>Requires Linux knowledge (or willingness to learn)</LI>
         <LI>Costs money (~£4-20/month)</LI>
       </UL>
-      <H3>Best for</H3>
+      <H3>Best For</H3>
       <UL>
         <LI>Backend APIs, Node.js/Python/Go apps</LI>
         <LI>Self-hosted databases</LI>

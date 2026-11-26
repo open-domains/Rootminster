@@ -18,7 +18,7 @@ export default function SetupGate({ children }) {
 
   useEffect(load, []);
 
-  if (error) return <div className="fixed inset-0 grid place-items-center bg-background px-6"><div className="max-w-md rounded-xl border border-border bg-card p-6 text-center"><h1 className="text-lg font-semibold">Rootminster could not start</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p><Button onClick={load} className="mt-5">Try again</Button></div></div>;
+  if (error) return <div className="fixed inset-0 grid place-items-center bg-background px-6"><div className="max-w-md rounded-xl border border-border bg-card p-6 text-center"><h1 className="text-lg font-semibold">Rootminster Could Not Start</h1><p className="mt-2 text-sm text-muted-foreground">{error}</p><Button onClick={load} className="mt-5">Try Again</Button></div></div>;
   if (!status || isLoadingAuth) return <div className="fixed inset-0 grid place-items-center bg-background"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>;
   if (status.required && location.pathname !== '/setup') return <Navigate to="/setup" replace />;
   if (!status.required && location.pathname === '/setup') return <Navigate to={isAuthenticated ? '/user-dashboard' : '/login'} replace />;

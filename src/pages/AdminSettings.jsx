@@ -284,7 +284,7 @@ export default function AdminSettings() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle size={16} className="text-destructive" /> Remove zone
+              <AlertTriangle size={16} className="text-destructive" /> Remove Zone
             </AlertDialogTitle>
             <AlertDialogDescription>
               Remove <strong>{confirmDelete?.name}</strong> from Rootminster? This does not delete the Cloudflare zone or its DNS records.
@@ -305,13 +305,13 @@ export default function AdminSettings() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserCheck size={16} className="text-emerald-400" />
-              Assign domain provider — {assignProviderDomain?.name}
+              Assign Domain Provider — {assignProviderDomain?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
             {assignProviderDomain?.provider_user_email && (
               <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-sm">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 mb-1">Current provider</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 mb-1">Current Provider</p>
                 <p className="text-foreground font-medium">{assignProviderDomain.provider_user_email}</p>
                 <Button
                   size="sm" variant="ghost"
@@ -319,7 +319,7 @@ export default function AdminSettings() {
                   disabled={assigningProvider}
                   className="mt-2 h-7 px-2.5 text-xs text-destructive hover:bg-destructive/10"
                 >
-                  Remove provider
+                  Remove Provider
                 </Button>
               </div>
             )}
@@ -333,7 +333,7 @@ export default function AdminSettings() {
               </p>
             ) : (
               <div className="space-y-2">
-                <Label className="text-xs">Select a domain provider user</Label>
+                <Label className="text-xs">Select a Domain Provider User</Label>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto">
                   {providerUsers.map((u) => (
                     <button
@@ -391,8 +391,8 @@ export default function AdminSettings() {
                 {[
                   { icon: Globe2, label: 'Zones', value: domains.length, tint: 'text-foreground' },
                   { icon: Database, label: 'DNS Records', value: totalRecords, tint: 'text-foreground' },
-                  { icon: CheckCircle2, label: 'Open for requests', value: openForRequests, tint: 'text-emerald-400' },
-                  { icon: XCircle, label: 'Failed syncs', value: failedSyncs, tint: failedSyncs ? 'text-destructive' : 'text-foreground' },
+                  { icon: CheckCircle2, label: 'Open for Requests', value: openForRequests, tint: 'text-emerald-400' },
+                  { icon: XCircle, label: 'Failed Syncs', value: failedSyncs, tint: failedSyncs ? 'text-destructive' : 'text-foreground' },
                 ].map(({ icon: Icon, label, value, tint }) => (
                   <div key={label} className="rounded-lg border border-border bg-card px-4 py-3 flex items-center gap-3">
                     <Icon size={15} className="text-muted-foreground shrink-0" />
@@ -405,11 +405,11 @@ export default function AdminSettings() {
               </div>
 
               {/* Global request gate */}
-              <SectionCard icon={LockKeyhole} iconTint={requestsLocked ? 'accent' : 'emerald'} title="Global request gate" description="Immediately lock or unlock new requests across every managed zone.">
+              <SectionCard icon={LockKeyhole} iconTint={requestsLocked ? 'accent' : 'emerald'} title="Global Request Gate" description="Immediately lock or unlock new requests across every managed zone.">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Lock all new requests</p>
+                      <p className="text-sm font-medium text-foreground">Lock All New Requests</p>
                       <p className="text-xs text-muted-foreground">Staff and admins can still test submissions while the public gate is locked.</p>
                     </div>
                     <Switch checked={requestsLocked} onCheckedChange={async (value) => {
@@ -418,7 +418,7 @@ export default function AdminSettings() {
                     }} />
                   </div>
                   <div className="space-y-1.5 border-t border-border pt-4">
-                    <Label className="text-xs">Message shown while requests are locked</Label>
+                    <Label className="text-xs">Message Shown While Requests Are Locked</Label>
                     <div className="flex gap-2">
                       <Input value={requestsLockedMessage} onChange={(event) => setRequestsLockedMessage(event.target.value)} placeholder="New requests are temporarily closed." />
                       <Button onClick={() => saveSetting('requests_locked_message', requestsLockedMessage)} disabled={saving.requests_locked_message}>
@@ -430,7 +430,7 @@ export default function AdminSettings() {
               </SectionCard>
 
               {/* Cloudflare zone catalogue */}
-              <SectionCard icon={Globe2} title="Cloudflare zone catalogue" description="Import Cloudflare zones into Rootminster so they can receive subdomain requests.">
+              <SectionCard icon={Globe2} title="Cloudflare Zone Catalogue" description="Import Cloudflare zones into Rootminster so they can receive subdomain requests.">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">{cloudflareZones.length} zones returned by Cloudflare</p>
                   <Button size="sm" variant="outline" onClick={fetchCloudflareZones} disabled={loadingZones} className="gap-2">
@@ -465,10 +465,10 @@ export default function AdminSettings() {
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <h2 className="text-sm font-semibold text-foreground">Managed zones</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Managed Zones</h2>
                     <p className="text-xs text-muted-foreground">Sync records, assign providers, toggle requests, and manage reserved names.</p>
                   </div>
-                  <span className="text-xs text-muted-foreground">{domains.length} configured</span>
+                  <span className="text-xs text-muted-foreground">{domains.length} Configured</span>
                 </div>
                 <div className="grid gap-4 xl:grid-cols-2">
                   {domains.map((domain) => (
@@ -522,7 +522,7 @@ export default function AdminSettings() {
                       {/* Request toggle */}
                       <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
                         <div>
-                          <p className="text-sm font-medium text-foreground">Accept new requests</p>
+                          <p className="text-sm font-medium text-foreground">Accept New Requests</p>
                           <p className="text-xs text-muted-foreground">Allow users to request subdomains under this zone.</p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -539,7 +539,7 @@ export default function AdminSettings() {
                       <div className="space-y-2 border-t border-border pt-3">
                         <div className="flex items-center gap-2">
                           <ShieldCheck size={13} className="text-muted-foreground" />
-                          <Label className="text-xs">Reserved subdomain records</Label>
+                          <Label className="text-xs">Reserved Subdomain Records</Label>
                         </div>
                         <p className="text-[11px] text-muted-foreground">One name per line. Wildcards supported, e.g. <code>admin</code>, <code>mail-*</code>.</p>
                         <Textarea
@@ -555,7 +555,7 @@ export default function AdminSettings() {
                           className="gap-2"
                         >
                           {saving[`reserved-${domain.id}`] ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-                          Save reservations
+                          Save Reservations
                         </Button>
                       </div>
                     </div>
@@ -567,7 +567,7 @@ export default function AdminSettings() {
               {syncLogs.length > 0 && (
                 <div>
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-foreground">Sync history</h2>
+                    <h2 className="text-sm font-semibold text-foreground">Sync History</h2>
                     <span className="text-xs text-muted-foreground">Latest {syncLogs.length}</span>
                   </div>
                   <div className="rounded-lg border border-border overflow-hidden">
@@ -630,11 +630,11 @@ export default function AdminSettings() {
                     )}
                   </SectionCard>
 
-                  <SectionCard icon={MessageCircle} iconTint={discordBotStatus?.enabled ? 'emerald' : 'accent'} title="Discord request bot" description="Let linked users submit requests and let staff review them with slash commands.">
+                  <SectionCard icon={MessageCircle} iconTint={discordBotStatus?.enabled ? 'emerald' : 'accent'} title="Discord Request Bot" description="Let linked users submit requests and let staff review them with slash commands.">
                     <div className="space-y-3 text-xs text-muted-foreground">
                       <div className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-3 py-2.5">
-                        <span>Environment status</span>
-                        <span className={discordBotStatus?.enabled ? 'text-emerald-400' : 'text-amber-300'}>{discordBotStatus?.enabled ? 'Enabled' : 'Not configured'}</span>
+                        <span>Environment Status</span>
+                        <span className={discordBotStatus?.enabled ? 'text-emerald-400' : 'text-amber-300'}>{discordBotStatus?.enabled ? 'Enabled' : 'Not Configured'}</span>
                       </div>
                       <p>Commands: <code>/link</code>, <code>/request</code>, <code>/requests</code>, <code>/request-view</code>, and staff-only <code>/request-manage</code>.</p>
                       <p>Set the Discord application interaction endpoint to <code className="break-all">{window.location.origin}/api/discord/interactions</code>. Bot credentials remain server-side environment variables.</p>

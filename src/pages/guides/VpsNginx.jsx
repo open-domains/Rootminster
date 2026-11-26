@@ -38,7 +38,7 @@ export default function VpsNginx() {
 
       <H2>Step 1: DNS Setup</H2>
       <P>Create A records pointing your domain to your VPS's public IP:</P>
-      <CodeBlock label="DNS A records for VPS">
+      <CodeBlock label="DNS A Records for VPS">
 {`Type: A   Name: @    Value: YOUR_VPS_IP
 Type: A   Name: www  Value: YOUR_VPS_IP`}
       </CodeBlock>
@@ -56,7 +56,7 @@ sudo systemctl status nginx
       </CodeBlock>
 
       <H2>Step 3: Configure a Virtual Host</H2>
-      <CodeBlock label="NGINX virtual host config">
+      <CodeBlock label="NGINX Virtual Host Config">
 {`# /etc/nginx/sites-available/yourdomain.com
 server {
     listen 80;
@@ -101,7 +101,7 @@ sudo certbot renew --dry-run`}
       </CodeBlock>
 
       <H2>Step 5: Firewall Setup</H2>
-      <CodeBlock label="UFW firewall configuration">
+      <CodeBlock label="UFW Firewall Configuration">
 {`sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'   # Allow HTTP and HTTPS
 sudo ufw enable
@@ -110,7 +110,7 @@ sudo ufw status`}
       <Warning>Always allow SSH through the firewall before enabling it. Running <InlineCode>sudo ufw enable</InlineCode> without allowing SSH will lock you out of your server.</Warning>
 
       <H2>Deploying Node.js Apps with PM2</H2>
-      <CodeBlock label="PM2 process manager">
+      <CodeBlock label="PM2 Process Manager">
 {`# Install PM2 globally
 npm install -g pm2
 

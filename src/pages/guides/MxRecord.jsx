@@ -9,11 +9,11 @@ export default function MxRecord() {
       category="DNS Record Types"
       lastUpdated="April 2026"
     >
-      <H2>What is an MX Record?</H2>
+      <H2>What Is an MX Record?</H2>
       <P>
         An MX (Mail Exchanger) record specifies which mail servers are responsible for accepting email for a domain. Without MX records, nobody can send email to addresses at your domain. The MX record maps your domain to the hostname of one or more mail servers, along with a priority value that controls which server email gets delivered to first.
       </P>
-      <CodeBlock label="MX Record format">
+      <CodeBlock label="MX Record Format">
 {`yourdomain.com. 3600 IN MX 10 mail.yourdomain.com.
 yourdomain.com. 3600 IN MX 20 mail2.yourdomain.com.`}
       </CodeBlock>
@@ -32,7 +32,7 @@ yourdomain.com. 3600 IN MX 20 mail2.yourdomain.com.`}
       <InArticleAd />
 
       <H2>Setting Up Google Workspace (Gmail) MX Records</H2>
-      <CodeBlock label="Google Workspace MX records">
+      <CodeBlock label="Google Workspace MX Records">
 {`yourdomain.com. MX 1  aspmx.l.google.com.
 yourdomain.com. MX 5  alt1.aspmx.l.google.com.
 yourdomain.com. MX 5  alt2.aspmx.l.google.com.
@@ -41,13 +41,13 @@ yourdomain.com. MX 10 alt4.aspmx.l.google.com.`}
       </CodeBlock>
 
       <H2>Setting Up Microsoft 365 (Outlook) MX Record</H2>
-      <CodeBlock label="Microsoft 365 MX record">
+      <CodeBlock label="Microsoft 365 MX Record">
 {`# Microsoft generates a unique MX record for your tenant:
 yourdomain.com. MX 0 yourdomain-com.mail.protection.outlook.com.`}
       </CodeBlock>
 
       <H2>Setting Up ProtonMail MX Records</H2>
-      <CodeBlock label="ProtonMail MX records">
+      <CodeBlock label="ProtonMail MX Records">
 {`yourdomain.com. MX 10 mail.protonmail.ch.
 yourdomain.com. MX 20 mailsec.protonmail.ch.`}
       </CodeBlock>
@@ -82,7 +82,7 @@ yourdomain.com. MX 20 mailsec.protonmail.ch.`}
       <RelatedArticles articles={[
         { href: '/guides/dns-record-types/txt-record', title: 'TXT Record (SPF, DKIM, DMARC)', desc: 'Secure your email with authentication records' },
         { href: '/guides/dns-record-types/cname-record', title: 'CNAME Record', desc: 'CNAME conflicts with MX explained' },
-        { href: '/guides/dns-basics/what-is-dns', title: 'What is DNS?', desc: 'DNS fundamentals' },
+        { href: '/guides/dns-basics/what-is-dns', title: 'What Is DNS?', desc: 'DNS fundamentals' },
       ]} />
     </GuideLayout>
   );

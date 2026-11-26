@@ -115,7 +115,7 @@ export default function ReportAbuse() {
             {sent.merged && <p className="text-slate-400 text-sm mt-2">Someone has already reported this site, so we added your report to the open case.</p>}
             {sent.status_token && (
               <div className="mt-5 space-y-2">
-                <Link to={`/report-abuse/status/${encodeURIComponent(sent.status_token)}`} className="inline-block rounded-lg bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/30">View report status</Link>
+                <Link to={`/report-abuse/status/${encodeURIComponent(sent.status_token)}`} className="inline-block rounded-lg bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/30">View Report Status</Link>
                 <p className="text-slate-500 text-xs">{form.reporter_email ? 'We also emailed you this link.' : 'Save this link if you want to check back. We cannot send it again.'}</p>
               </div>
             )}
@@ -123,7 +123,7 @@ export default function ReportAbuse() {
         ) : (
           <form onSubmit={submit} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-slate-300 text-xs">Subdomain or URL being reported *</Label>
+              <Label className="text-slate-300 text-xs">Subdomain or URL Being Reported *</Label>
               <Input value={form.subdomain} onChange={e => set('subdomain', e.target.value)} required
                 placeholder="e.g. suspicious.example.com or https://..."
                 className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-600" />
@@ -146,13 +146,13 @@ export default function ReportAbuse() {
                 className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-600 resize-none h-28" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-slate-300 text-xs">Evidence (URLs, screenshots, logs)</Label>
+              <Label className="text-slate-300 text-xs">Evidence (URLs, Screenshots, Logs)</Label>
               <Textarea value={form.evidence} onChange={e => set('evidence', e.target.value)}
                 placeholder="Paste any links or evidence here..."
                 className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-600 resize-none h-20" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-slate-300 text-xs">Your Email (optional, for follow-up)</Label>
+              <Label className="text-slate-300 text-xs">Your Email (Optional, for Follow-Up)</Label>
               <Input type="email" value={form.reporter_email} onChange={e => set('reporter_email', e.target.value)}
                 placeholder="you@example.com"
                 className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-600" />
@@ -168,7 +168,7 @@ export default function ReportAbuse() {
                     <Button type="button" variant="outline" size="sm" className="mt-2 border-slate-700 bg-transparent" onClick={() => {
                       setTurnstileError('');
                       if (widgetIdRef.current !== null && window.turnstile) window.turnstile.reset(widgetIdRef.current);
-                    }}>Retry security check</Button>
+                    }}>Retry Security Check</Button>
                   </div>
                 )}
               </div>

@@ -14,7 +14,7 @@ export default function DnsNotResolving() {
 
       <H2>Step 1: Check If It's a Propagation Delay</H2>
       <P>If you recently made a DNS change, it may simply not have propagated yet. Check the current status globally:</P>
-      <CodeBlock label="Check DNS from multiple locations">
+      <CodeBlock label="Check DNS from Multiple Locations">
 {`# Check from your machine
 dig yourdomain.com A +short
 
@@ -40,7 +40,7 @@ dig @9.9.9.9 yourdomain.com A +short   # Quad9
       <InArticleAd />
 
       <H2>Step 3: Check Nameservers Are Set Correctly</H2>
-      <CodeBlock label="Check nameservers">
+      <CodeBlock label="Check Nameservers">
 {`# Check what nameservers your domain is using
 dig yourdomain.com NS +short
 # or
@@ -52,7 +52,7 @@ nslookup -type=NS yourdomain.com
 
       <H2>Step 4: Flush DNS Cache</H2>
       <P>Your local machine or router may have a cached old record:</P>
-      <CodeBlock label="Flush DNS cache by OS">
+      <CodeBlock label="Flush DNS Cache by OS">
 {`# Windows
 ipconfig /flushdns
 
@@ -69,7 +69,7 @@ sudo resolvectl flush-caches
 
       <H2>Step 5: Check for CNAME Conflicts</H2>
       <P>CNAME records conflict with other record types on the same hostname. If you have a CNAME, you can't also have MX, TXT, or A records on the same name. Check for conflicts:</P>
-      <CodeBlock label="Check all record types for a hostname">
+      <CodeBlock label="Check All Record Types for a Hostname">
 {`dig yourdomain.com ANY
 # Look for conflicting CNAME + other record types on the same name`}
       </CodeBlock>

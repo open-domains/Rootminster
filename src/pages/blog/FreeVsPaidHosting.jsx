@@ -16,7 +16,7 @@ export default function FreeVsPaidHosting() {
         If you search for web hosting advice, you'll find endless opinions. Some people say free hosting is fine; others insist you need a paid VPS from day one. The truth, as usual, depends entirely on what you're building. Here's the genuinely honest breakdown.
       </P>
 
-      <H2>When Free Hosting is Absolutely Fine</H2>
+      <H2>When Free Hosting Is Absolutely Fine</H2>
       <P>
         Free hosting platforms like Vercel, Netlify, and Cloudflare Pages are not "cheap" in the traditional sense — they're built on enterprise infrastructure and serve real production traffic for millions of websites. Free works perfectly for:
       </P>

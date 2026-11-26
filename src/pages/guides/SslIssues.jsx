@@ -28,7 +28,7 @@ export default function SslIssues() {
 
       <H2>Fix: Certificate Expired</H2>
       <P>Let's Encrypt certificates expire every 90 days. They should auto-renew, but this can fail:</P>
-      <CodeBlock label="Renew Let's Encrypt certificate manually">
+      <CodeBlock label="Renew Let's Encrypt Certificate Manually">
 {`# Check current certificate expiry
 sudo certbot certificates
 
@@ -44,7 +44,7 @@ sudo systemctl status certbot.timer`}
 
       <H2>Fix: Certificate Doesn't Match Domain</H2>
       <P>This happens when the certificate was issued for a different domain, or you're accessing via IP. Ensure your certificate covers the exact domain names being accessed:</P>
-      <CodeBlock label="Get certificate for your domain">
+      <CodeBlock label="Get Certificate for Your Domain">
 {`# Get a new cert for your domain
 sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
@@ -59,7 +59,7 @@ sudo certbot --expand -d yourdomain.com -d www.yourdomain.com -d api.yourdomain.
         <LI>Enabling "Automatic HTTPS Rewrites" in Cloudflare (rewrites HTTP resource URLs to HTTPS)</LI>
         <LI>Adding a Content Security Policy header to upgrade all requests</LI>
       </UL>
-      <CodeBlock label="Nginx - force HTTPS with CSP header">
+      <CodeBlock label="Nginx - Force HTTPS with CSP Header">
 {`# Add to your NGINX server block:
 add_header Content-Security-Policy "upgrade-insecure-requests;";`}
       </CodeBlock>

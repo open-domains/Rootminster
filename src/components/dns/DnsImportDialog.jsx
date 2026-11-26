@@ -43,13 +43,13 @@ export default function DnsImportDialog({ open, onClose, baseName, importedRecor
     <Dialog open={open} onOpenChange={(value) => !value && !applying && onClose()}>
       <DialogContent className="max-h-[90vh] w-[96vw] max-w-3xl overflow-hidden rounded-lg p-0">
         <DialogHeader className="border-b border-border px-6 py-4">
-          <DialogTitle className="flex items-center gap-2 text-base"><FileUp size={16} /> Import DNS backup</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-base"><FileUp size={16} /> Import DNS Backup</DialogTitle>
           <p className="truncate text-xs text-muted-foreground">{fileName}</p>
         </DialogHeader>
 
         <div className="grid grid-cols-3 gap-2 px-6 pt-4 text-center text-xs">
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2"><strong className="block text-lg text-emerald-400">{ready.length}</strong>Ready</div>
-          <div className="rounded-lg border border-border bg-muted/20 p-2"><strong className="block text-lg text-muted-foreground">{skipped.length}</strong>Already present</div>
+          <div className="rounded-lg border border-border bg-muted/20 p-2"><strong className="block text-lg text-muted-foreground">{skipped.length}</strong>Already Present</div>
           <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2"><strong className="block text-lg text-destructive">{blocked.length}</strong>Blocked</div>
         </div>
 
@@ -87,7 +87,7 @@ export default function DnsImportDialog({ open, onClose, baseName, importedRecor
           <Button variant="outline" onClick={onClose} disabled={applying}>Cancel</Button>
           <Button onClick={apply} disabled={!canApply} className="gap-2">
             {applying ? <Loader2 size={14} className="animate-spin" /> : <FileUp size={14} />}
-            Import {ready.length || ''} record{ready.length === 1 ? '' : 's'}
+            Import {ready.length || ''} Record{ready.length === 1 ? '' : 's'}
           </Button>
         </div>
       </DialogContent>

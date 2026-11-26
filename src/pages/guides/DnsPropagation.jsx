@@ -9,7 +9,7 @@ export default function DnsPropagation() {
       category="DNS Basics"
       lastUpdated="April 2026"
     >
-      <H2>What is DNS Propagation?</H2>
+      <H2>What Is DNS Propagation?</H2>
       <P>
         DNS propagation is the process by which DNS record changes spread across the global network of DNS resolvers and caches. When you change a DNS record — like updating an A record to point to a new server — that change doesn't appear everywhere at once. Instead, it gradually "propagates" across the internet as different resolvers refresh their cached data.
       </P>
@@ -66,11 +66,11 @@ dig yourdomain.com A +short`}
       </CodeBlock>
 
       <H2>Common Propagation Questions</H2>
-      <H2>Why can I see the change but others can't?</H2>
+      <H2>Why Can I See the Change but Others Can't?</H2>
       <P>
         Your local resolver may have fetched the new record already (or you have a low local cache TTL), while others are still holding the old cached value. This is completely normal during propagation.
       </P>
-      <H2>Why can I see the change in some countries but not others?</H2>
+      <H2>Why Can I See the Change in Some Countries but Not Others?</H2>
       <P>
         Propagation isn't uniform — it depends on when each resolver last cached your record and what its TTL was at that point. Resolvers in different regions update at different times.
       </P>
@@ -78,7 +78,7 @@ dig yourdomain.com A +short`}
 
       <Divider />
       <RelatedArticles articles={[
-        { href: '/guides/dns-basics/what-is-dns', title: 'What is DNS?', desc: 'How the Domain Name System works' },
+        { href: '/guides/dns-basics/what-is-dns', title: 'What Is DNS?', desc: 'How the Domain Name System works' },
         { href: '/guides/troubleshooting/dns-not-resolving', title: 'DNS Not Resolving', desc: 'Fix common DNS resolution problems' },
         { href: '/guides/domain-management/connect-to-cloudflare', title: 'Connect to Cloudflare', desc: 'Use Cloudflare for fast DNS management' },
       ]} />

@@ -47,7 +47,7 @@ export default function ProtectedBrandsManager() {
           <BadgeCheck size={16} className="text-primary" />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Protected brands</h2>
+          <h2 className="text-sm font-semibold text-foreground">Protected Brands</h2>
           <p className="text-xs text-muted-foreground">Users can't register subdomains that imitate these names. Staff and admins still can.</p>
         </div>
       </div>
@@ -57,7 +57,7 @@ export default function ProtectedBrandsManager() {
       ) : (
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="protected-brands" className="text-xs">One brand per line</Label>
+            <Label htmlFor="protected-brands" className="text-xs">One Brand per Line</Label>
             <Textarea
               id="protected-brands"
               value={draft}
@@ -74,7 +74,7 @@ export default function ProtectedBrandsManager() {
           </div>
 
           <div className="space-y-1.5 rounded-lg border border-border bg-muted/40 p-3">
-            <Label htmlFor="protected-brands-test" className="text-xs">Test a subdomain</Label>
+            <Label htmlFor="protected-brands-test" className="text-xs">Test a Subdomain</Label>
             <Input
               id="protected-brands-test"
               value={testName}
@@ -90,7 +90,7 @@ export default function ProtectedBrandsManager() {
           </div>
 
           <Button type="button" onClick={save} disabled={saving || !dirty} className="gap-2">
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save protected brands
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Protected Brands
           </Button>
         </div>
       )}

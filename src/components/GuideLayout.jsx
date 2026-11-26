@@ -7,8 +7,8 @@ const GUIDE_NAV = [
     category: 'DNS Basics',
     slug: 'dns-basics',
     items: [
-      { title: 'What is DNS?', slug: 'what-is-dns' },
-      { title: 'What is a Nameserver?', slug: 'what-is-a-nameserver' },
+      { title: 'What Is DNS?', slug: 'what-is-dns' },
+      { title: 'What Is a Nameserver?', slug: 'what-is-a-nameserver' },
       { title: 'DNS Propagation Explained', slug: 'dns-propagation' },
     ],
   },
@@ -121,7 +121,7 @@ export default function GuideLayout({ children, title, description, category, la
                 {category && <p className="text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">{category}</p>}
                 <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">{title}</h1>
                 {description && <p className="text-slate-400 text-lg leading-relaxed">{description}</p>}
-                {lastUpdated && <p className="text-slate-600 text-xs mt-3">Last updated: {lastUpdated}</p>}
+                {lastUpdated && <p className="text-slate-600 text-xs mt-3">Last Updated: {lastUpdated}</p>}
               </div>
             )}
             <article className="prose-guide">

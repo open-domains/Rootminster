@@ -33,7 +33,7 @@ export default function AdminEmailLogs() {const { t } = useTranslation();
         eyebrow={t("operational.admin_email_logs.messaging_caef62")}
         title={t("operational.admin_email_logs.email_logs_a8c386")}
         description={t("operational.admin_email_logs.inspect_transactional_email_delivery_and_f_bc5c59")}
-        meta="Transactional mail"
+        meta="Transactional Mail"
       />
 
       <AdminStatsGrid columns={3} stats={[

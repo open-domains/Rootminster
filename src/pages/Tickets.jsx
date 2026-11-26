@@ -158,7 +158,7 @@ export default function Tickets({ scope = 'mine' }) {
       <div className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-1 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Support</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{staffView ? 'Discord tickets' : 'Support tickets'}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{staffView ? 'Discord Tickets' : 'Support Tickets'}</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             {staffView ? 'Every ticket opened in Discord, with intake answers and the saved transcript once closed.' : 'Tickets you opened in our Discord server. Run /ticket in Discord to open a new one.'}
           </p>
@@ -180,7 +180,7 @@ export default function Tickets({ scope = 'mine' }) {
       {loading ? <p className="text-sm text-muted-foreground">Loading tickets…</p> : !filtered.length ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center">
           <LifeBuoy className="mx-auto text-muted-foreground" size={22} />
-          <p className="mt-2 text-sm font-medium">No tickets</p>
+          <p className="mt-2 text-sm font-medium">No Tickets</p>
           <p className="mt-1 text-xs text-muted-foreground">{staffView ? 'Nothing matches this filter.' : 'Link your Discord account in Account Settings, then run /ticket in our Discord server.'}</p>
         </div>
       ) : (

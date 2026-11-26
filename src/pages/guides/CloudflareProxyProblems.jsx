@@ -26,7 +26,7 @@ export default function CloudflareProxyProblems() {
       <H2>Problem: WebSocket Connections Failing</H2>
       <P><strong>Cause:</strong> Cloudflare proxying supports WebSockets, but it's disabled by default on some plans or misconfigured.</P>
       <P><strong>Fix:</strong> In Cloudflare Dashboard → Network → enable "WebSockets". Also ensure your server is sending the correct <InlineCode>Upgrade: websocket</InlineCode> headers.</P>
-      <CodeBlock label="NGINX WebSocket proxy config">
+      <CodeBlock label="NGINX WebSocket Proxy Config">
 {`location /ws {
     proxy_pass http://localhost:3000;
     proxy_http_version 1.1;
@@ -48,7 +48,7 @@ export default function CloudflareProxyProblems() {
 
       <H2>Problem: Caching Too Aggressively</H2>
       <P>Cloudflare may cache responses you don't want cached (like API responses or dynamic pages).</P>
-      <CodeBlock label="Disable caching for specific paths via Page Rules">
+      <CodeBlock label="Disable Caching for Specific Paths via Page Rules">
 {`# Cloudflare Page Rule to bypass cache:
 URL pattern: yourdomain.com/api/*
 Setting: Cache Level = Bypass
@@ -59,7 +59,7 @@ Cache-Control: no-store, no-cache, must-revalidate`}
 
       <H2>Problem: Real Visitor IP Shows as Cloudflare IP</H2>
       <P>When proxied, your server sees Cloudflare's IP, not the visitor's. The real IP is in the <InlineCode>CF-Connecting-IP</InlineCode> header.</P>
-      <CodeBlock label="Get real IP in NGINX">
+      <CodeBlock label="Get Real IP in NGINX">
 {`# In your NGINX config, before the server block:
 set_real_ip_from 103.21.244.0/22;
 set_real_ip_from 103.22.200.0/22;

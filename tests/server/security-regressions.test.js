@@ -121,8 +121,8 @@ test('impersonation is admin-only, reasoned, visible and audited', async () => {
   assert.match(routes, /impersonation_stopped/);
   assert.match(routes, /impersonated_request/);
   assert.match(routes, /security-sensitive action is unavailable/);
-  assert.match(layout, /Admin view-as session active/);
-  assert.match(layout, /Stop viewing as user/);
+  assert.match(layout, /Admin View-As Session Active/);
+  assert.match(layout, /Stop Viewing as User/);
   assert.match(layout, /import \{ Button \} from '@\/components\/ui\/button'/);
 });
 

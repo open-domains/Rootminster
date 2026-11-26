@@ -9,11 +9,11 @@ export default function SrvRecord() {
       category="DNS Record Types"
       lastUpdated="April 2026"
     >
-      <H2>What is an SRV Record?</H2>
+      <H2>What Is an SRV Record?</H2>
       <P>
         An SRV (Service) record specifies the location — hostname and port — of servers for specific services. It allows service discovery via DNS, meaning software can automatically find where a service lives without hardcoding servers or ports. SRV records are used for things like SIP (VoIP), XMPP (chat), Minecraft servers, and Microsoft Teams/Office 365 integration.
       </P>
-      <CodeBlock label="SRV Record format">
+      <CodeBlock label="SRV Record Format">
 {`_service._proto.name. TTL IN SRV priority weight port target.
 
 # Example: SIP over TCP
@@ -39,7 +39,7 @@ _sip._tcp.example.com. 3600 IN SRV 10 20 5060 sipserver.example.com.
 
       <H2>Real-World Examples</H2>
       <H2>Microsoft 365 / Teams</H2>
-      <CodeBlock label="Microsoft 365 SRV records">
+      <CodeBlock label="Microsoft 365 SRV Records">
 {`# Lync/Teams SIP Federation
 _sipfederationtls._tcp.yourdomain.com. SRV 100 1 5061 sipfed.online.lync.com.
 
@@ -48,13 +48,13 @@ _sip._tls.yourdomain.com. SRV 100 1 443 sipdir.online.lync.com.`}
       </CodeBlock>
 
       <H2>Minecraft Server Discovery</H2>
-      <CodeBlock label="Minecraft SRV record">
+      <CodeBlock label="Minecraft SRV Record">
 {`# Lets players connect to "play.yourdomain.com" instead of "yourdomain.com:25565"
 _minecraft._tcp.play.yourdomain.com. SRV 0 5 25565 mc.yourserver.com.`}
       </CodeBlock>
 
       <H2>XMPP (Jabber/Chat)</H2>
-      <CodeBlock label="XMPP SRV records">
+      <CodeBlock label="XMPP SRV Records">
 {`_xmpp-client._tcp.yourdomain.com. SRV 5 0 5222 xmpp.yourdomain.com.
 _xmpp-server._tcp.yourdomain.com. SRV 5 0 5269 xmpp.yourdomain.com.`}
       </CodeBlock>
@@ -73,7 +73,7 @@ _xmpp-server._tcp.yourdomain.com. SRV 5 0 5269 xmpp.yourdomain.com.`}
       <RelatedArticles articles={[
         { href: '/guides/dns-record-types/a-record', title: 'A Record', desc: 'Set target hostname IP addresses' },
         { href: '/guides/dns-record-types/mx-record', title: 'MX Record', desc: 'Similar priority/weight concepts for email' },
-        { href: '/guides/dns-basics/what-is-dns', title: 'What is DNS?', desc: 'DNS fundamentals' },
+        { href: '/guides/dns-basics/what-is-dns', title: 'What Is DNS?', desc: 'DNS fundamentals' },
       ]} />
     </GuideLayout>
   );

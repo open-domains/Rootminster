@@ -9,7 +9,7 @@ export default function Netlify() {
       category="Hosting Providers"
       lastUpdated="April 2026"
     >
-      <H2>What is Netlify?</H2>
+      <H2>What Is Netlify?</H2>
       <P>Netlify is a web hosting and serverless backend platform that pioneered the JAMstack architecture. It's been a favourite of developers since 2015 for its simplicity, powerful features, and generous free tier.</P>
       <H3>Pros</H3>
       <UL>
@@ -58,7 +58,7 @@ Name:  www
 Value: yoursite.netlify.app.`}
       </CodeBlock>
       <H3>Using Root Domain (Netlify DNS or A Record)</H3>
-      <CodeBlock label="A record for Netlify root domain">
+      <CodeBlock label="A Record for Netlify Root Domain">
 {`# Netlify load-balanced IPs (check Netlify docs for current IPs)
 Type: A
 Name: @
@@ -71,7 +71,7 @@ Value: 75.2.60.5
 
       <H2>Netlify Redirects</H2>
       <P>Netlify's redirect engine is one of the best in the industry. Add a <InlineCode>_redirects</InlineCode> file to your build output:</P>
-      <CodeBlock label="_redirects file examples">
+      <CodeBlock label="_redirects File Examples">
 {`# Simple redirect
 /old-page    /new-page    301
 

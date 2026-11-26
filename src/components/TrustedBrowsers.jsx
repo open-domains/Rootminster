@@ -88,7 +88,7 @@ export default function TrustedBrowsers({ user }) {const { t } = useTranslation(
             <div key={d.id} className="flex items-center justify-between gap-3 p-3 bg-slate-900/50 border border-slate-700/40 rounded-lg">
                 <div className="min-w-0">
                   <p className="text-slate-200 text-sm font-medium truncate flex items-center gap-2">
-                    {d.user_agent ? parseBrowser(d.user_agent) : 'Unknown browser'}
+                    {d.user_agent ? parseBrowser(d.user_agent) : 'Unknown Browser'}
                     {current &&
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">{t("operational.trusted_browsers.this_device_fa5a6d")}</span>
                   }
@@ -115,7 +115,7 @@ export default function TrustedBrowsers({ user }) {const { t } = useTranslation(
 }
 
 function parseBrowser(ua) {
-  if (!ua) return 'Unknown browser';
+  if (!ua) return 'Unknown Browser';
   if (/edg/i.test(ua)) return 'Microsoft Edge';
   if (/chrome/i.test(ua) && !/chromium/i.test(ua)) return 'Chrome';
   if (/firefox/i.test(ua)) return 'Firefox';

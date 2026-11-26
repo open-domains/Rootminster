@@ -80,29 +80,29 @@ export default function R2BackupPanel({ moduleEnabled }) {
   return (
     <div className="mt-5 space-y-4 border-t border-border pt-5">
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-border bg-muted/25 p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Cloud size={14} /> Cloudflare R2</div><p className={`mt-2 text-sm font-semibold ${status?.configured ? 'text-emerald-400' : 'text-amber-300'}`}>{status?.configured ? 'Configured' : 'Credentials required'}</p></div>
-        <div className="rounded-lg border border-border bg-muted/25 p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck size={14} /> Encryption</div><p className={`mt-2 text-sm font-semibold ${status?.encryption_configured ? 'text-emerald-400' : 'text-amber-300'}`}>{status?.encryption_configured ? 'Ready' : 'Key required'}</p></div>
-        <div className="rounded-lg border border-border bg-muted/25 p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><HardDrive size={14} /> Stored backups</div><p className="mt-2 text-sm font-semibold text-foreground">{backups.filter((backup) => backup.status === 'completed' && !backup.deleted_at).length} · {bytes(status?.storage_used_bytes)}</p></div>
+        <div className="rounded-lg border border-border bg-muted/25 p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Cloud size={14} /> Cloudflare R2</div><p className={`mt-2 text-sm font-semibold ${status?.configured ? 'text-emerald-400' : 'text-amber-300'}`}>{status?.configured ? 'Configured' : 'Credentials Required'}</p></div>
+        <div className="rounded-lg border border-border bg-muted/25 p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck size={14} /> Encryption</div><p className={`mt-2 text-sm font-semibold ${status?.encryption_configured ? 'text-emerald-400' : 'text-amber-300'}`}>{status?.encryption_configured ? 'Ready' : 'Key Required'}</p></div>
+        <div className="rounded-lg border border-border bg-muted/25 p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><HardDrive size={14} /> Stored Backups</div><p className="mt-2 text-sm font-semibold text-foreground">{backups.filter((backup) => backup.status === 'completed' && !backup.deleted_at).length} · {bytes(status?.storage_used_bytes)}</p></div>
       </div>
 
       {!status?.encryption_configured && <div className="flex gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-200"><TriangleAlert size={16} className="mt-0.5 shrink-0" /><span>Set <code>BACKUP_ENCRYPTION_KEY</code>, or preserve your existing <code>MODULE_ENCRYPTION_KEY</code>. The same key is required for disaster recovery.</span></div>}
       {status?.connection_error && <div className="flex gap-2 rounded-lg border border-red-500/25 bg-red-500/10 p-3 text-xs leading-5 text-red-300"><TriangleAlert size={16} className="mt-0.5 shrink-0" /><span>{status.connection_error}</span></div>}
 
       <div className="grid gap-3 rounded-lg border border-border bg-muted/20 p-4 md:grid-cols-3">
-        <UsageBar label="Standard storage safety budget" used={status?.storage_used_bytes} limit={limits.storage_bytes} formatter={bytes} />
-        <UsageBar label={`Class A operations · ${limits.month || ''}`} used={limits.class_a_used} limit={limits.class_a_monthly} />
-        <UsageBar label={`Class B operations · ${limits.month || ''}`} used={limits.class_b_used} limit={limits.class_b_monthly} />
+        <UsageBar label="Standard Storage Safety Budget" used={status?.storage_used_bytes} limit={limits.storage_bytes} formatter={bytes} />
+        <UsageBar label={`Class A Operations · ${limits.month || ''}`} used={limits.class_a_used} limit={limits.class_a_monthly} />
+        <UsageBar label={`Class B Operations · ${limits.month || ''}`} used={limits.class_b_used} limit={limits.class_b_monthly} />
         <p className="text-[10px] leading-4 text-muted-foreground md:col-span-3">{limits.note}</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => action('test', rootminster.backups.testR2, 'Cloudflare R2 connection successful')} disabled={!moduleEnabled || !status?.configured || Boolean(busy)} className="gap-2">{busy === 'test' ? <Loader2 size={14} className="animate-spin" /> : <Cloud size={14} />} Test R2 connection</Button>
-        <Button type="button" onClick={() => action('create', rootminster.backups.create, 'Encrypted backup uploaded to Cloudflare R2')} disabled={!ready || Boolean(busy)} className="gap-2">{busy === 'create' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Back up now</Button>
+        <Button type="button" variant="outline" onClick={() => action('test', rootminster.backups.testR2, 'Cloudflare R2 connection successful')} disabled={!moduleEnabled || !status?.configured || Boolean(busy)} className="gap-2">{busy === 'test' ? <Loader2 size={14} className="animate-spin" /> : <Cloud size={14} />} Test R2 Connection</Button>
+        <Button type="button" onClick={() => action('create', rootminster.backups.create, 'Encrypted backup uploaded to Cloudflare R2')} disabled={!ready || Boolean(busy)} className="gap-2">{busy === 'create' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Back Up Now</Button>
         <Button type="button" variant="ghost" onClick={load} disabled={Boolean(busy)} className="gap-2"><RefreshCw size={14} /> Refresh</Button>
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border">
-        <div className="border-b border-border bg-muted/30 px-4 py-3"><h3 className="text-sm font-semibold text-foreground">Backup history</h3><p className="mt-0.5 text-xs text-muted-foreground">Archives are encrypted before they leave Rootminster.</p></div>
+        <div className="border-b border-border bg-muted/30 px-4 py-3"><h3 className="text-sm font-semibold text-foreground">Backup History</h3><p className="mt-0.5 text-xs text-muted-foreground">Archives are encrypted before they leave Rootminster.</p></div>
         {!backups.length ? <div className="px-4 py-8 text-center text-xs text-muted-foreground">No backups have been created yet.</div> : <div className="divide-y divide-border">
           {backups.map((backup) => <div key={backup.id} className={`grid gap-3 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center ${backup.deleted_at ? 'opacity-50' : ''}`}>
             <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-xs font-medium text-foreground">{backup.file_name}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${backup.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : backup.status === 'failed' ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-300'}`}>{backup.deleted_at ? 'deleted' : backup.status}</span>{backup.verified_at && <span className="flex items-center gap-1 text-[10px] text-emerald-400"><CheckCircle2 size={11} /> Verified</span>}</div><p className="mt-1 text-[11px] text-muted-foreground">{date(backup.started_at)} · {bytes(backup.size_bytes)} · {String(backup.trigger).replace('_', ' ')}</p>{backup.error_message && <p className="mt-1 line-clamp-2 text-[11px] text-red-400">{backup.error_message}</p>}</div>
@@ -114,24 +114,24 @@ export default function R2BackupPanel({ moduleEnabled }) {
       <AlertDialog open={Boolean(restoreTarget)} onOpenChange={(open) => { if (!open) { setRestoreTarget(null); setConfirmation(''); setTotpCode(''); setRestoreGroups(['all']); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Restore this backup?</AlertDialogTitle>
+            <AlertDialogTitle>Restore This Backup?</AlertDialogTitle>
             <AlertDialogDescription>Rootminster will create a safety backup, enter maintenance mode, restore the selected data and revoke all active sessions and access grants. Deleted-user tombstones are always preserved so approved account deletions are not undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-muted/20 p-3">
-              <p className="text-xs font-medium text-foreground">Data to restore</p>
+              <p className="text-xs font-medium text-foreground">Data to Restore</p>
               <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-                {[['all', 'Full database'], ['users', 'Users and deletion records'], ['dns', 'DNS and subdomain records'], ['requests', 'Requests and reviews'], ['settings', 'Platform settings'], ['backups', 'Backup history']].map(([value, label]) => <label key={value} className="flex items-center gap-2"><input type="checkbox" checked={restoreGroups.includes(value)} onChange={() => toggleRestoreGroup(value)} /> {label}</label>)}
+                {[['all', 'Full Database'], ['users', 'Users and Deletion Records'], ['dns', 'DNS and Subdomain Records'], ['requests', 'Requests and Reviews'], ['settings', 'Platform Settings'], ['backups', 'Backup History']].map(([value, label]) => <label key={value} className="flex items-center gap-2"><input type="checkbox" checked={restoreGroups.includes(value)} onChange={() => toggleRestoreGroup(value)} /> {label}</label>)}
               </div>
             </div>
             <div className="space-y-2"><label className="text-xs font-medium text-foreground">Enter <strong>RESTORE</strong> to continue</label><Input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" /></div>
-            <div className="space-y-2"><label className="text-xs font-medium text-foreground">Current 2FA code</label><Input value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" /></div>
+            <div className="space-y-2"><label className="text-xs font-medium text-foreground">Current 2FA Code</label><Input value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" /></div>
           </div>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={restore} disabled={confirmation !== 'RESTORE' || !/^\d{6}$/.test(totpCode) || !restoreGroups.length} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Restore backup</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={restore} disabled={confirmation !== 'RESTORE' || !/^\d{6}$/.test(totpCode) || !restoreGroups.length} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Restore Backup</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete this backup?</AlertDialogTitle><AlertDialogDescription>The encrypted archive will be permanently deleted from Cloudflare R2. This cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { const target = deleteTarget; setDeleteTarget(null); action(`delete:${target.id}`, () => rootminster.backups.delete(target.id), 'Backup deleted'); }}>Delete backup</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete This Backup?</AlertDialogTitle><AlertDialogDescription>The encrypted archive will be permanently deleted from Cloudflare R2. This cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => { const target = deleteTarget; setDeleteTarget(null); action(`delete:${target.id}`, () => rootminster.backups.delete(target.id), 'Backup deleted'); }}>Delete Backup</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   );
 }

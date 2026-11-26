@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
 const DECISIONS = {
-  approved: { label: 'Instantly approved', tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
-  manual: { label: 'Sent to staff review', tone: 'border-border bg-muted text-muted-foreground' },
-  failed: { label: 'Instant approval failed', tone: 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300' },
-  revoked: { label: 'Pulled back to review', tone: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400' },
+  approved: { label: 'Instantly Approved', tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' },
+  manual: { label: 'Sent to Staff Review', tone: 'border-border bg-muted text-muted-foreground' },
+  failed: { label: 'Instant Approval Failed', tone: 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300' },
+  revoked: { label: 'Pulled Back to Review', tone: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400' },
 };
 
 const when = (value) => {
@@ -48,7 +48,7 @@ export default function InstantApprovalPanel({ request, onChanged }) {
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Zap size={15} className="text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Instant approval</span>
+          <span className="text-sm font-medium text-foreground">Instant Approval</span>
         </div>
         <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${decision.tone}`}>{decision.label}</span>
       </div>
@@ -75,7 +75,7 @@ export default function InstantApprovalPanel({ request, onChanged }) {
               maxLength={500}
             />
             <Button type="button" size="sm" variant="outline" disabled={busy || !reason.trim()} onClick={pullBack} className="gap-2">
-              {busy ? <Loader2 size={13} className="animate-spin" /> : <Undo2 size={13} />} Pull back to review
+              {busy ? <Loader2 size={13} className="animate-spin" /> : <Undo2 size={13} />} Pull Back to Review
             </Button>
             <p className="text-muted-foreground">Removes the DNS records and returns the request to the pending queue, keeping its records so it can be approved again.</p>
           </div>

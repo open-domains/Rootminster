@@ -9,7 +9,7 @@ export default function GithubPages() {
       category="Hosting Providers"
       lastUpdated="April 2026"
     >
-      <H2>What is GitHub Pages?</H2>
+      <H2>What Is GitHub Pages?</H2>
       <P>GitHub Pages is a free static site hosting service that publishes files directly from a GitHub repository. It's perfect for open-source project documentation, personal portfolios, and simple websites. It's completely free with no bandwidth limits for public repositories.</P>
       <H3>Pros</H3>
       <UL>
@@ -46,7 +46,7 @@ export default function GithubPages() {
         <LI>Select the branch to publish from (usually <InlineCode>main</InlineCode> or <InlineCode>gh-pages</InlineCode>)</LI>
         <LI>Your site is live at <InlineCode>yourusername.github.io</InlineCode></LI>
       </UL>
-      <CodeBlock label="GitHub Actions deployment (React/Vue/Vite)">
+      <CodeBlock label="GitHub Actions Deployment (React/Vue/Vite)">
 {`# .github/workflows/deploy.yml
 name: Deploy to GitHub Pages
 on:
@@ -68,14 +68,14 @@ jobs:
       </CodeBlock>
 
       <H2>Custom Domain DNS Configuration</H2>
-      <H3>For a subdomain (www or other)</H3>
-      <CodeBlock label="CNAME for GitHub Pages subdomain">
+      <H3>For a Subdomain (www or Other)</H3>
+      <CodeBlock label="CNAME for GitHub Pages Subdomain">
 {`Type:  CNAME
 Name:  www
 Value: yourusername.github.io.`}
       </CodeBlock>
-      <H3>For root domain (apex)</H3>
-      <CodeBlock label="A records for GitHub Pages root domain">
+      <H3>For Root Domain (Apex)</H3>
+      <CodeBlock label="A Records for GitHub Pages Root Domain">
 {`# GitHub Pages IP addresses (all four for redundancy)
 Type: A  Name: @  Value: 185.199.108.153
 Type: A  Name: @  Value: 185.199.109.153

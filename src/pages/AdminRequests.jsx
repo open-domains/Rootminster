@@ -51,7 +51,7 @@ function RequestCard({ request, onReview, userNames = {} }) {
       </div>
 
       <Button size="sm" onClick={() => onReview(request)} className="h-8 w-full text-xs gap-1.5 md:w-auto">
-        <Eye size={13} /> Open review
+        <Eye size={13} /> Open Review
       </Button>
     </div>
   );
@@ -190,7 +190,7 @@ export default function AdminRequests() {
         eyebrow={t('adminRequests.eyebrow')}
         title={t('adminRequests.title')}
         description={t('adminRequests.subtitle')}
-        meta={`${pendingSubdomains} pending · ${dnsIssueCount} DNS issues`}
+        meta={`${pendingSubdomains} Pending · ${dnsIssueCount} DNS Issues`}
         actions={(
           <div className="flex flex-wrap gap-2">
           {user?.role === 'admin' && tab === 'dns' && (
@@ -228,9 +228,9 @@ export default function AdminRequests() {
           {tab === 'subdomain' && (
             <div className="flex gap-2 flex-wrap">
               <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground">
-                <option value="all">All risk levels</option>
-                <option value="high_risk">High risk</option>
-                <option value="review">Needs review</option>
+                <option value="all">All Risk Levels</option>
+                <option value="high_risk">High Risk</option>
+                <option value="review">Needs Review</option>
                 <option value="clear">Clear</option>
                 <option value="incomplete">Incomplete</option>
               </select>

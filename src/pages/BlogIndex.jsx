@@ -45,7 +45,7 @@ export const BLOG_POSTS = [
   },
   {
     slug: 'what-is-a-subdomain-and-why-use-one',
-    title: 'What is a Subdomain and Why Should You Use One?',
+    title: 'What Is a Subdomain and Why Should You Use One?',
     description: "Subdomains are one of the most useful tools in a developer's toolkit. Here's everything you need to know, in plain English.",
     author: 'Open Domains Team',
     date: 'April 2026',
@@ -147,7 +147,7 @@ export default function BlogIndex() {
                     <span>{post.date}</span>
                   </div>
                   <span className="text-indigo-400 text-xs font-medium group-hover:gap-2 flex items-center gap-1 transition-all">
-                    Read more <ArrowRight size={12} />
+                    Read More <ArrowRight size={12} />
                   </span>
                 </div>
               </article>

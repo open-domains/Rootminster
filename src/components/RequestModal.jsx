@@ -208,8 +208,8 @@ export default function RequestModal({ open, onClose, onSuccess }) {
             <DialogHeader>
               <div className="flex items-start justify-between gap-4 pr-8">
                 <div>
-                  <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">New domain request</p>
-                  <DialogTitle className="text-xl">Claim an Open Domains address</DialogTitle>
+                  <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">New Domain Request</p>
+                  <DialogTitle className="text-xl">Claim an Open Domains Address</DialogTitle>
                   <p className="mt-1.5 text-sm text-muted-foreground">Choose your name, configure the first DNS record, and tell us what you’re building.</p>
                 </div>
               </div>
@@ -223,7 +223,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                   <div className="mb-3 flex items-center gap-2">
                     <span className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground"><Globe2 size={14} /></span>
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground">1. Choose your domain</h3>
+                      <h3 className="text-sm font-semibold text-foreground">1. Choose Your Domain</h3>
                       <p className="text-xs text-muted-foreground">Pick the hostname you want to register.</p>
                     </div>
                   </div>
@@ -234,7 +234,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                       <Input value={subdomain} onChange={e => handleSubdomainChange(e.target.value)} placeholder="myproject" required className="font-mono" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Root domain</Label>
+                      <Label className="text-xs">Root Domain</Label>
                       <Select value={rootDomain} onValueChange={handleDomainChange}>
                         <SelectTrigger><SelectValue placeholder="Select domain" /></SelectTrigger>
                         <SelectContent>
@@ -245,7 +245,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                   </div>
 
                   <div className="mt-3 rounded-lg border border-border bg-muted/20 px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Requested address</p>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Requested Address</p>
                     <p className="mt-1 font-mono text-sm font-medium text-foreground">{fqdn}</p>
                   </div>
 
@@ -278,7 +278,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                     </div>
                     {MULTI_VALUE_TYPES.includes(activeType) && !hasCname && (
                       <button type="button" onClick={addRow} className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80">
-                        <Plus size={12} /> Add value
+                        <Plus size={12} /> Add Value
                       </button>
                     )}
                   </div>
@@ -311,7 +311,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                               </Select>
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">Target / value</Label>
+                              <Label className="text-xs text-muted-foreground">Target / Value</Label>
                               <Input value={row.record_value} onChange={e => setRow(i, 'record_value', e.target.value)} placeholder={getRecordValuePlaceholder(row.record_type)} className={`h-9 font-mono text-xs ${rowError ? 'border-destructive/50' : ''}`} />
                             </div>
                             <div className="space-y-1.5">
@@ -327,7 +327,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                               <div className="flex items-center gap-2">
                                 <Switch checked={row.proxied} onCheckedChange={v => setRow(i, 'proxied', v)} />
                                 <div>
-                                  <p className="text-xs font-medium text-foreground">Cloudflare proxy</p>
+                                  <p className="text-xs font-medium text-foreground">Cloudflare Proxy</p>
                                   <p className="text-[11px] text-muted-foreground">Route supported traffic through Cloudflare.</p>
                                 </div>
                               </div>
@@ -344,18 +344,18 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                   <div className="mb-3 flex items-center gap-2">
                     <span className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground"><Link2 size={14} /></span>
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground">3. Tell us about the project</h3>
+                      <h3 className="text-sm font-semibold text-foreground">3. Tell Us About the Project</h3>
                       <p className="text-xs text-muted-foreground">This helps reviewers understand how the domain will be used.</p>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Project description</Label>
+                      <Label className="text-xs">Project Description</Label>
                       <Textarea value={reason} onChange={e => setReason(e.target.value)} placeholder={t('requestModal.projectDescriptionPlaceholder')} className="min-h-[96px] resize-none" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Preview link</Label>
+                      <Label className="text-xs">Preview Link</Label>
                       <Input value={previewLink} onChange={e => setPreviewLink(e.target.value)} placeholder={t('requestModal.previewLinkPlaceholder')} required />
                     </div>
                   </div>
@@ -369,7 +369,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
                       <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => {
                         setVerificationError('');
                         if (widgetIdRef.current !== null && window.turnstile) window.turnstile.reset(widgetIdRef.current);
-                      }}>Retry security check</Button>
+                      }}>Retry Security Check</Button>
                     </div>
                   )}
                 </section>}
@@ -379,44 +379,44 @@ export default function RequestModal({ open, onClose, onSuccess }) {
             <aside className="border-t border-border bg-muted/15 px-5 py-5 lg:border-l lg:border-t-0">
               <div className="sticky top-0 space-y-5">
                 <div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Request summary</p>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Request Summary</p>
                   <p className="mt-2 break-all font-mono text-sm font-semibold text-foreground">{fqdn}</p>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-muted-foreground">Availability</span>
-                    <span className={`font-medium ${availability?.status === 'available' ? 'text-emerald-400' : 'text-muted-foreground'}`}>{checkingAvail ? 'Checking…' : availability?.status === 'available' ? 'Available' : availability?.status || 'Not checked'}</span>
+                    <span className={`font-medium ${availability?.status === 'available' ? 'text-emerald-400' : 'text-muted-foreground'}`}>{checkingAvail ? 'Checking…' : availability?.status === 'available' ? 'Available' : availability?.status || 'Not Checked'}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">DNS records</span>
+                    <span className="text-muted-foreground">DNS Records</span>
                     <span className="font-medium text-foreground">{rows.length}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Project details</span>
+                    <span className="text-muted-foreground">Project Details</span>
                     <span className={reason.trim() && previewLink.trim() ? 'text-emerald-400' : 'text-muted-foreground'}>{reason.trim() && previewLink.trim() ? 'Complete' : 'Incomplete'}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-muted-foreground">Verification</span>
-                    <span className={verificationComplete ? 'text-emerald-400' : 'text-muted-foreground'}>{verificationLoading ? 'Loading…' : verificationRequired ? (recaptchaToken ? 'Complete' : 'Required') : 'Not required'}</span>
+                    <span className={verificationComplete ? 'text-emerald-400' : 'text-muted-foreground'}>{verificationLoading ? 'Loading…' : verificationRequired ? (recaptchaToken ? 'Complete' : 'Required') : 'Not Required'}</span>
                   </div>
                 </div>
 
                 <div className="rounded-lg border border-border bg-card px-3 py-3 text-xs text-muted-foreground">
-                  <div className="mb-2 flex items-center gap-2 text-foreground"><ShieldCheck size={13} /> <span className="font-medium">Reviewed before activation</span></div>
+                  <div className="mb-2 flex items-center gap-2 text-foreground"><ShieldCheck size={13} /> <span className="font-medium">Reviewed Before Activation</span></div>
                   Requests are checked before DNS is created. You can follow the review status from My Requests.
                 </div>
 
                 <div className="border-t border-border pt-4">
                   {canSubmit ? (
-                    <div className="mb-3 flex items-center gap-2 text-xs text-emerald-400"><CheckCircle2 size={13} /> Ready to submit</div>
+                    <div className="mb-3 flex items-center gap-2 text-xs text-emerald-400"><CheckCircle2 size={13} /> Ready to Submit</div>
                   ) : (
                     <div className="mb-3 text-xs text-muted-foreground">Complete the required fields to submit.</div>
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
                     <Button type="submit" disabled={loading || !canSubmit}>
-                      {loading ? <><Loader2 size={14} className="mr-2 animate-spin" />Submitting</> : 'Submit request'}
+                      {loading ? <><Loader2 size={14} className="mr-2 animate-spin" />Submitting</> : 'Submit Request'}
                     </Button>
                   </div>
                 </div>

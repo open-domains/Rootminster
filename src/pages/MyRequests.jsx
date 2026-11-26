@@ -23,7 +23,7 @@ const STATUS_ICON = {
 function useStatusMeta() {
   const { t } = useTranslation();
   return {
-    user_responded: { label: 'Reply sent', icon: MessageCircle, tone: 'text-primary', detail: 'Your reply is waiting for the review team.' },
+    user_responded: { label: 'Reply Sent', icon: MessageCircle, tone: 'text-primary', detail: 'Your reply is waiting for the review team.' },
     pending: { label: t('myRequests.statusPendingLabel'), icon: Clock3, tone: 'text-primary', detail: t('myRequests.statusPendingDetail') },
     needs_info: { label: t('myRequests.statusNeedsInfoLabel'), icon: MessageCircle, tone: 'text-accent', detail: t('myRequests.statusNeedsInfoDetail') },
     approved: { label: t('myRequests.statusApprovedLabel'), icon: CheckCircle2, tone: 'text-emerald-400', detail: t('myRequests.statusApprovedDetail') },

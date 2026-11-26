@@ -110,7 +110,7 @@ export default function TwoFactorSetup({ user, onUpdated }) {const { t } = useTr
       {qrError && <p className="mb-3 text-xs text-amber-300">{qrError}</p>}
       <p className="mb-3 text-center text-xs" style={{ color: 'var(--st2-muted)' }}>The QR code is generated locally in your browser. Your setup secret is never sent to another service.</p>
       <details className="text-xs" style={{ color: 'var(--st2-muted)' }}>
-        <summary className="cursor-pointer hover:opacity-80 select-none">Authenticator setup key</summary>
+        <summary className="cursor-pointer hover:opacity-80 select-none">Authenticator Setup Key</summary>
         <code className="mt-2 block font-mono text-sm tracking-wider break-all select-all"
       style={{ background: '#0f172a', color: '#a5b4fc', padding: '10px 12px', borderRadius: 8, display: 'block', marginTop: 8 }}>
           {secret}

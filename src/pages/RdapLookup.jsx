@@ -93,7 +93,7 @@ export default function RdapLookup() {
           {/* Raw JSON toggle */}
           <details className="mt-4">
             <summary className="text-muted-foreground text-xs cursor-pointer hover:text-foreground transition-colors">
-              View raw RDAP JSON
+              View Raw RDAP JSON
             </summary>
             <pre className="mt-3 bg-muted border rounded-lg p-4 text-xs text-foreground overflow-x-auto max-h-96">
               {JSON.stringify(result, null, 2)}

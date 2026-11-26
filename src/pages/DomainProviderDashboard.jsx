@@ -39,7 +39,7 @@ function DomainCard({ domain }) {
               ? 'bg-blue-500/10 text-blue-400 border-blue-500/25'
               : 'bg-slate-500/10 text-slate-400 border-slate-500/25'
           }`}>
-            {domain.allow_new_requests ? t('domainProvider.acceptingRequests', 'Accepting requests') : t('domainProvider.notAcceptingRequests', 'Not accepting requests')}
+            {domain.allow_new_requests ? t('domainProvider.acceptingRequests', 'Accepting Requests') : t('domainProvider.notAcceptingRequests', 'Not Accepting Requests')}
           </span>
         </div>
         {domain.last_synced && (
@@ -54,7 +54,7 @@ function DomainCard({ domain }) {
           { label: t('domainProvider.activeSubdomains', 'Active Subdomains'), value: s.approved_subdomains, color: 'text-emerald-400' },
           { label: t('domainProvider.pendingRequests', 'Pending Requests'), value: s.pending_requests, color: 'text-amber-400' },
           { label: t('domainProvider.dnsRecords', 'DNS Records'), value: domain.record_count ?? s.dns_records, color: 'text-primary' },
-          { label: t('domainProvider.new7d', 'New (7 days)'), value: s.new_requests_7d, color: 'text-blue-400' },
+          { label: t('domainProvider.new7d', 'New (7 Days)'), value: s.new_requests_7d, color: 'text-blue-400' },
         ].map(({ label, value, color }) => (
           <div key={label} className="px-4 py-3">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
@@ -134,7 +134,7 @@ export default function DomainProviderDashboard() {
             <StatCard icon={Globe2} label={t('domainProvider.activeSubdomains', 'Active Subdomains')} value={totals.active_subdomains} color="text-emerald-400" />
             <StatCard icon={GitPullRequest} label={t('domainProvider.pendingRequests', 'Pending Requests')} value={totals.pending_requests} color="text-amber-400" />
             <StatCard icon={Server} label={t('domainProvider.dnsRecords', 'DNS Records')} value={totals.dns_records} />
-            <StatCard icon={TrendingUp} label={t('domainProvider.new7d', 'New (7 days)')} value={totals.new_requests_7d} color="text-blue-400" />
+            <StatCard icon={TrendingUp} label={t('domainProvider.new7d', 'New (7 Days)')} value={totals.new_requests_7d} color="text-blue-400" />
           </div>
 
           {/* Per-domain breakdown */}
@@ -142,7 +142,7 @@ export default function DomainProviderDashboard() {
             <div className="space-y-3">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <BarChart3 size={14} />
-                {t('domainProvider.breakdownTitle', 'Domain breakdown')}
+                {t('domainProvider.breakdownTitle', 'Domain Breakdown')}
               </h2>
               {data.domains.map((domain) => (
                 <DomainCard key={domain.id} domain={domain} />

@@ -38,7 +38,7 @@ export default function HeldDnsChangesPanel() {
   if (!items.length) return null;
   return (
     <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><ShieldAlert size={15} className="text-amber-500" /> DNS changes held for review ({items.length})</h2>
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><ShieldAlert size={15} className="text-amber-500" /> DNS Changes Held for Review ({items.length})</h2>
       <p className="mt-1 text-xs text-muted-foreground">These edits to approved subdomains matched a threat check, so they were not applied. Approving applies the change exactly as submitted.</p>
       <ul className="mt-3 space-y-3">
         {items.map((item) => {
@@ -50,7 +50,7 @@ export default function HeldDnsChangesPanel() {
                 <span className="text-muted-foreground">{item.requester_email} · {item.created_date ? format(new Date(item.created_date), 'd MMM yyyy, HH:mm') : ''} · {item.source}</span>
               </div>
               <div className="mt-2 grid gap-1 font-mono sm:grid-cols-2">
-                <p className="text-muted-foreground">{item.previous ? `Was: ${item.previous.record_type} ${item.previous.content}` : 'New record'}</p>
+                <p className="text-muted-foreground">{item.previous ? `Was: ${item.previous.record_type} ${item.previous.content}` : 'New Record'}</p>
                 <p className="break-all text-foreground">Now: {proposed.record_type} {proposed.content}</p>
               </div>
               <ul className="mt-2 list-disc space-y-0.5 pl-5 text-muted-foreground">

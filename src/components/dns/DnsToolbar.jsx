@@ -30,7 +30,7 @@ export default function DnsToolbar({
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger aria-label="Filter by record type" className="h-8 w-[110px] text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all" className="text-xs">All types</SelectItem>
+            <SelectItem value="all" className="text-xs">All Types</SelectItem>
             {availableTypes.map(t => <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -41,7 +41,7 @@ export default function DnsToolbar({
           <SelectContent>
             <SelectItem value="all" className="text-xs">All</SelectItem>
             <SelectItem value="proxied" className="text-xs">Proxied</SelectItem>
-            <SelectItem value="dns" className="text-xs">DNS only</SelectItem>
+            <SelectItem value="dns" className="text-xs">DNS Only</SelectItem>
           </SelectContent>
         </Select>
 

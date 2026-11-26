@@ -14,15 +14,15 @@ import { toast } from 'sonner';
 
 const DATASETS = [
   { id: 'users', entity: 'User', label: 'Users', description: 'Accounts, roles, status and registration dates', fields: ['email', 'full_name', 'role', 'status', 'created_date'] },
-  { id: 'domains', entity: 'Domain', label: 'Root domains', description: 'Configured root domains and operational metadata', fields: ['name', 'domain', 'status', 'record_count', 'last_synced', 'created_date'] },
-  { id: 'subdomains', entity: 'SubdomainOwnership', label: 'User domains', description: 'Allocated subdomains and owners', fields: ['full_name', 'subdomain', 'root_domain', 'owner_email', 'status', 'created_date'] },
+  { id: 'domains', entity: 'Domain', label: 'Root Domains', description: 'Configured root domains and operational metadata', fields: ['name', 'domain', 'status', 'record_count', 'last_synced', 'created_date'] },
+  { id: 'subdomains', entity: 'SubdomainOwnership', label: 'User Domains', description: 'Allocated subdomains and owners', fields: ['full_name', 'subdomain', 'root_domain', 'owner_email', 'status', 'created_date'] },
   { id: 'requests', entity: 'SubdomainRequest', label: 'Requests', description: 'Subdomain request workflow and outcomes', fields: ['full_name', 'subdomain', 'root_domain', 'requester_email', 'status', 'created_date'] },
-  { id: 'dns', entity: 'DnsRecord', label: 'DNS records', description: 'DNS inventory and record types', fields: ['name', 'type', 'record_type', 'value', 'record_value', 'owner_email', 'created_date'] },
-  { id: 'abuse', entity: 'AbuseReport', label: 'Abuse reports', description: 'Moderation and abuse case activity', fields: ['domain', 'subdomain', 'category', 'status', 'reporter_email', 'created_date'] },
+  { id: 'dns', entity: 'DnsRecord', label: 'DNS Records', description: 'DNS inventory and record types', fields: ['name', 'type', 'record_type', 'value', 'record_value', 'owner_email', 'created_date'] },
+  { id: 'abuse', entity: 'AbuseReport', label: 'Abuse Reports', description: 'Moderation and abuse case activity', fields: ['domain', 'subdomain', 'category', 'status', 'reporter_email', 'created_date'] },
   { id: 'donations', entity: 'Donation', label: 'Donations', description: 'Donation activity and status', fields: ['email', 'amount', 'currency', 'status', 'created_date'] },
-  { id: 'email', entity: 'EmailLog', label: 'Email logs', description: 'Outbound email delivery history', fields: ['to', 'recipient', 'subject', 'status', 'created_date'] },
-  { id: 'audit', entity: 'AuditLog', label: 'Audit logs', description: 'Administrative and security-sensitive actions', fields: ['action', 'actor_email', 'target', 'entity_type', 'created_date'] },
-  { id: 'sync', entity: 'SyncLog', label: 'Sync logs', description: 'DNS/provider synchronization history', fields: ['status', 'provider', 'message', 'created_date'] },
+  { id: 'email', entity: 'EmailLog', label: 'Email Logs', description: 'Outbound email delivery history', fields: ['to', 'recipient', 'subject', 'status', 'created_date'] },
+  { id: 'audit', entity: 'AuditLog', label: 'Audit Logs', description: 'Administrative and security-sensitive actions', fields: ['action', 'actor_email', 'target', 'entity_type', 'created_date'] },
+  { id: 'sync', entity: 'SyncLog', label: 'Sync Logs', description: 'DNS/provider synchronization history', fields: ['status', 'provider', 'message', 'created_date'] },
 ];
 
 const PRESETS = {
@@ -171,7 +171,7 @@ export default function AdminReports() {
   const branding = config?.branding || {};
   const [selected, setSelected] = useState(PRESETS.executive);
   const [title, setTitle] = useState('Rootminster Platform Report');
-  const [subtitle, setSubtitle] = useState('Administrative overview');
+  const [subtitle, setSubtitle] = useState('Administrative Overview');
   const [notes, setNotes] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -220,7 +220,7 @@ export default function AdminReports() {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(211, 218, 232);
-      doc.text(subtitle || 'Administrative report', 14, 61);
+      doc.text(subtitle || 'Administrative Report', 14, 61);
 
       doc.setTextColor(38, 46, 61);
       doc.setFont('helvetica', 'bold');
@@ -245,7 +245,7 @@ export default function AdminReports() {
       }
 
       let y = notes.trim() ? 158 : 120;
-      y = drawSectionHeader(doc, 'Executive summary', 'A quick pulse-check of the selected Rootminster data.', y);
+      y = drawSectionHeader(doc, 'Executive Summary', 'A quick pulse-check of the selected Rootminster data.', y);
       const summaryItems = datasets.map(dataset => [dataset.label, dataset.rows.length]);
       const cardWidth = 57;
       summaryItems.forEach(([label, value], index) => {
@@ -312,7 +312,7 @@ export default function AdminReports() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
         doc.setTextColor(125, 132, 146);
-        doc.text(`${platformName} • Administrative report`, 14, 294);
+        doc.text(`${platformName} • Administrative Report`, 14, 294);
         doc.text(`Page ${page} of ${pages}`, 196, 294, { align: 'right' });
       }
 
@@ -332,7 +332,7 @@ export default function AdminReports() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="mb-2 flex items-center gap-2"><Badge variant="secondary"><Sparkles size={12} className="mr-1" />Built-in module</Badge><Badge variant="outline"><ShieldCheck size={12} className="mr-1" />Admin only</Badge></div>
+          <div className="mb-2 flex items-center gap-2"><Badge variant="secondary"><Sparkles size={12} className="mr-1" />Built-In Module</Badge><Badge variant="outline"><ShieldCheck size={12} className="mr-1" />Admin Only</Badge></div>
           <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Build polished PDF reports from live Rootminster data. Choose exactly what goes in, set a reporting window, and export a presentation-ready document.</p>
         </div>
@@ -345,7 +345,7 @@ export default function AdminReports() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>What should this report include?</CardTitle><CardDescription>Select individual data sources or start with a preset.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>What Should This Report Include?</CardTitle><CardDescription>Select individual data sources or start with a preset.</CardDescription></CardHeader>
             <CardContent className="space-y-5">
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => applyPreset('executive')}>Executive</Button>
@@ -369,18 +369,18 @@ export default function AdminReports() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Report content</CardTitle><CardDescription>Give the PDF a purpose and a little polish.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Report Content</CardTitle><CardDescription>Give the PDF a purpose and a little polish.</CardDescription></CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-2"><Label htmlFor="report-title">Title</Label><Input id="report-title" value={title} onChange={e => setTitle(e.target.value)} /></div>
               <div className="grid gap-2"><Label htmlFor="report-subtitle">Subtitle</Label><Input id="report-subtitle" value={subtitle} onChange={e => setSubtitle(e.target.value)} /></div>
-              <div className="grid gap-2"><Label htmlFor="report-notes">Admin notes</Label><Textarea id="report-notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional context, decisions, observations or handover notes…" rows={4} /></div>
+              <div className="grid gap-2"><Label htmlFor="report-notes">Admin Notes</Label><Textarea id="report-notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional context, decisions, observations or handover notes…" rows={4} /></div>
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>Report window</CardTitle><CardDescription>Leave blank to include the full available history.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Report Window</CardTitle><CardDescription>Leave blank to include the full available history.</CardDescription></CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <div className="grid gap-2"><Label htmlFor="report-from">From</Label><Input id="report-from" type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
               <div className="grid gap-2"><Label htmlFor="report-to">To</Label><Input id="report-to" type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
@@ -388,16 +388,16 @@ export default function AdminReports() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Layout options</CardTitle><CardDescription>Control how detailed the exported PDF becomes.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Layout Options</CardTitle><CardDescription>Control how detailed the exported PDF becomes.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
-              <label className="flex items-start gap-3"><Checkbox checked={includeDistributions} onCheckedChange={value => setIncludeDistributions(Boolean(value))} /><span><span className="block text-sm font-medium">Visual breakdowns</span><span className="text-xs text-muted-foreground">Add compact status, role and record-type charts.</span></span></label>
-              <label className="flex items-start gap-3"><Checkbox checked={includeDetails} onCheckedChange={value => setIncludeDetails(Boolean(value))} /><span><span className="block text-sm font-medium">Detail tables</span><span className="text-xs text-muted-foreground">Include record-level tables after each summary.</span></span></label>
-              {includeDetails && <div className="grid gap-2"><Label htmlFor="max-rows">Maximum detail rows per section</Label><Input id="max-rows" type="number" min="10" max="500" value={maxRows} onChange={e => setMaxRows(Number(e.target.value))} /></div>}
+              <label className="flex items-start gap-3"><Checkbox checked={includeDistributions} onCheckedChange={value => setIncludeDistributions(Boolean(value))} /><span><span className="block text-sm font-medium">Visual Breakdowns</span><span className="text-xs text-muted-foreground">Add compact status, role and record-type charts.</span></span></label>
+              <label className="flex items-start gap-3"><Checkbox checked={includeDetails} onCheckedChange={value => setIncludeDetails(Boolean(value))} /><span><span className="block text-sm font-medium">Detail Tables</span><span className="text-xs text-muted-foreground">Include record-level tables after each summary.</span></span></label>
+              {includeDetails && <div className="grid gap-2"><Label htmlFor="max-rows">Maximum Detail Rows per Section</Label><Input id="max-rows" type="number" min="10" max="500" value={maxRows} onChange={e => setMaxRows(Number(e.target.value))} /></div>}
             </CardContent>
           </Card>
 
           <Card className="overflow-hidden">
-            <CardHeader className="bg-muted/30"><CardTitle className="flex items-center gap-2"><FileText size={17} />Export preview</CardTitle><CardDescription>{selected.length} sections selected</CardDescription></CardHeader>
+            <CardHeader className="bg-muted/30"><CardTitle className="flex items-center gap-2"><FileText size={17} />Export Preview</CardTitle><CardDescription>{selected.length} Sections Selected</CardDescription></CardHeader>
             <CardContent className="space-y-3 pt-5">
               {selectedDatasets.map(dataset => <div key={dataset.id} className="flex items-center justify-between text-sm"><span>{dataset.label}</span><Badge variant="outline">Included</Badge></div>)}
               {!selected.length && <p className="text-sm text-muted-foreground">Choose some data sections to get started.</p>}
@@ -406,7 +406,7 @@ export default function AdminReports() {
 
           {lastSummary && (
             <Card className="border-primary/20 bg-primary/5">
-              <CardHeader><CardTitle className="text-base">Last export</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">Last Export</CardTitle></CardHeader>
               <CardContent className="space-y-1 text-sm"><p className="font-medium">{lastSummary.filename}</p><p className="text-muted-foreground">{lastSummary.records.toLocaleString()} records • {lastSummary.sections} sections • {lastSummary.pages} pages</p><p className="text-xs text-muted-foreground">{lastSummary.generatedAt.toLocaleString()}</p></CardContent>
             </Card>
           )}

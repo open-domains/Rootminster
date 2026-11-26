@@ -9,11 +9,11 @@ export default function CnameRecord() {
       category="DNS Record Types"
       lastUpdated="April 2026"
     >
-      <H2>What is a CNAME Record?</H2>
+      <H2>What Is a CNAME Record?</H2>
       <P>
         A CNAME (Canonical Name) record creates an alias from one hostname to another. Instead of mapping directly to an IP address like an A record, a CNAME points to another hostname that eventually resolves to an IP. The name you're aliasing is called the "alias", and the hostname it points to is the "canonical name."
       </P>
-      <CodeBlock label="CNAME Record example">
+      <CodeBlock label="CNAME Record Example">
 {`www.example.com.  3600  IN  CNAME  example.com.
 blog.example.com. 3600  IN  CNAME  mysite.wordpress.com.
 shop.example.com. 3600  IN  CNAME  myshop.myshopify.com.`}
@@ -30,7 +30,7 @@ shop.example.com. 3600  IN  CNAME  myshop.myshopify.com.`}
 
       <H2>Real-World Examples</H2>
       <H3>Hosting on Vercel</H3>
-      <CodeBlock label="CNAME for Vercel deployment">
+      <CodeBlock label="CNAME for Vercel Deployment">
 {`# Point your subdomain to your Vercel deployment
 www.myapp.com. CNAME cname.vercel-dns.com.`}
       </CodeBlock>

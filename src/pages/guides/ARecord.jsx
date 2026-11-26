@@ -9,11 +9,11 @@ export default function ARecord() {
       category="DNS Record Types"
       lastUpdated="April 2026"
     >
-      <H2>What is an A Record?</H2>
+      <H2>What Is an A Record?</H2>
       <P>
         An A record (Address record) maps a domain name to an IPv4 address. It's the most basic and commonly used DNS record type — it's how your domain name gets connected to a server. When someone types your domain into a browser, the A record tells the internet exactly which server to load the website from.
       </P>
-      <CodeBlock label="A Record example">
+      <CodeBlock label="A Record Example">
 {`example.com.     3600  IN  A  203.0.113.42
 www.example.com. 3600  IN  A  203.0.113.42`}
       </CodeBlock>
@@ -41,7 +41,7 @@ www.example.com. 3600  IN  A  203.0.113.42`}
         <LI><strong>Value/Content:</strong> The IPv4 address (e.g., <InlineCode>203.0.113.42</InlineCode>)</LI>
         <LI><strong>TTL:</strong> Typically 3600 (1 hour) for stable records</LI>
       </UL>
-      <CodeBlock label="Setting up in Cloudflare format">
+      <CodeBlock label="Setting Up in Cloudflare Format">
 {`Type:    A
 Name:    @          (for root domain) or  api  (for api.yourdomain.com)
 Content: 203.0.113.42

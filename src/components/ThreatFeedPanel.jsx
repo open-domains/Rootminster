@@ -15,7 +15,7 @@ export default function ThreatFeedPanel({ isAdmin }) {
   if (!summary) return null;
   return (
     <section className="rounded-lg border border-border bg-card p-4">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Radar size={15} /> Imported threat feeds</h2>
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground"><Radar size={15} /> Imported Threat Feeds</h2>
       {!summary.enabled ? (
         <p className="mt-2 text-xs text-muted-foreground">
           The Threat intelligence module is off.{isAdmin && <> Turn it on in <Link to="/admin-modules" className="text-primary underline">Module Settings</Link> to import malware and phishing feeds.</>}
@@ -29,7 +29,7 @@ export default function ThreatFeedPanel({ isAdmin }) {
             {summary.feeds.map((feed) => (
               <li key={feed.id} className="rounded-md bg-muted/50 p-3 text-xs">
                 <p className="font-medium text-foreground">{feed.label}</p>
-                <p className="mt-0.5 text-muted-foreground">{!feed.enabled ? 'Not imported' : `${feed.hosts.toLocaleString()} hosts${feed.last_synced_at ? ` · synced ${new Date(feed.last_synced_at).toLocaleString()}` : ' · not synced yet'}`}</p>
+                <p className="mt-0.5 text-muted-foreground">{!feed.enabled ? 'Not Imported' : `${feed.hosts.toLocaleString()} hosts${feed.last_synced_at ? ` · synced ${new Date(feed.last_synced_at).toLocaleString()}` : ' · not synced yet'}`}</p>
               </li>
             ))}
           </ul>

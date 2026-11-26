@@ -48,7 +48,7 @@ export default function UnderstandingSsl() {
       <P>
         Before 2016, SSL certificates cost £50-200/year. Let's Encrypt changed everything — it's a free, automated, open Certificate Authority that's now trusted by all browsers. Most hosting platforms (Netlify, Vercel, Cloudflare Pages) automatically provision Let's Encrypt certificates for your custom domains.
       </P>
-      <CodeBlock label="Get Let's Encrypt cert manually (Certbot)">
+      <CodeBlock label="Get Let's Encrypt Cert Manually (Certbot)">
 {`# Install Certbot
 sudo apt install certbot python3-certbot-nginx
 

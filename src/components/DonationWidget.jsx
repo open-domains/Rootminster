@@ -137,7 +137,7 @@ export default function DonationWidget({ user }) {
             ))}
           </div>
           <div className="px-4 py-3 border-t border-slate-700/50 bg-slate-900/30">
-            <p className="text-slate-300 text-sm">Total donated: <span className="text-white font-semibold">£{(totalPence / 100).toFixed(2)}</span></p>
+            <p className="text-slate-300 text-sm">Total Donated: <span className="text-white font-semibold">£{(totalPence / 100).toFixed(2)}</span></p>
           </div>
         </div>
       )}
