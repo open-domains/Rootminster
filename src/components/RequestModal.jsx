@@ -50,7 +50,7 @@ export default function RequestModal({ open, onClose, onSuccess }) {
       rootminster.auth.me().then(u => setNsUnlocked(!nsRequiresDonation || !!u?.ns_unlocked)).catch(() => {});
       if (!siteKey) {
         setVerificationLoading(true);
-        rootminster.functions.invoke('getRecaptchaSiteKey', {})
+        rootminster.functions.invoke('getTurnstileSiteKey', {})
           .then(res => setSiteKey(res.data?.site_key || ''))
           .catch(() => setSiteKey(''))
           .finally(() => setVerificationLoading(false));

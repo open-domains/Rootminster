@@ -10,7 +10,7 @@ const FUNCTION_NAMES = new Set([
   'appealRequest', 'approveRequest', 'checkAvailability', 'checkDomainHealth', 'cleanupPendingDonations',
   'cleanupSuspendedRecords', 'createDonationSession', 'createNestedSubdomain',
   'deviceAuth', 'getAbuseReportStatus', 'getCloudflareZones', 'getQueueStatus',
-  'getRecaptchaSiteKey', 'getShowcase', 'getThreatIntelSummary', 'getTurnstileSiteKey', 'githubMigrate',
+  'getShowcase', 'getThreatIntelSummary', 'getTurnstileSiteKey', 'githubMigrate',
   'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'manageProtectedBrands', 'manageShowcase', 'observerScanAll', 'postComment', 'publicApi',
   'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'reviewHeldDnsChange', 'reviewShowcase', 'scheduledSync',
