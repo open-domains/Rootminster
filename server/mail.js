@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from './config.js';
+import { displayNameFor, sendHostingerMail } from './hostinger-mail.js';
 import { getModuleConfig } from './module-settings.js';
 
 let transporter;
@@ -26,7 +27,29 @@ async function getTransporter() {
   return { transport: transporter, smtp };
 }
 
+function hostingerReady(settings) {
+  return Boolean(settings.enabled && settings.api_token && settings.mailbox_resource_id);
+}
+
+// Which email handler delivers mail: Hostinger Mail when it is enabled and
+// configured, otherwise SMTP from the Email module, otherwise none.
+export async function activeEmailHandler() {
+  const hostinger = await getModuleConfig('hostinger_mail');
+  if (hostingerReady(hostinger)) return 'hostinger_mail';
+  const smtp = await getModuleConfig('email');
+  return smtp.enabled && smtp.host ? 'smtp' : null;
+}
+
+export async function emailDeliveryEnabled() {
+  return Boolean(await activeEmailHandler());
+}
+
 export async function sendEmail({ to, subject, body, text }) {
+  const hostinger = await getModuleConfig('hostinger_mail');
+  if (hostingerReady(hostinger)) {
+    const smtp = await getModuleConfig('email');
+    return sendHostingerMail(hostinger, { to, subject, body, text, displayName: displayNameFor(hostinger, smtp.from) });
+  }
   const { transport, smtp } = await getTransporter();
   if (!transport) {
     if (!config.production) console.log(`[mail disabled] ${subject} -> ${to}`);

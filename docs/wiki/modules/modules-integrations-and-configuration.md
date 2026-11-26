@@ -22,6 +22,7 @@ Defined modules include:
 - `branding`
 - `cloudflare`
 - `email`
+- `hostinger_mail`
 - `turnstile`
 - `donations`
 - `google_oauth`

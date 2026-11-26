@@ -154,6 +154,7 @@ Rootminster currently exposes modules for:
 - GlitchTip error monitoring
 - Cloudflare DNS
 - SMTP email
+- Hostinger Mail API email — see [Hostinger Mail](docs/hostinger-mail.md)
 - Cloudflare Turnstile
 - Stripe donations
 - Google OAuth

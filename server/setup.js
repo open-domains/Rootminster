@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { createSession, publicUser } from './auth.js';
 import { config } from './config.js';
 import { pool, transaction } from './database.js';
+import { emailDeliveryEnabled } from './mail.js';
 import { getModuleConfig } from './module-settings.js';
 import { hashPassword } from './security.js';
 import { serializeUser } from './store.js';
@@ -33,7 +34,7 @@ async function setupStatus() {
     setup_key_configured: Boolean(config.initialSetupKey),
     app_url: config.appUrl,
     integrations: {
-      smtp: modules.email.enabled,
+      smtp: await emailDeliveryEnabled(),
       cloudflare: modules.cloudflare.enabled,
       turnstile: modules.turnstile.enabled,
       google_oauth: modules.google_oauth.enabled,

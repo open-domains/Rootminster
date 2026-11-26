@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { config } from './config.js';
 import { pool, transaction } from './database.js';
-import { sendEmail } from './mail.js';
+import { emailDeliveryEnabled, sendEmail } from './mail.js';
 import { hashPassword, randomToken, sha256, verifyPassword } from './security.js';
 import { serializeUser, store } from './store.js';
 import { getModuleConfig } from './module-settings.js';
@@ -281,7 +281,7 @@ export async function registerAuthRoutes(app) {
   app.post('/api/auth/register', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
     const emailModule = await getModuleConfig('email');
     const verificationRequired = emailModule.require_verification !== false;
-    if (verificationRequired && !emailModule.enabled) return reply.code(503).send({ error: 'Registration is unavailable until the email module is enabled' });
+    if (verificationRequired && !(await emailDeliveryEnabled())) return reply.code(503).send({ error: 'Registration is unavailable until an email module is enabled' });
     const firstName = String(request.body?.firstName || request.body?.first_name || '').trim();
     const email = String(request.body?.email || '').trim().toLowerCase();
     const password = String(request.body?.password || '');
