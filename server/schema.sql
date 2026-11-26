@@ -143,6 +143,37 @@ CREATE TABLE IF NOT EXISTS discord_interactions (
   received_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Discord support tickets. Each ticket is a private channel in the open
+-- tickets category, moved to the closed category when it closes; the row keeps the intake answers and, once closed, the
+-- transcript. Tickets belong to the account and are removed with it.
+CREATE SEQUENCE IF NOT EXISTS discord_ticket_number_seq;
+CREATE TABLE IF NOT EXISTS discord_tickets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  number bigint NOT NULL UNIQUE DEFAULT nextval('discord_ticket_number_seq'),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  discord_user_id text NOT NULL,
+  discord_username text,
+  guild_id text,
+  category text NOT NULL,
+  category_label text NOT NULL,
+  subdomain text,
+  answers jsonb NOT NULL DEFAULT '[]'::jsonb,
+  status text NOT NULL DEFAULT 'opening' CHECK (status IN ('opening', 'open', 'closed')),
+  channel_id text UNIQUE,
+  channel_deleted_at timestamptz,
+  claimed_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  claimed_at timestamptz,
+  closed_by_id uuid REFERENCES users(id) ON DELETE SET NULL,
+  close_reason text,
+  closed_at timestamptz,
+  transcript jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS discord_tickets_user_idx ON discord_tickets(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS discord_tickets_status_idx ON discord_tickets(status, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS email_verifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

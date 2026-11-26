@@ -1,4 +1,5 @@
 import { createDiscordRequests, discordMessage, discordModal } from '../lib/discord-requests.js';
+import { createDiscordApi, createDiscordTickets, transcriptText, updatesInPlace } from '../lib/discord-tickets.js';
 import crypto from 'node:crypto';
 import { authenticateRequest } from '../routes/auth.js';
 import { config } from '../core/config.js';
@@ -12,10 +13,26 @@ const DISCORD_API = 'https://discord.com/api/v10';
 const EPHEMERAL = 64;
 const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS'];
 const requestUi = createDiscordRequests();
+async function botApi() {
+  const bot = await botConfigured();
+  if (!bot) throw Object.assign(new Error('Discord bot is disabled.'), { userMessage: true });
+  return createDiscordApi(bot.bot_token);
+}
+export const tickets = createDiscordTickets({
+  db: { query: (text, values) => pool.query(text, values), transaction },
+  database: store,
+  settings: () => getModuleConfig('discord_tickets'),
+  api: { call: async (...args) => (await botApi()).call(...args), upload: async (...args) => (await botApi()).upload(...args) },
+  // A bot user's ID is its application's ID.
+  botUserId: async () => (await botConfigured())?.application_id,
+});
 
 const commands = [
   { name: 'panel', description: 'Open your request controls and staff review queue' },
   { name: 'link', description: 'Link your Discord user to your Rootminster account' },
+  { name: 'ticket', description: 'Open a private support ticket with the staff team', dm_permission: false },
+  { name: 'tickets', description: 'List your tickets, or open tickets for staff', dm_permission: false },
+  { name: 'ticket-panel', description: 'Staff: post an "Open a ticket" button in this channel', dm_permission: false, default_member_permissions: String(1 << 5) },
   {
     name: 'request', description: 'Submit a subdomain request using your linked account', options: [
       { name: 'name', description: 'Subdomain name', type: 3, required: true },
@@ -128,8 +145,17 @@ async function manageRequest(interaction, actor) {
 
 async function commandResponse(interaction) {
   if (interaction.data?.name === 'link') return makeLink(interaction);
+  const ticketControl = String(interaction.data?.custom_id || '').startsWith('tk:');
+  const identity = discordIdentity(interaction);
+  if ((interaction.data?.name === 'ticket' || interaction.data?.custom_id === 'tk:open') && !(await linkedUser(identity.id))) {
+    const link = await makeLink(interaction);
+    return { ...link, content: `To open a ticket, first link your Rootminster account so we can see your subdomains. ${link.content}` };
+  }
   const actor = await requireLinked(interaction);
-  if ([3, 5].includes(interaction.type)) return requestUi.component(interaction, actor);
+  if ([3, 5].includes(interaction.type)) return ticketControl ? tickets.component(interaction, actor, identity) : requestUi.component(interaction, actor);
+  if (interaction.data?.name === 'ticket') return tickets.start();
+  if (interaction.data?.name === 'tickets') return tickets.list(actor);
+  if (interaction.data?.name === 'ticket-panel') return tickets.postPanel(actor, interaction.channel_id);
   if (interaction.data?.name === 'panel') return requestUi.list(actor, ['staff', 'admin'].includes(actor.role) ? 'pending' : 'mine');
   if (interaction.data?.name === 'request') return submitRequest(interaction, actor);
   if (interaction.data?.name === 'requests') return requestUi.list(actor, optionsMap(interaction).scope || 'mine');
@@ -205,6 +231,41 @@ export async function registerDiscordRoutes(app) {
     return { success: true };
   });
 
+  app.get('/api/discord/tickets', async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    const all = request.query?.scope === 'all';
+    if (all && !['staff', 'admin'].includes(user.role)) return reply.code(403).send({ error: 'Forbidden' });
+    const status = ['open', 'closed'].includes(request.query?.status) ? request.query.status : null;
+    const values = [];
+    const clauses = ["t.status <> 'opening'"];
+    if (!all) { values.push(user.id); clauses.push(`t.user_id = $${values.length}`); }
+    if (status) { values.push(status); clauses.push(`t.status = $${values.length}`); }
+    const result = await pool.query(
+      `SELECT t.id, t.number, t.category_label, t.subdomain, t.status, t.guild_id, t.channel_id, t.channel_deleted_at, t.discord_username,
+              t.created_at, t.claimed_at, t.closed_at, t.close_reason, u.email AS user_email, c.email AS claimed_by_email
+       FROM discord_tickets t JOIN users u ON u.id = t.user_id LEFT JOIN users c ON c.id = t.claimed_by_id
+       WHERE ${clauses.join(' AND ')} ORDER BY t.created_at DESC LIMIT 200`, values);
+    return { tickets: result.rows.map((row) => (all ? row : { ...row, claimed_by_email: undefined })) };
+  });
+
+  app.get('/api/discord/tickets/:id', async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    if (!/^[0-9a-f-]{36}$/i.test(String(request.params.id))) return reply.code(404).send({ error: 'Ticket not found' });
+    const result = await pool.query(
+      `SELECT t.*, u.email AS user_email, c.email AS claimed_by_email, x.email AS closed_by_email
+       FROM discord_tickets t JOIN users u ON u.id = t.user_id
+       LEFT JOIN users c ON c.id = t.claimed_by_id LEFT JOIN users x ON x.id = t.closed_by_id
+       WHERE t.id = $1 AND t.status <> 'opening'`, [request.params.id]);
+    const ticket = result.rows[0];
+    const elevated = ['staff', 'admin'].includes(user.role);
+    // Owners and staff only; anyone else gets the same answer as a missing ticket.
+    if (!ticket || (!elevated && ticket.user_id !== user.id)) return reply.code(404).send({ error: 'Ticket not found' });
+    if (request.query?.format === 'txt') return reply.type('text/plain; charset=utf-8').header('Content-Disposition', `attachment; filename="ticket-${ticket.number}.txt"`).send(transcriptText(ticket));
+    return { ticket: elevated ? ticket : { ...ticket, claimed_by_email: undefined, closed_by_email: undefined } };
+  });
+
   app.post('/api/discord/interactions', { config: { rawBody: true, rateLimit: false } }, async (request, reply) => {
     const bot = await botConfigured();
     if (!bot) return reply.code(404).send({ error: 'Discord bot is disabled' });
@@ -217,9 +278,15 @@ export async function registerDiscordRoutes(app) {
     await pool.query("DELETE FROM discord_interactions WHERE received_at < now() - interval '1 day'");
     const claimed = await pool.query('INSERT INTO discord_interactions(interaction_id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING interaction_id', [String(interaction.id || '')]);
     if (!claimed.rowCount) return { type: 4, data: { content: 'This command has already been processed.', flags: EPHEMERAL } };
-    const modal = discordModal(interaction);
+    let modal;
+    try {
+      modal = discordModal(interaction) || await tickets.modal(interaction);
+    } catch (error) {
+      if (!error.userMessage) request.log.error({ err: error, control: interaction.data?.custom_id }, 'Discord form failed');
+      return { type: 4, data: { content: error.userMessage ? error.message : 'The form could not open. Try again shortly.', flags: EPHEMERAL } };
+    }
     if (modal) return modal;
-    reply.send({ type: 5, data: { flags: EPHEMERAL } });
+    reply.send(updatesInPlace(interaction) ? { type: 6 } : { type: 5, data: { flags: EPHEMERAL } });
     const context = { interactionId: interaction.id, command: interaction.data?.name, control: interaction.data?.custom_id };
     void commandResponse(interaction)
       .catch((error) => {

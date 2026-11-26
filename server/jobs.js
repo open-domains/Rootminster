@@ -13,6 +13,7 @@ import { cleanupExpiredAcmeChallenges } from './lib/acme-challenges.js';
 import { syncFeeds } from './lib/threat-intel.js';
 import { scanLiveSubdomains } from './lib/threat-intel-scan.js';
 import { refreshShowcaseHealth } from './lib/showcase-health.js';
+import { createDiscordApi, createDiscordTickets } from './lib/discord-tickets.js';
 
 const systemActor = { id: null, email: 'system@rootminster.local', role: 'admin', full_name: 'Rootminster Jobs' };
 
@@ -76,6 +77,18 @@ cron.schedule('40 5 * * *', () => withAdvisoryLock('rootminster:showcaseHealth',
     if (summary.checked) console.log('[jobs] showcase health', summary);
   } catch (error) {
     console.error('[jobs] showcase health failed', error);
+  }
+}), { timezone: 'UTC' });
+// Delete closed Discord ticket channels after the configured delay. The transcript stays.
+cron.schedule('50 * * * *', () => withAdvisoryLock('rootminster:discordTicketCleanup', async () => {
+  try {
+    const bot = await getModuleConfig('discord', { fresh: true });
+    if (!bot.enabled || !bot.bot_token) return;
+    const tickets = createDiscordTickets({ db: pool, database: store, settings: () => getModuleConfig('discord_tickets', { fresh: true }), api: createDiscordApi(bot.bot_token), botUserId: async () => bot.application_id });
+    const summary = await tickets.pruneClosedChannels();
+    if (summary.deleted) console.log('[jobs] Discord ticket channel cleanup', summary);
+  } catch (error) {
+    console.error('[jobs] Discord ticket channel cleanup failed', error);
   }
 }), { timezone: 'UTC' });
 // Notify inactive accounts with no domains, and close them after the grace period.

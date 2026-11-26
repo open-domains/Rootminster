@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { rootminster } from '@/api/rootminsterClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -106,6 +107,8 @@ function ModuleSettings({ module, encryptionConfigured, onSaved, onBack }) {
                 <div className="flex h-10 items-center justify-between rounded-md border border-border px-3"><span className="text-xs text-muted-foreground">Enabled</span><Switch id={`${module.id}-${field.key}`} checked={settings[field.key] === true || settings[field.key] === 'true'} onCheckedChange={(value) => setSettings((current) => ({ ...current, [field.key]: value }))} /></div>
               ) : field.type === 'select' ? (
                 <Select value={String(settings[field.key])} onValueChange={(value) => setSettings((current) => ({ ...current, [field.key]: value }))}><SelectTrigger id={`${module.id}-${field.key}`}><SelectValue /></SelectTrigger><SelectContent>{field.options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select>
+              ) : field.type === 'textarea' ? (
+                <Textarea id={`${module.id}-${field.key}`} value={settings[field.key]} onChange={(event) => setSettings((current) => ({ ...current, [field.key]: event.target.value }))} rows={6} className="font-mono text-xs" />
               ) : (
                 <div className="relative">
                   <Input id={`${module.id}-${field.key}`} autoComplete={secret ? 'new-password' : 'off'} type={secret && !showSecrets[field.key] ? 'password' : field.type === 'number' ? 'number' : field.type === 'url' ? 'url' : 'text'} min={field.min} max={field.max} step={field.step} value={settings[field.key]} onChange={(event) => setSettings((current) => ({ ...current, [field.key]: event.target.value }))} placeholder={secret && field.configured ? 'Leave blank to keep the stored secret' : ''} className={secret ? 'pr-10 font-mono text-xs' : ''} />
