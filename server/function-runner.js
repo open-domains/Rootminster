@@ -14,7 +14,7 @@ const FUNCTION_NAMES = new Set([
   'githubMigrateVerify', 'instantApprovalRecheck', 'manageDnsRecord', 'manageInstantApproval', 'manageProtectedBrands', 'manageShowcase', 'observerScanAll', 'postComment', 'publicApi',
   'getRequestConversation',
   'rdapLookup', 'rejectRequest', 'repairMissingCfRecords', 'reviewHeldDnsChange', 'reviewShowcase', 'scheduledSync',
-  'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest', 'submitSupportTicket',
+  'sendDiscordNotification', 'stripeWebhook', 'submitAbuseReport', 'submitRequest',
   'syncCloudflare', 'twoFactorAuth', 'updateAbuseReport', 'updateDnsRecord', 'verifyDnsRecords',
   'weeklyStatsDiscord',
 ]);

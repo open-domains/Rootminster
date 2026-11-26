@@ -20,18 +20,15 @@ export default function Contact() {
     e.preventDefault();
     setSending(true);
     try {
-      const result = await rootminster.support.createTicket({
-        category: 'general',
+      await rootminster.contact.send({
         name: form.name,
         email: form.email,
         subject: form.subject,
         message: form.message,
-        context: { path: '/contact' },
       });
-      const number = result.ticket?.number ? ` Ticket #${result.ticket.number}.` : '';
-      toast.success(`Ticket created.${number} We'll get back to you within 1–2 business days.`);
+      toast.success("Message sent. We'll get back to you within 1–2 business days.");
       setForm({ name: '', email: '', subject: '', message: '' });
-    } catch { toast.error('Failed to send. Please try again.'); }
+    } catch (error) { toast.error(error?.message || 'Failed to send. Please try again.'); }
     finally { setSending(false); }
   };
 

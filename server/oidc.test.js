@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 import { oidcDiscoveryMetadata, oidcUserInfoFromUser, signOidcIdToken } from './oidc.js';
 
-test('OIDC discovery advertises Rootminster endpoints for Zammad', () => {
+test('OIDC discovery advertises Rootminster endpoints for client apps', () => {
   const metadata = oidcDiscoveryMetadata('https://open-domains.com');
   assert.equal(metadata.issuer, 'https://open-domains.com');
   assert.equal(metadata.authorization_endpoint, 'https://open-domains.com/oauth/authorize');
@@ -31,7 +31,7 @@ test('OIDC ID token is an RS256 JWT with standard claims', () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
   const jwt = signOidcIdToken({
     issuer: 'https://open-domains.com',
-    audience: 'zammad-client',
+    audience: 'example-client',
     nonce: 'nonce-123',
     user: { id: 'u-1', email: 'user@example.com', full_name: 'Example User', role: 'user', status: 'active' },
     privateKeyPem: privateKey.export({ type: 'pkcs8', format: 'pem' }),
@@ -43,7 +43,7 @@ test('OIDC ID token is an RS256 JWT with standard claims', () => {
   assert.equal(JSON.parse(Buffer.from(headerRaw, 'base64url')).kid, 'test-key');
   const payload = JSON.parse(Buffer.from(payloadRaw, 'base64url'));
   assert.equal(payload.iss, 'https://open-domains.com');
-  assert.equal(payload.aud, 'zammad-client');
+  assert.equal(payload.aud, 'example-client');
   assert.equal(payload.sub, 'u-1');
   assert.equal(payload.email, 'user@example.com');
   assert.equal(payload.nonce, 'nonce-123');
