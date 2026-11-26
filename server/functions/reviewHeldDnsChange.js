@@ -1,6 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { invokeInternal } from '../function-runner.js';
-import { escapeHtml } from '../lib/abuse-reports.js';
+import { escapeHtml } from '../lib/html.js';
 
 // Staff: approve or reject a DNS change that re-screening held for review. Approving
 // applies the change exactly as the user submitted it, on the user's behalf.

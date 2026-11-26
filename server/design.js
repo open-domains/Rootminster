@@ -7,6 +7,7 @@ import { cloudflareFetch } from './lib/cloudflare.js';
 import { getModuleConfig } from './module-settings.js';
 import { randomToken, sha256 } from './security.js';
 import { store } from './store.js';
+import { escapeHtml } from './lib/html.js';
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -113,9 +114,6 @@ function cfResult(response, fallback) {
   return response.result;
 }
 
-function escapeHtml(value) {
-  return String(value || '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-}
 
 async function designAnalytics(user, body = {}) {
   const actions = { create: 'enable', tracking_code: 'status', stats: 'stats' };

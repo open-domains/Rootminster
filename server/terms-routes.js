@@ -1,6 +1,7 @@
 import { authenticateRequest, publicUser } from './auth.js';
 import { pool, transaction } from './database.js';
 import { serializeUser, store } from './store.js';
+import { requireAdmin } from './route-guards.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VERSION = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/;
@@ -17,12 +18,6 @@ export function validateTermsInput(body = {}) {
   return { value: { version, title, summary, content } };
 }
 
-async function requireAdmin(request, reply) {
-  const actor = await authenticateRequest(request);
-  if (!actor) { reply.code(401).send({ error: 'Unauthorized' }); return null; }
-  if (actor.role !== 'admin') { reply.code(403).send({ error: 'Forbidden' }); return null; }
-  return actor;
-}
 
 function validId(request, reply) {
   const id = String(request.params.id || '');

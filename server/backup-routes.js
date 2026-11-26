@@ -1,18 +1,12 @@
-import { authenticateRequest } from './auth.js';
 import {
   backupModuleStatus, createBackup, deleteBackup, encryptedBackupDownload,
   restoreBackup, testR2Connection, verifyBackup,
 } from './backup-service.js';
 import { verifyCurrentTotp } from './security.js';
+import { requireAdmin } from './route-guards.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function requireAdmin(request, reply) {
-  const actor = await authenticateRequest(request);
-  if (!actor) { reply.code(401).send({ error: 'Unauthorized' }); return null; }
-  if (actor.role !== 'admin') { reply.code(403).send({ error: 'Forbidden' }); return null; }
-  return actor;
-}
 
 function validBackupId(request, reply) {
   const id = String(request.params.id || '');

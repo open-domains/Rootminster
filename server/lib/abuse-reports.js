@@ -1,4 +1,5 @@
 import { randomToken, sha256 } from '../security.js';
+import { escapeHtml } from './html.js';
 
 // Abuse report triage: reports about the same host merge into one open report, every
 // reporter gets a private status link, and reporters hear when the report is closed.
@@ -93,9 +94,6 @@ export function reportersToNotify(report, status) {
   return (Array.isArray(report.reporters) ? report.reporters : []).filter((item) => item.email && item.notified_status !== status);
 }
 
-export function escapeHtml(value) {
-  return String(value || '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-}
 
 function shell(title, body) {
   return `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 20px;">

@@ -2,7 +2,8 @@ import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
 import { getModuleConfig } from '../module-settings.js';
 import { createZammadTicket } from '../zammad.js';
-import { acknowledgementEmail, escapeHtml, isOpenReport, mergedReportUpdate, newReporterSecret, reportedHostname, reporterEntry, statusToken } from '../lib/abuse-reports.js';
+import { acknowledgementEmail, isOpenReport, mergedReportUpdate, newReporterSecret, reportedHostname, reporterEntry, statusToken } from '../lib/abuse-reports.js';
+import { escapeHtml } from '../lib/html.js';
 
 async function sendAcknowledgement(platform, email, host, token) {
     if (!email) return;

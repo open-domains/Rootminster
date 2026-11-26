@@ -1,34 +1,13 @@
-import { authenticateRequest } from './auth.js';
 import { pool } from './database.js';
 import { sendEmail } from './mail.js';
 import { store } from './store.js';
 import { accountExportFileName, deletionRequiresManualReview, publicAccountExport } from './account-privacy.js';
 import { deleteUserAccounts } from './lib/admin-user-deletion.js';
+import { escapeHtml } from './lib/html.js';
+import { requireAdmin, requireUser } from './route-guards.js';
 
-function escapeHtml(value) {
-  return String(value || '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[char]);
-}
 
-async function requireUser(request, reply) {
-  const user = await authenticateRequest(request);
-  if (!user) {
-    reply.code(401).send({ error: 'Unauthorized' });
-    return null;
-  }
-  return user;
-}
 
-async function requireAdmin(request, reply) {
-  const user = await requireUser(request, reply);
-  if (!user) return null;
-  if (user.role !== 'admin') {
-    reply.code(403).send({ error: 'Forbidden' });
-    return null;
-  }
-  return user;
-}
 
 async function ensureDeletionTable() {
   await pool.query(`
