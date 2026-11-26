@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Home, BookOpen, Globe } from 'lucide-react';
+import { ArrowRight, Home, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Component as GradientShader } from '@/components/ui/stripe-like-gradient-shader';
 
