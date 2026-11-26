@@ -1,7 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { cloudflareFetch as cfFetch } from '../lib/cloudflare.js';
-import { getModuleConfig } from '../module-settings.js';
-import { pool } from '../database.js';
+import { getModuleConfig } from '../core/module-settings.js';
+import { pool } from '../core/database.js';
 import { blockedFeedTarget, blockedTargetMessage } from '../lib/threat-intel.js';
 import { heldChangeMessage, screenRecordChange, shouldRescreen } from '../lib/record-rescreen.js';
 import {

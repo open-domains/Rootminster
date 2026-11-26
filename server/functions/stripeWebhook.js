@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 import Stripe from 'stripe';
 const NS_UNLOCK_THRESHOLD_PENCE = 200; // £2.00
 async function sendDiscordNotification(platform, eventType, title, description, fields) {

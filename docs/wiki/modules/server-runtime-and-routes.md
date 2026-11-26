@@ -17,9 +17,9 @@
 ## Key Files
 
 - `server/index.js` — main runtime.
-- `server/config.js` — normalized runtime configuration.
-- `server/csp.js` — content-security-policy directives.
-- `server/database.js` — PostgreSQL pool and advisory lock helpers.
+- `server/core/config.js` — normalized runtime configuration.
+- `server/core/csp.js` — content-security-policy directives.
+- `server/core/database.js` — PostgreSQL pool and advisory lock helpers.
 - Route modules: `auth.js`, `entity-routes.js`, `function-runner.js`, `mcp.js`, `setup.js`, `discord.js`, `public-api.js`, `module-settings.js`, `design.js`, `backup-routes.js`, `terms-routes.js`, `account-deletion-routes.js`, `passkeys.js`, `impersonation-routes.js`, `docker-manager.js`, `glitchtip.js`.
 
 ## Runtime Flow

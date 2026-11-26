@@ -1,4 +1,4 @@
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 
 const CF_BASE = 'https://api.cloudflare.com/client/v4';
 

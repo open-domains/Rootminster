@@ -9,10 +9,10 @@
  * - poll: Poll for token status (pending/approved/denied/expired)
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { config } from '../config.js';
+import { config } from '../core/config.js';
 import crypto from 'node:crypto';
-import { randomToken } from '../security.js';
-import { withAdvisoryLock } from '../database.js';
+import { randomToken } from '../core/security.js';
+import { withAdvisoryLock } from '../core/database.js';
 function generateUserCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No I, O, 0, 1
     let code = '';

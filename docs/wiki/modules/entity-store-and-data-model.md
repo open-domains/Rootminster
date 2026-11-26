@@ -1,6 +1,6 @@
 # Module: Entity Store and Data Model
 
-Rootminster uses PostgreSQL for all durable state. Identity/security tables are relational, while operational entities are stored in a flexible JSONB table through `server/store.js`.
+Rootminster uses PostgreSQL for all durable state. Identity/security tables are relational, while operational entities are stored in a flexible JSONB table through `server/core/store.js`.
 
 ## Responsibilities
 
@@ -15,9 +15,9 @@ Rootminster uses PostgreSQL for all durable state. Identity/security tables are 
 
 - `server/schema.sql` — PostgreSQL schema, indexes, default terms, backup/MCP/API support tables.
 - `server/migrate.js` — migration runner.
-- `server/database.js` — pool, transactions, advisory locks.
-- `server/store.js` — entity abstraction and serialization.
-- `server/entity-routes.js` — HTTP access control for entities.
+- `server/core/database.js` — pool, transactions, advisory locks.
+- `server/core/store.js` — entity abstraction and serialization.
+- `server/routes/entity-routes.js` — HTTP access control for entities.
 - `shared/subdomain-requests.js` — request bundle/status helpers shared with frontend/server.
 
 ## Entity Names

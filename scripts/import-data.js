@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { pool, transaction } from '../server/database.js';
-import { ENTITY_NAMES } from '../server/store.js';
+import { pool, transaction } from '../server/core/database.js';
+import { ENTITY_NAMES } from '../server/core/store.js';
 
 const source = process.argv[2];
 if (!source) {

@@ -4,7 +4,7 @@ Rootminster exposes several API layers. They share the same PostgreSQL data and 
 
 ## Browser Auth API
 
-Implemented mostly in `server/auth.js`, `server/passkeys.js`, and supporting route modules.
+Implemented mostly in `server/routes/auth.js`, `server/routes/passkeys.js`, and supporting route modules.
 
 Common endpoints include:
 
@@ -15,13 +15,13 @@ Common endpoints include:
 - `PATCH /api/auth/me` — update allowed profile fields.
 - `POST /api/auth/logout` — delete session and clear cookie.
 - `POST /api/auth/forgot-password` / `POST /api/auth/reset-password` — password reset flow.
-- Passkey and MFA routes are registered from `server/passkeys.js` and used by `rootminster.passkeys`.
+- Passkey and MFA routes are registered from `server/routes/passkeys.js` and used by `rootminster.passkeys`.
 
 The frontend wrapper lives in `src/api/rootminsterClient.js` under `rootminster.auth`, `rootminster.passkeys`, and related namespaces.
 
 ## Entity API
 
-Implemented by `server/entity-routes.js` and `server/store.js`.
+Implemented by `server/routes/entity-routes.js` and `server/core/store.js`.
 
 - `GET /api/entities/:entity`
 - `GET /api/entities/:entity/:id`
@@ -41,7 +41,7 @@ Important behavior:
 
 ## Function API
 
-Implemented by `server/function-runner.js` with handlers under `server/functions/`.
+Implemented by `server/core/function-runner.js` with handlers under `server/functions/`.
 
 - `POST /api/functions/:name`
 - `POST /functions/:name`
@@ -58,7 +58,7 @@ Representative function handlers:
 
 ## Versioned Public API
 
-Implemented by `server/public-api.js` and exposed under `/api/v1`.
+Implemented by `server/routes/public-api.js` and exposed under `/api/v1`.
 
 Documented endpoints are served from:
 
@@ -85,7 +85,7 @@ ACME tokens (`dns:acme`) must be restricted to owned hostnames and can only publ
 
 ## MCP Remote Control Plane
 
-Implemented by `server/mcp.js` at `/mcp` when the `mcp` module is enabled.
+Implemented by `server/routes/mcp.js` at `/mcp` when the `mcp` module is enabled.
 
 It provides:
 

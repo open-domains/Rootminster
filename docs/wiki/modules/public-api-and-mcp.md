@@ -13,8 +13,8 @@ Rootminster has a versioned public REST API under `/api/v1` and a role-aware MCP
 
 ## Key Files
 
-- `server/public-api.js` — `/api/v1` route registration, token auth, OpenAPI document, scopes, DDNS validation.
-- `server/mcp.js` — MCP OAuth, token storage, client registration, tool schemas, user/staff tools.
+- `server/routes/public-api.js` — `/api/v1` route registration, token auth, OpenAPI document, scopes, DDNS validation.
+- `server/routes/mcp.js` — MCP OAuth, token storage, client registration, tool schemas, user/staff tools.
 - `src/pages/ApiDocs.jsx` — frontend API docs route.
 - `src/components/ApiTokenManager.jsx` — user token creation/revocation UI.
 - `server/functions/publicApi.js` — legacy `/functions/publicApi?action=...` compatibility handler.

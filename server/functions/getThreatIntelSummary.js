@@ -1,6 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { pool } from '../database.js';
-import { getModuleConfig } from '../module-settings.js';
+import { pool } from '../core/database.js';
+import { getModuleConfig } from '../core/module-settings.js';
 import { FEEDS, feedSummary } from '../lib/threat-intel.js';
 
 // Staff: how many hosts each imported feed currently holds, for the blocklist page.

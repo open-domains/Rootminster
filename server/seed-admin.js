@@ -1,5 +1,5 @@
-import { pool } from './database.js';
-import { hashPassword } from './security.js';
+import { pool } from './core/database.js';
+import { hashPassword } from './core/security.js';
 
 const email = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const password = String(process.env.ADMIN_PASSWORD || '');

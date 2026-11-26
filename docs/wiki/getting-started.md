@@ -88,8 +88,8 @@ There is no `npm test` script in `package.json`; tests use Node's built-in test 
 ## Configuration
 
 - `.env.example` — bootstrap values and deployment configuration.
-- `server/config.js` — normalized runtime config.
-- `server/module-settings.js` — optional modules and field definitions.
+- `server/core/config.js` — normalized runtime config.
+- `server/core/module-settings.js` — optional modules and field definitions.
 - `compose.yml` — app/jobs/postgres deployment.
 - `compose.traefik.yml` — HTTPS reverse-proxy overlay.
 - `docs/themes.md` and `DESIGN.md` — visual/theme conventions.
@@ -99,4 +99,4 @@ There is no `npm test` script in `package.json`; tests use Node's built-in test 
 - Architecture: `architecture.md`
 - API surface: `api.md`
 - Module reference: `README.md#module-map`
-- Existing upstream docs: `README.md`, `ARCHITECTURE.md`, and files in `docs/`
+- Existing upstream docs: `README.md` and files in `docs/`

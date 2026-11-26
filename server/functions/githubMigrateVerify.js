@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();

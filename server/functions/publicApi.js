@@ -10,8 +10,8 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
 import { protectedBrandRefusal } from '../lib/brand-protection.js';
-import { invokeInternal } from '../function-runner.js';
-import { apiIdentity, tokenHasScope, tokenAllowsRecord, tokenAllowsRequest } from '../public-api.js';
+import { invokeInternal } from '../core/function-runner.js';
+import { apiIdentity, tokenHasScope, tokenAllowsRecord, tokenAllowsRequest } from '../routes/public-api.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$|^[a-z0-9]$/;
 async function authorize(req, scope) {
     const identity = await apiIdentity({ headers: { authorization: req.headers.get('Authorization') || '' } });

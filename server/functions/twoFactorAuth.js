@@ -1,7 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { markSessionMfaVerified } from '../auth.js';
-import { decryptTotpSecret, encryptTotpSecret } from '../security.js';
-import { pool } from '../database.js';
+import { markSessionMfaVerified } from '../routes/auth.js';
+import { decryptTotpSecret, encryptTotpSecret } from '../core/security.js';
+import { pool } from '../core/database.js';
 import * as OTPAuth from 'otpauth';
 const TRUST_DAYS = 30;
 async function sha256Hex(text) {

@@ -1,6 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { UmamiClient } from '@umami/api-client';
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 function requestError(message, status) {
     return Object.assign(new Error(message), { status });
 }

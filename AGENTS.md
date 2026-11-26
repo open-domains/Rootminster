@@ -5,10 +5,15 @@
 Rootminster is a React 18/Vite frontend with a Fastify API, PostgreSQL storage, and a separate job runner.
 
 - `src/pages/`: route screens; `src/components/`: shared components and `ui/` primitives.
-- `src/lib/`, `src/hooks/`, and `src/api/`: shared logic, hooks, and the API client. Translations live in `src/i18n/`.
+- `src/lib/` and `src/api/`: shared logic, React contexts and the API client. Translations live in `src/i18n/`.
 - `src/themes/` and `src/index.css`: theme styling; consult `DESIGN.md` and `docs/themes.md` before changing visual conventions.
-- `server/`: API routes, authentication, storage, schema, and jobs; `server/functions/` contains domain handlers.
-- `server/*.test.js`, `server/lib/*.test.js` and `tests/*.test.js`: automated tests. `public/` holds static assets; `docs/` holds documentation. `dist/` is generated output.
+- `server/`: process entry points (`index.js`, `jobs.js`, `migrate.js`, `seed-admin.js`, `admin-ai-cli.js`) and `schema.sql`.
+  - `server/core/`: config, database, entity store, security helpers, mail, module settings and the function runner.
+  - `server/routes/`: Fastify route modules (auth, entities, contact form, public API, MCP, backups, terms and so on) and shared route guards.
+  - `server/integrations/`: third-party services (Discord, GlitchTip, Hostinger Mail, R2, Docker, Observer, admin AI).
+  - `server/lib/`: domain logic shared by routes, functions and jobs.
+  - `server/functions/`: domain function handlers loaded by name.
+- `tests/`: automated tests; server tests live in `tests/server/`. `public/` holds static assets; `docs/` holds documentation. `dist/` is generated output.
 
 ## Build, Test, and Development Commands
 
@@ -20,7 +25,7 @@ Use Node.js 24 and PostgreSQL 17. Run `npm ci`, copy `.env.example` to `.env`, a
 - `npm run jobs`: run scheduled maintenance.
 - `npm run lint`: run ESLint; `npm run lint:fix` applies supported fixes.
 - `npm run typecheck`: check the files covered by `jsconfig.json`.
-- `npm test`: run automated tests (`server/*.test.js`, `server/lib/*.test.js`, `tests/*.test.js`).
+- `npm test`: run every `tests/**/*.test.js` file.
 
 ## Coding Style & Naming Conventions
 

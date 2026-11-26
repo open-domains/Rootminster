@@ -1,5 +1,5 @@
 {
-  "name": "rootminster-v2",
+  "name": "rootminster",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -16,7 +16,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "test": "node --test server/*.test.js server/lib/*.test.js tests/*.test.js",
+    "test": "node --test \"tests/**/*.test.js\"",
     "preview": "vite preview"
   },
   "dependencies": {

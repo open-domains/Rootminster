@@ -59,7 +59,7 @@ Rootminster is intentionally compact:
 
 PostgreSQL advisory locks prevent duplicate scheduled jobs when multiple job runners are accidentally started.
 
-For a deeper look, see [`ARCHITECTURE.md`](ARCHITECTURE.md).
+For a deeper look, see the [architecture overview](docs/wiki/architecture.md).
 
 ---
 

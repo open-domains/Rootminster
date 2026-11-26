@@ -1,0 +1,479 @@
+import crypto from 'node:crypto';
+import { config } from '../core/config.js';
+import { pool, transaction } from '../core/database.js';
+import { emailDeliveryEnabled, sendEmail } from '../core/mail.js';
+import { hashPassword, randomToken, sha256, verifyPassword } from '../core/security.js';
+import { serializeUser, store } from '../core/store.js';
+import { getModuleConfig } from '../core/module-settings.js';
+import { disposableEmailResult } from '../lib/disposable-email.js';
+import { OAUTH_PROVIDERS, oauthProvider, providerConfigured } from '../lib/oauth-providers.js';
+import { recordUserActivity } from '../lib/inactive-accounts.js';
+import { findIdentity, IdentityError, linkIdentity, listIdentities, rememberIdentity, touchIdentity, unlinkIdentity } from '../lib/oauth-identities.js';
+import { escapeHtml } from '../lib/html.js';
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+export function publicUser(user) {
+  if (!user) return null;
+  const result = { ...user };
+  delete result.password_hash;
+  delete result.totp_secret;
+  delete result.metadata;
+  delete result._session_id;
+  delete result._parent_session_id;
+  return result;
+}
+
+function tokenFromRequest(request) {
+  const authorization = request.headers.authorization || '';
+  if (authorization.startsWith('Bearer ')) return authorization.slice(7).trim();
+  return request.cookies?.[config.cookieName] || null;
+}
+
+export async function authenticateRequest(request, { allowMfaPending = false } = {}) {
+  const raw = tokenFromRequest(request);
+  if (!raw) return null;
+  const result = await pool.query(
+    `SELECT u.*, s.id AS _session_id, s.mfa_verified_at AS _session_mfa_verified_at,
+            s.parent_session_id AS _parent_session_id,
+            s.impersonator_user_id AS _impersonator_user_id,
+            s.impersonation_reason AS _impersonation_reason,
+            s.impersonation_started_at AS _impersonation_started_at,
+            admin.email AS _impersonator_email,
+            coalesce(admin.full_name, admin.email) AS _impersonator_name,
+            EXISTS(SELECT 1 FROM webauthn_credentials wc WHERE wc.user_id = u.id) AS _passkey_enabled
+     FROM sessions s JOIN users u ON u.id = s.user_id
+     LEFT JOIN users admin ON admin.id = s.impersonator_user_id
+     WHERE s.token_hash = $1 AND s.expires_at > now() AND u.status = 'active'`,
+    [sha256(raw)],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  const mfaRequired = Boolean(row.totp_enabled || row._passkey_enabled || ['staff', 'admin'].includes(row.role));
+  const mfaVerified = !mfaRequired || Boolean(row._session_mfa_verified_at);
+  if (!mfaVerified && !allowMfaPending) return null;
+  pool.query('UPDATE sessions SET last_used_at = now() WHERE token_hash = $1', [sha256(raw)]).catch(() => {});
+  // Staff impersonation and half-finished MFA sign-ins are not the user's own activity.
+  if (mfaVerified && !row._impersonator_user_id) recordUserActivity(pool, row.id).catch(() => {});
+  const impersonation = row._impersonator_user_id ? {
+    active: true,
+    actor_id: row._impersonator_user_id,
+    actor_email: row._impersonator_email,
+    actor_name: row._impersonator_name,
+    reason: row._impersonation_reason,
+    started_at: row._impersonation_started_at,
+  } : null;
+  return { ...serializeUser(row), _session_id: row._session_id, _parent_session_id: row._parent_session_id, passkey_enabled: Boolean(row._passkey_enabled), mfa_required: mfaRequired, mfa_verified: mfaVerified, impersonation };
+}
+
+export async function markSessionMfaVerified(user) {
+  if (!user?._session_id) throw Object.assign(new Error('No browser session is available'), { status: 401 });
+  await pool.query('UPDATE sessions SET mfa_verified_at = now(), last_used_at = now() WHERE id = $1 AND user_id = $2', [user._session_id, user.id]);
+}
+
+export async function createSession(userId, request, reply, options = {}) {
+  const token = randomToken(32);
+  const expires = new Date(Date.now() + config.sessionDays * 86_400_000);
+  const result = await pool.query(
+    `INSERT INTO sessions(user_id, token_hash, user_agent, ip, expires_at, mfa_verified_at,
+                          impersonator_user_id, impersonation_reason, impersonation_started_at, parent_session_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id`,
+    [userId, sha256(token), request.headers['user-agent'] || null, request.ip || null, expires,
+      options.mfaVerified ? new Date() : null, options.impersonatorUserId || null,
+      options.impersonationReason || null, options.impersonatorUserId ? new Date() : null,
+      options.parentSessionId || null],
+  );
+  reply.setCookie(config.cookieName, token, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: config.production,
+    expires,
+  });
+  return { token, id: result.rows[0]?.id };
+}
+
+async function sendVerification(user, token) {
+  const verificationUrl = `${config.appUrl}/verify-email?token=${encodeURIComponent(token)}`;
+  await sendEmail({
+    to: user.email,
+    subject: 'Verify your Open Domains account',
+    body: `<p>Hi ${escapeHtml(user.full_name)},</p><p>Confirm your email address to finish creating your Open Domains account.</p><p><a href="${verificationUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#fff;text-decoration:none;font-weight:600">Verify email address</a></p><p>This single-use link expires in 24 hours.</p><p>If the button does not work, copy this link into your browser:<br><a href="${verificationUrl}">${verificationUrl}</a></p>`,
+  });
+  return verificationUrl;
+}
+
+async function issueVerification(user) {
+  const token = randomToken(32);
+  await pool.query('DELETE FROM email_verifications WHERE user_id = $1', [user.id]);
+  await pool.query(
+    `INSERT INTO email_verifications(user_id, token_hash, expires_at)
+     VALUES ($1, $2, now() + interval '24 hours')`,
+    [user.id, sha256(token)],
+  );
+  const verificationUrl = await sendVerification(user, token);
+  return { token, verificationUrl };
+}
+
+function safeReturnTo(value) {
+  const target = String(value || '/user-dashboard');
+  return target.startsWith('/') && !target.startsWith('//') ? target : '/user-dashboard';
+}
+
+async function upsertOauthUser(email, name) {
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const disposable = await disposableEmailResult(normalizedEmail, await getModuleConfig('disposable_email'));
+  if (disposable.disposable) throw Object.assign(new Error('Temporary email addresses are not accepted'), { status: 400 });
+  return transaction(async (client) => {
+    const existing = await client.query('SELECT id, status, email_verified_at FROM users WHERE email = $1 FOR UPDATE', [normalizedEmail]);
+    const row = existing.rows[0];
+    if (row?.status === 'disabled') {
+      throw Object.assign(new Error('This account is disabled'), { status: 403 });
+    }
+    if (row && !row.email_verified_at) {
+      // Nobody has proven control of this address yet, so anything already on the
+      // row may belong to whoever typed the email at registration. The provider has
+      // now verified the real owner: discard the pre-registered credentials and any
+      // outstanding tokens so the registrant cannot sign in to the claimed account.
+      await client.query(
+        `UPDATE users SET password_hash = NULL, totp_secret = NULL, totp_enabled = false,
+           full_name = $2, updated_at = now()
+         WHERE id = $1`,
+        [row.id, name || null],
+      );
+      await client.query('DELETE FROM sessions WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM email_verifications WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM password_resets WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM webauthn_credentials WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM user_identities WHERE user_id = $1', [row.id]);
+      await client.query('DELETE FROM discord_accounts WHERE user_id = $1', [row.id]);
+    }
+    return client.query(
+      `INSERT INTO users(email, full_name, status, email_verified_at)
+       VALUES ($1, $2, 'active', now())
+       ON CONFLICT (email) DO UPDATE SET
+         email_verified_at = coalesce(users.email_verified_at, now()),
+         status = CASE WHEN users.status = 'pending' THEN 'active' ELSE users.status END,
+         full_name = coalesce(users.full_name, excluded.full_name),
+         updated_at = now()
+       RETURNING *`,
+      [normalizedEmail, name || null],
+    );
+  });
+}
+
+const LINK_RETURN_TO = '/settings?section=accounts';
+
+function oauthRedirectUri(name) {
+  return `${config.appUrl}/api/auth/oauth/${name}/callback`;
+}
+
+async function startOauth(name, { purpose = 'login', userId = null, sessionId = null, returnTo }) {
+  const provider = oauthProvider(name);
+  const settings = await getModuleConfig(provider.module);
+  if (!providerConfigured(settings)) return { status: 501, error: `${provider.label} sign-in is not configured` };
+  const state = randomToken(24);
+  const verifier = randomToken(48);
+  await pool.query(
+    `INSERT INTO oauth_states(state_hash, verifier, provider, return_to, purpose, user_id, session_id, expires_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, now() + interval '10 minutes')`,
+    [sha256(state), verifier, name, returnTo, purpose, userId, sessionId],
+  );
+  const url = new URL(provider.authorizeUrl);
+  url.search = new URLSearchParams({
+    client_id: settings.client_id,
+    redirect_uri: oauthRedirectUri(name),
+    response_type: 'code',
+    scope: provider.scope,
+    state,
+    ...(provider.pkce ? { code_challenge: crypto.createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256' } : {}),
+    ...provider.extraParams,
+  });
+  return { url: url.toString() };
+}
+
+async function auditIdentity(user, action, provider, request) {
+  await store.create('AuditLog', {
+    actor_id: user.id,
+    actor_email: user.email,
+    actor_role: user.role,
+    action,
+    entity_type: 'User',
+    entity_id: user.id,
+    target_user_id: user.id,
+    target_user_email: user.email,
+    ip_address: request.ip,
+    user_agent: request.headers['user-agent'] || null,
+    description: `${user.email} ${action === 'identity_linked' ? 'linked' : 'unlinked'} a ${OAUTH_PROVIDERS[provider].label} account`,
+  }, user).catch((error) => request.log.warn({ err: error }, 'Could not record identity audit log'));
+}
+
+function linkResult(reply, params) {
+  return reply.redirect(`${LINK_RETURN_TO}&${new URLSearchParams(params)}`);
+}
+
+async function completeLink(name, saved, profile, request, reply) {
+  // The callback must arrive in the same browser session that started the link,
+  // so a link URL sent to someone else cannot attach their account to ours.
+  const user = await authenticateRequest(request);
+  if (!user || user.id !== saved.user_id || user._session_id !== saved.session_id || user.impersonation?.active) {
+    return linkResult(reply, { link_error: 'session' });
+  }
+  try {
+    await transaction((client) => linkIdentity(client, user.id, name, profile));
+  } catch (error) {
+    if (error instanceof IdentityError) return linkResult(reply, { link_error: error.code });
+    throw error;
+  }
+  await auditIdentity(user, 'identity_linked', name, request);
+  return linkResult(reply, { linked: name });
+}
+
+async function oauthCallback(name, request, reply) {
+  const provider = oauthProvider(name);
+  const settings = await getModuleConfig(provider.module);
+  if (!providerConfigured(settings)) return reply.code(501).send({ error: `${provider.label} sign-in is not configured` });
+  const state = String(request.query?.state || '');
+  const code = String(request.query?.code || '');
+  const stateResult = await pool.query(
+    'DELETE FROM oauth_states WHERE state_hash = $1 AND provider = $2 AND expires_at > now() RETURNING *',
+    [sha256(state), name],
+  );
+  const saved = stateResult.rows[0];
+  if (saved?.purpose === 'link' && !code) return linkResult(reply, { link_error: 'cancelled' });
+  if (!saved || !code) return reply.code(400).send({ error: 'Invalid OAuth state' });
+
+  let profile;
+  try {
+    profile = await provider.fetchProfile({ code, verifier: saved.verifier, redirectUri: oauthRedirectUri(name), settings });
+  } catch (error) {
+    if (saved.purpose === 'link') return linkResult(reply, { link_error: 'provider' });
+    return reply.code(error.status || 502).send({ error: error.message || `${provider.label} authentication failed` });
+  }
+
+  if (saved.purpose === 'link') return completeLink(name, saved, profile, request, reply);
+
+  // An explicitly linked account signs in to its owner even when the provider
+  // email differs from the Rootminster email.
+  const identity = await findIdentity(pool, name, profile.id);
+  let userId;
+  if (identity) {
+    if (identity.status !== 'active') return reply.code(403).send({ error: 'This account is disabled' });
+    await touchIdentity(pool, name, profile);
+    userId = identity.user_id;
+  } else {
+    if (!profile.email) return reply.code(403).send({ error: `A verified ${provider.label} email is required` });
+    const userResult = await upsertOauthUser(profile.email, profile.name);
+    userId = userResult.rows[0].id;
+    await rememberIdentity(pool, userId, name, profile);
+  }
+  await createSession(userId, request, reply);
+  return reply.redirect(saved.return_to);
+}
+
+export async function registerAuthRoutes(app) {
+  app.post('/api/auth/register', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const emailModule = await getModuleConfig('email');
+    const verificationRequired = emailModule.require_verification !== false;
+    if (verificationRequired && !(await emailDeliveryEnabled())) return reply.code(503).send({ error: 'Registration is unavailable until an email module is enabled' });
+    const firstName = String(request.body?.firstName || request.body?.first_name || '').trim();
+    const email = String(request.body?.email || '').trim().toLowerCase();
+    const password = String(request.body?.password || '');
+    if (!firstName || firstName.length > 80) return reply.code(400).send({ error: 'Enter your first name (80 characters or fewer)' });
+    if (!emailPattern.test(email)) return reply.code(400).send({ error: 'Enter a valid email address' });
+    const disposable = await disposableEmailResult(email, await getModuleConfig('disposable_email'));
+    if (disposable.disposable) return reply.code(400).send({ error: 'Temporary email addresses are not accepted' });
+    if (password.length < 10) return reply.code(400).send({ error: 'Password must be at least 10 characters' });
+    const turnstile = await getModuleConfig('turnstile');
+    const cfToken = String(request.body?.recaptcha_token || request.body?.cf_turnstile_response || '').trim();
+    if (turnstile.enabled && turnstile.secret_key && !cfToken) {
+      return reply.code(400).send({ error: 'Please complete the CAPTCHA' });
+    }
+    if (turnstile.enabled && turnstile.secret_key && cfToken) {
+      const tsRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret: turnstile.secret_key, response: cfToken }),
+      });
+      const tsData = await tsRes.json();
+      if (!tsData.success) return reply.code(400).send({ error: 'CAPTCHA verification failed. Please try again.' });
+    }
+    const existing = await pool.query('SELECT id, status FROM users WHERE email = $1', [email]);
+    if (existing.rowCount) return reply.code(409).send({ error: 'An account with this email already exists' });
+    const passwordHash = await hashPassword(password);
+    const result = await pool.query(
+      `INSERT INTO users(email, password_hash, full_name, status, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [email, passwordHash, firstName, verificationRequired ? 'pending' : 'active', verificationRequired ? null : new Date()],
+    );
+    const user = serializeUser(result.rows[0]);
+    if (!verificationRequired) {
+      await createSession(user.id, request, reply);
+      return reply.code(201).send({ success: true, verified: true });
+    }
+    const issued = await issueVerification(user);
+    return reply.code(201).send({ success: true, ...(config.production ? {} : { development_verification_url: issued.verificationUrl }) });
+  });
+
+  app.post('/api/auth/verify-email', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const token = String(request.body?.token || '').trim();
+    if (!token) return reply.code(400).send({ error: 'Verification token is required' });
+    const result = await pool.query(
+      `DELETE FROM email_verifications
+       WHERE token_hash = $1 AND expires_at > now()
+       RETURNING user_id`,
+      [sha256(token)],
+    );
+    if (!result.rowCount) return reply.code(400).send({ error: 'Invalid or expired verification link' });
+    const userId = result.rows[0].user_id;
+    await pool.query(`UPDATE users SET status = 'active', email_verified_at = coalesce(email_verified_at, now()), updated_at = now() WHERE id = $1`, [userId]);
+    await pool.query('DELETE FROM email_verifications WHERE user_id = $1', [userId]);
+    await createSession(userId, request, reply);
+    return { success: true };
+  });
+
+  app.post('/api/auth/resend-verification', { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } }, async (request) => {
+    const email = String(request.body?.email || '').trim().toLowerCase();
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (!result.rowCount || result.rows[0].email_verified_at) return { success: true };
+    const user = serializeUser(result.rows[0]);
+    const issued = await issueVerification(user);
+    return { success: true, ...(config.production ? {} : { development_verification_url: issued.verificationUrl }) };
+  });
+
+  app.post('/api/auth/login', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const email = String(request.body?.email || '').trim().toLowerCase();
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const row = result.rows[0];
+    if (!row || !(await verifyPassword(row.password_hash, String(request.body?.password || '')))) {
+      return reply.code(401).send({ error: 'Invalid email or password' });
+    }
+    if (row.status === 'disabled') return reply.code(403).send({ error: 'This account is disabled' });
+    if (!row.email_verified_at) return reply.code(403).send({ error: 'Verify your email before signing in' });
+    if (row.status !== 'active') await pool.query(`UPDATE users SET status = 'active' WHERE id = $1`, [row.id]);
+    await createSession(row.id, request, reply);
+    return { user: publicUser(serializeUser({ ...row, status: 'active' })) };
+  });
+
+  app.get('/api/auth/me', async (request, reply) => {
+    const user = await authenticateRequest(request, { allowMfaPending: true });
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    return { user: publicUser(user) };
+  });
+
+  app.patch('/api/auth/me', async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    const allowed = ['full_name', 'disable_email_notifications'];
+    const updates = Object.fromEntries(Object.entries(request.body || {}).filter(([key]) => allowed.includes(key)));
+    if (Object.hasOwn(updates, 'full_name')) {
+      updates.full_name = String(updates.full_name || '').trim();
+      if (updates.full_name.length < 2 || updates.full_name.length > 120) {
+        return reply.code(400).send({ error: 'Full name must be between 2 and 120 characters' });
+      }
+    }
+    const fields = [];
+    const values = [];
+    for (const [key, value] of Object.entries(updates)) {
+      values.push(value || null);
+      fields.push(`${key} = $${values.length}`);
+    }
+    if (fields.length) {
+      values.push(user.id);
+      await pool.query(`UPDATE users SET ${fields.join(', ')}, updated_at = now() WHERE id = $${values.length}`, values);
+    }
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [user.id]);
+    return { user: publicUser(serializeUser(result.rows[0])) };
+  });
+
+  app.post('/api/auth/logout', async (request, reply) => {
+    const token = tokenFromRequest(request);
+    if (token) await pool.query('DELETE FROM sessions WHERE token_hash = $1', [sha256(token)]);
+    reply.clearCookie(config.cookieName, { path: '/' });
+    return { success: true };
+  });
+
+  app.post('/api/auth/forgot-password', { config: { rateLimit: { max: 5, timeWindow: '15 minutes' } } }, async (request) => {
+    const email = String(request.body?.email || '').trim().toLowerCase();
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (!result.rowCount) return { success: true };
+    const token = randomToken(32);
+    await pool.query('INSERT INTO password_resets(user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval \'1 hour\')', [result.rows[0].id, sha256(token)]);
+    await sendEmail({
+      to: email,
+      subject: 'Reset your Open Domains password',
+      body: `<p>Use the link below to reset your password. It expires in one hour.</p><p><a href="${config.appUrl}/reset-password?token=${encodeURIComponent(token)}">Reset password</a></p>`,
+    });
+    return { success: true, ...(config.production ? {} : { development_token: token }) };
+  });
+
+  app.post('/api/auth/reset-password', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const token = String(request.body?.resetToken || '');
+    const password = String(request.body?.newPassword || '');
+    if (password.length < 10) return reply.code(400).send({ error: 'Password must be at least 10 characters' });
+    const result = await pool.query('SELECT * FROM password_resets WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()', [sha256(token)]);
+    if (!result.rowCount) return reply.code(400).send({ error: 'Invalid or expired reset link' });
+    const reset = result.rows[0];
+    await pool.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [await hashPassword(password), reset.user_id]);
+    await pool.query('UPDATE password_resets SET used_at = now() WHERE id = $1', [reset.id]);
+    await pool.query('DELETE FROM sessions WHERE user_id = $1', [reset.user_id]);
+    return { success: true };
+  });
+
+  for (const name of Object.keys(OAUTH_PROVIDERS)) {
+    app.get(`/api/auth/oauth/${name}`, async (request, reply) => {
+      const started = await startOauth(name, { returnTo: safeReturnTo(request.query?.return_to) });
+      if (started.error) return reply.code(started.status).send({ error: started.error });
+      return reply.redirect(started.url);
+    });
+    app.get(`/api/auth/oauth/${name}/callback`, (request, reply) => oauthCallback(name, request, reply));
+  }
+
+  // Linked social accounts. These routes are blocked during view-as sessions
+  // (see impersonation-routes.js) because they bind lasting sign-in methods.
+  app.get('/api/auth/identities', async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    const listed = await listIdentities(pool, user.id);
+    const providers = await Promise.all(Object.entries(OAUTH_PROVIDERS).map(async ([name, provider]) => {
+      const linked = listed.identities.find((item) => item.provider === name) || null;
+      return {
+        provider: name,
+        label: provider.label,
+        available: providerConfigured(await getModuleConfig(provider.module)),
+        linked: linked ? { username: linked.display_name, email: linked.provider_email, linked_at: linked.linked_at, last_used_at: linked.last_used_at } : null,
+      };
+    }));
+    return { providers, has_password: listed.has_password, passkeys: listed.passkeys };
+  });
+
+  app.post('/api/auth/identities/:provider', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    if (user.impersonation?.active) return reply.code(403).send({ error: 'This security-sensitive action is unavailable during a view-as session' });
+    if (!user._session_id) return reply.code(403).send({ error: 'Sign in through the browser to link an account' });
+    const name = String(request.params?.provider || '');
+    if (!oauthProvider(name)) return reply.code(404).send({ error: 'Unknown sign-in provider' });
+    const started = await startOauth(name, { purpose: 'link', userId: user.id, sessionId: user._session_id, returnTo: LINK_RETURN_TO });
+    if (started.error) return reply.code(started.status).send({ error: started.error });
+    return { url: started.url };
+  });
+
+  app.delete('/api/auth/identities/:provider', { config: { rateLimit: { max: 20, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    const user = await authenticateRequest(request);
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' });
+    if (user.impersonation?.active) return reply.code(403).send({ error: 'This security-sensitive action is unavailable during a view-as session' });
+    const name = String(request.params?.provider || '');
+    if (!oauthProvider(name)) return reply.code(404).send({ error: 'Unknown sign-in provider' });
+    try {
+      await transaction((client) => unlinkIdentity(client, user.id, name));
+    } catch (error) {
+      if (error instanceof IdentityError) return reply.code(error.status).send({ error: error.message, code: error.code });
+      throw error;
+    }
+    await auditIdentity(user, 'identity_unlinked', name, request);
+    return { success: true };
+  });
+}

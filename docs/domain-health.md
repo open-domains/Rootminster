@@ -20,7 +20,7 @@ Checks use a fixed HTTPS resolver endpoint, five-record batches, at most 50 reco
 
 ## Verification
 
-Run `node --test server/domain-health.test.js` for ownership boundaries, invalid input, cooldown behavior, record matching, DNSSEC distinctions, resolver failure and query limits. Browser verification should cover results, errors/retry, switching subdomains during a request, keyboard navigation, long hostnames and mobile horizontal scrolling in both themes.
+Run `node --test tests/server/domain-health.test.js` for ownership boundaries, invalid input, cooldown behavior, record matching, DNSSEC distinctions, resolver failure and query limits. Browser verification should cover results, errors/retry, switching subdomains during a request, keyboard navigation, long hostnames and mobile horizontal scrolling in both themes.
 
 New health-panel chrome uses the English i18n catalog with existing fallback behavior. Diagnostic text returned by the server is currently English.
 

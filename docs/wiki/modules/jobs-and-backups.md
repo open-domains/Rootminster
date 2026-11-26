@@ -1,6 +1,6 @@
 # Module: Jobs and Backups
 
-Rootminster runs scheduled maintenance in a separate Node process using `server/jobs.js`. Backups are implemented in `server/backup-service.js` and configured through the Cloudflare R2 Backup module.
+Rootminster runs scheduled maintenance in a separate Node process using `server/jobs.js`. Backups are implemented in `server/lib/backup-service.js` and configured through the Cloudflare R2 Backup module.
 
 ## Responsibilities
 
@@ -14,11 +14,11 @@ Rootminster runs scheduled maintenance in a separate Node process using `server/
 ## Key Files
 
 - `server/jobs.js` — cron schedule and job runner process.
-- `server/database.js` — advisory lock helper.
-- `server/backup-service.js` — backup, restore, verification, capacity, retention, audit, and notification logic.
-- `server/backup-crypto.js` — backup encryption/decryption/checksum helpers.
-- `server/backup-routes.js` — admin backup HTTP routes.
-- `server/r2.js` — R2 client wrapper and limits.
+- `server/core/database.js` — advisory lock helper.
+- `server/lib/backup-service.js` — backup, restore, verification, capacity, retention, audit, and notification logic.
+- `server/lib/backup-crypto.js` — backup encryption/decryption/checksum helpers.
+- `server/routes/backup-routes.js` — admin backup HTTP routes.
+- `server/integrations/r2.js` — R2 client wrapper and limits.
 - `server/functions/cleanupPendingDonations.js` — donation cleanup.
 - `server/functions/cleanupSuspendedRecords.js` — DNS ownership cleanup.
 - `server/functions/scheduledSync.js` — periodic Cloudflare sync.

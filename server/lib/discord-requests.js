@@ -1,6 +1,6 @@
-import { store } from '../store.js';
-import { invokeInternal } from '../function-runner.js';
-import { config } from '../config.js';
+import { store } from '../core/store.js';
+import { invokeInternal } from '../core/function-runner.js';
+import { config } from '../core/config.js';
 import { requestBundle, bundleComments } from './request-bundles.js';
 import { OPEN_REQUEST_STATUSES, recordSetError, requestHostname } from '../../shared/subdomain-requests.js';
 

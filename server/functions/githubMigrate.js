@@ -1,6 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { findNamespaceConflict, syncOwnershipForNamespace } from '../lib/subdomain-ownership.js';
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 async function getAllDomainRecords() {
     const github = await getModuleConfig('github_oauth');
     const res = await fetch(github.registry_url, { headers: { 'User-Agent': 'OpenDomains-Platform' } });

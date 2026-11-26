@@ -1,4 +1,4 @@
-import { scanAllObserverTargets } from '../observer.js';
+import { scanAllObserverTargets } from '../integrations/observer.js';
 
 export default async function () {
   const result = await scanAllObserverTargets();

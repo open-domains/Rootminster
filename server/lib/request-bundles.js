@@ -1,5 +1,5 @@
 import { groupSubdomainRequests, OPEN_REQUEST_STATUSES, requestHostname } from '../../shared/subdomain-requests.js';
-import { withAdvisoryLock } from '../database.js';
+import { withAdvisoryLock } from '../core/database.js';
 
 export async function withRequestLock(hostname, callback) {
   const result = await withAdvisoryLock(`subdomain-request:${hostname.toLowerCase()}`, callback);
