@@ -8,7 +8,7 @@ Rootminster is a React 18/Vite frontend with a Fastify API, PostgreSQL storage, 
 - `src/lib/`, `src/hooks/`, and `src/api/`: shared logic, hooks, and the API client. Translations live in `src/i18n/`.
 - `src/themes/` and `src/index.css`: theme styling; consult `DESIGN.md` and `docs/themes.md` before changing visual conventions.
 - `server/`: API routes, authentication, storage, schema, and jobs; `server/functions/` contains domain handlers.
-- `server/*.test.js` and `tests/*.test.js`: automated tests. `public/` holds static assets; `docs/` holds documentation. `dist/` is generated output.
+- `server/*.test.js`, `server/lib/*.test.js` and `tests/*.test.js`: automated tests. `public/` holds static assets; `docs/` holds documentation. `dist/` is generated output.
 
 ## Build, Test, and Development Commands
 
@@ -20,7 +20,7 @@ Use Node.js 24 and PostgreSQL 17. Run `npm ci`, copy `.env.example` to `.env`, a
 - `npm run jobs`: run scheduled maintenance.
 - `npm run lint`: run ESLint; `npm run lint:fix` applies supported fixes.
 - `npm run typecheck`: check the files covered by `jsconfig.json`.
-- `node --test server/*.test.js tests/*.test.js`: run automated tests; there is no `npm test` script.
+- `npm test`: run automated tests (`server/*.test.js`, `server/lib/*.test.js`, `tests/*.test.js`).
 
 ## Coding Style & Naming Conventions
 

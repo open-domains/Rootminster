@@ -80,7 +80,7 @@ Or set `INITIAL_SETUP_KEY`, open `/setup`, create the first administrator, and t
 npm run lint
 npm run typecheck
 npm run build
-node --test server/*.test.js tests/*.test.js
+npm test
 ```
 
 There is no `npm test` script in `package.json`; tests use Node's built-in test runner.
