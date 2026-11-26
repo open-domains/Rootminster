@@ -1,5 +1,6 @@
 import { checkThreats, matchKey, normalHost, recordTargetHost } from './threat-intel.js';
-import { escapeHtml, isOpenReport } from './abuse-reports.js';
+import { isOpenReport } from './abuse-reports.js';
+import { escapeHtml } from './html.js';
 
 const DISMISSED_SUPPRESSION_MS = 30 * 86_400_000;
 const REPORTER = 'Threat intelligence';

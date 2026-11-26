@@ -12,6 +12,7 @@
 // cancels it: recordUserActivity() deletes the open notice as soon as the person
 // signs in, and every run re-checks open notices before closing anything.
 import { OPEN_REQUEST_STATUSES } from '../../shared/subdomain-requests.js';
+import { escapeHtml } from './html.js';
 
 export const INACTIVE_ACCOUNT_ACTOR = Object.freeze({
   id: null,
@@ -228,11 +229,6 @@ export async function listInactiveAccountNotices(db, settings) {
   return result.rows.map((row) => describeNotice(row, settings));
 }
 
-function escapeHtml(value) {
-  return String(value || '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character]);
-}
 
 function formatDate(value) {
   return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });

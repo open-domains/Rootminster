@@ -10,6 +10,7 @@ import { getModuleConfig } from './module-settings.js';
 import { jwksFromPrivateKey, oidcDiscoveryMetadata, oidcUserInfoFromUser, scopeIncludesOpenId, signOidcIdToken } from './oidc.js';
 import { randomToken, sha256 } from './security.js';
 import { serializeUser, store } from './store.js';
+import { escapeHtml } from './lib/html.js';
 
 const MCP_RESOURCE = `${config.appUrl}/mcp`;
 const STAFF_ROLES = new Set(['staff', 'admin']);
@@ -57,11 +58,6 @@ export function mcpConsentContentSecurityPolicy(redirectUri) {
   ].join('; ');
 }
 
-function escapeHtml(value) {
-  return String(value || '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character]);
-}
 
 async function getOauthClient(clientId) {
   const result = await pool.query('SELECT * FROM mcp_oauth_clients WHERE client_id = $1', [clientId]);

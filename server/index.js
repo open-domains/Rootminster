@@ -30,7 +30,7 @@ import { registerPasskeyRoutes } from './passkeys.js';
 import { registerImpersonationRoutes } from './impersonation-routes.js';
 import { registerDockerManagerRoutes } from './docker-manager.js';
 import { registerObserverRoutes } from './observer.js';
-import { registerZammadRoutes } from './zammad.js';
+import { registerContactRoutes } from './contact-routes.js';
 import { registerDomainProviderRoutes } from './domain-provider-routes.js';
 
 assertProductionConfiguration();
@@ -151,7 +151,7 @@ await registerPublicApiRoutes(app);
 await registerModuleSettingsRoutes(app);
 await registerDockerManagerRoutes(app);
 await registerObserverRoutes(app);
-await registerZammadRoutes(app);
+await registerContactRoutes(app);
 await registerDomainProviderRoutes(app);
 await registerDesignRoutes(app);
 await registerBackupRoutes(app);

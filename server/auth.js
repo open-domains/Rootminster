@@ -9,14 +9,10 @@ import { disposableEmailResult } from './lib/disposable-email.js';
 import { OAUTH_PROVIDERS, oauthProvider, providerConfigured } from './lib/oauth-providers.js';
 import { recordUserActivity } from './lib/inactive-accounts.js';
 import { findIdentity, IdentityError, linkIdentity, listIdentities, rememberIdentity, touchIdentity, unlinkIdentity } from './lib/oauth-identities.js';
+import { escapeHtml } from './lib/html.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function escapeHtml(value) {
-  return String(value || '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[character]);
-}
 
 export function publicUser(user) {
   if (!user) return null;

@@ -1,8 +1,8 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { config } from '../config.js';
 import { getModuleConfig } from '../module-settings.js';
-import { createZammadTicket } from '../zammad.js';
-import { acknowledgementEmail, escapeHtml, isOpenReport, mergedReportUpdate, newReporterSecret, reportedHostname, reporterEntry, statusToken } from '../lib/abuse-reports.js';
+import { acknowledgementEmail, isOpenReport, mergedReportUpdate, newReporterSecret, reportedHostname, reporterEntry, statusToken } from '../lib/abuse-reports.js';
+import { escapeHtml } from '../lib/html.js';
 
 async function sendAcknowledgement(platform, email, host, token) {
     if (!email) return;
@@ -76,23 +76,6 @@ export default async function (req) {
             last_reported_at: new Date().toISOString(),
             status: "open",
         });
-        let actor = null;
-        try {
-            actor = await platform.auth.me();
-        }
-        catch (_) { }
-        try {
-            await createZammadTicket({
-                category: 'abuse',
-                subject: `${abuse_type}: ${subdomain}`,
-                message: `${description}${evidence ? `\n\nEvidence:\n${evidence}` : ''}`,
-                email: reporter_email || undefined,
-                context: { abuse_report_id: report.id, subdomain, abuse_type, path: '/report-abuse' },
-            }, actor);
-        }
-        catch (_) {
-            // Non-fatal — the Rootminster abuse report is already saved.
-        }
         const safeSubdomain = escapeHtml(subdomain);
         const safeType = escapeHtml(abuse_type);
         const safeReporter = escapeHtml(reporter_email || 'Anonymous');
