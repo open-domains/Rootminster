@@ -1,7 +1,7 @@
 export const MODULE_CATEGORIES = {
   cloudflare: 'DNS', email: 'Email', hostinger_mail: 'Email', google_oauth: 'Authentication', github_oauth: 'Authentication', discord_oauth: 'Authentication',
   r2_backup: 'Storage', glitchtip: 'Monitoring', observer: 'Monitoring', analytics: 'Monitoring', discord: 'Integrations',
-  donations: 'Payments', branding: 'Appearance', mcp: 'Integrations', support_chat: 'Integrations', turnstile: 'Security',
+  donations: 'Payments', branding: 'Appearance', mcp: 'Integrations', turnstile: 'Security',
   safety: 'Security', disposable_email: 'Security', instant_approval: 'Security', inactive_accounts: 'Security', threat_intel: 'Security',
   docker_engine: 'Infrastructure', design: 'Integrations',
 };

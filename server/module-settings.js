@@ -210,10 +210,6 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: Boolean(process.env.ZAMMAD_API_URL && process.env.ZAMMAD_API_TOKEN), api_url: process.env.ZAMMAD_API_URL || 'https://support.open-domains.com', api_token: process.env.ZAMMAD_API_TOKEN || '', default_group: process.env.ZAMMAD_DEFAULT_GROUP || 'General Support', support_email: process.env.ZAMMAD_SUPPORT_EMAIL || '' }),
   },
-  support_chat: {
-    name: 'Support chat', description: 'Floating support chat bubble for signed-in users. Tickets it creates go to Zammad. The Contact page is unaffected.', defaultEnabled: false,
-    fields: [], env: () => ({ enabled: process.env.SUPPORT_CHAT_ENABLED === 'true' }),
-  },
   discord: {
     name: 'Discord bot', description: 'Signed slash commands for users and staff request management.', defaultEnabled: false,
     fields: [
