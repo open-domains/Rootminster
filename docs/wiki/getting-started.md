@@ -99,4 +99,4 @@ There is no `npm test` script in `package.json`; tests use Node's built-in test 
 - Architecture: `architecture.md`
 - API surface: `api.md`
 - Module reference: `README.md#module-map`
-- Existing upstream docs: `README.md`, `ARCHITECTURE.md`, and files in `docs/`
+- Existing upstream docs: `README.md` and files in `docs/`
