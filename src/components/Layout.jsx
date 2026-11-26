@@ -352,7 +352,7 @@ export default function Layout() {
       </div>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} items={cmdItems} />
-      <FloatingSupportChat user={user} />
+      {config.features?.supportChat && <FloatingSupportChat user={user} />}
     </div>
     </Sheet>
   );

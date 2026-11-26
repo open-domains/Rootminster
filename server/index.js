@@ -114,9 +114,9 @@ app.get('/api/health', async (_request, reply) => {
 });
 
 app.get('/api/config', async () => {
-  const [donations, google, github, discordOauth, discord, branding, glitchtip] = await Promise.all([
+  const [donations, google, github, discordOauth, discord, branding, glitchtip, supportChat] = await Promise.all([
     getModuleConfig('donations'), getModuleConfig('google_oauth'), getModuleConfig('github_oauth'), getModuleConfig('discord_oauth'), getModuleConfig('discord'),
-    getModuleConfig('branding'), getModuleConfig('glitchtip'),
+    getModuleConfig('branding'), getModuleConfig('glitchtip'), getModuleConfig('support_chat'),
   ]);
   const defaultBranding = { platform_name: 'Open Domains', short_name: 'OpenDomains', logo_url: '/open-domains-icon.png', primary_color: '#2563eb', support_url: '/contact' };
   const publicBranding = branding.enabled ? {
@@ -127,7 +127,7 @@ app.get('/api/config', async () => {
     support_url: /^(https:\/\/|\/)/.test(branding.support_url) ? branding.support_url : defaultBranding.support_url,
   } : defaultBranding;
   return {
-    features: { donations: donations.enabled, nsRequiresDonation: donations.enabled },
+    features: { donations: donations.enabled, nsRequiresDonation: donations.enabled, supportChat: supportChat.enabled },
     oauth: { google: Boolean(google.enabled && google.client_id && google.client_secret), github: Boolean(github.enabled && github.client_id && github.client_secret), discord: Boolean(discordOauth.enabled && discordOauth.client_id && discordOauth.client_secret) },
     discordBot: Boolean(discord.enabled && discord.application_id && discord.public_key && discord.bot_token),
     glitchtip: glitchtip.enabled && glitchtip.dsn ? {
