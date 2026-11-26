@@ -105,6 +105,18 @@ export const rootminster = {
     async unlink() {
       return request('/api/discord/link', { method: 'DELETE' });
     },
+    async tickets({ scope = 'mine', status = '' } = {}) {
+      const params = new URLSearchParams();
+      if (scope === 'all') params.set('scope', 'all');
+      if (status) params.set('status', status);
+      return request(`/api/discord/tickets${params.size ? `?${params}` : ''}`);
+    },
+    async ticket(id) {
+      return request(`/api/discord/tickets/${encodeURIComponent(id)}`);
+    },
+    async ticketTranscript(id) {
+      return request(`/api/discord/tickets/${encodeURIComponent(id)}?format=txt`);
+    },
   },
   apiTokens: {
     async list() {

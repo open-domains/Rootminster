@@ -34,6 +34,7 @@ Rootminster runs scheduled maintenance in a separate Node process using `server/
 - `0 4,12,20 * * *` UTC — `observerScanAll`, scanning 20 Observer targets per run / 60 per day.
 - `0 23 * * 0` UTC — `weeklyStatsDiscord`.
 - `45 3 * * *` UTC — inactive account cleanup (`server/lib/inactive-accounts.js`), only when the Inactive account cleanup module is enabled. See `docs/inactive-accounts.md`.
+- `50 * * * *` UTC — delete closed Discord ticket channels past the Discord tickets module's delay (`server/lib/discord-tickets.js`).
 - `*/15 * * * *` UTC — check whether a scheduled R2 backup should run.
 - `0 4 * * *` UTC — purge expired auth/session helper rows.
 - Startup — fire-and-forget `cleanupSuspendedRecords`.

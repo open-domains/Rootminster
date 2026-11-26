@@ -28,6 +28,7 @@ Defined modules include:
 - `google_oauth`
 - `github_oauth`
 - `discord`
+- `discord_tickets`
 - `safety`
 - `mcp`
 - `analytics`
@@ -39,7 +40,7 @@ Defined modules include:
 - `server/core/config.js` — bootstrap environment config.
 - `server/core/security.js` — setting secret encryption/decryption.
 - `server/core/mail.js` — SMTP integration.
-- `server/integrations/discord.js` and `server/lib/discord-requests.js` — Discord interactions.
+- `server/integrations/discord.js`, `server/lib/discord-requests.js` and `server/lib/discord-tickets.js` — Discord interactions and support tickets.
 - `server/integrations/r2.js` and `server/lib/backup-service.js` — R2 backups.
 - `server/integrations/glitchtip.js` / `src/lib/glitchtip.js` — monitoring.
 - `server/integrations/docker-manager.js` — Hostinger VPS Docker manager integration.

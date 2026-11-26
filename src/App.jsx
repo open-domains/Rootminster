@@ -92,6 +92,7 @@ const UserDashboard = lazy(() => import('@/pages/UserDashboard'));
 const MySubdomains = lazy(() => import('@/pages/MySubdomains.jsx'));
 const SubdomainDnsManager = lazy(() => import('@/pages/SubdomainDnsManager.jsx'));
 const MyRequests = lazy(() => import('@/pages/MyRequests'));
+const Tickets = lazy(() => import('@/pages/Tickets'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Analytics = lazy(() => import('@/pages/Analytics'));
 const DiscordLink = lazy(() => import('@/pages/DiscordLink'));
@@ -191,6 +192,7 @@ const AuthenticatedApp = () => {
         <Route path="/my-subdomains" element={<MySubdomains />} />
         <Route path="/subdomain-dns-manager" element={<SubdomainDnsManager />} />
         <Route path="/my-requests" element={<MyRequests />} />
+        <Route path="/tickets" element={<Tickets />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
 
@@ -205,6 +207,7 @@ const AuthenticatedApp = () => {
         {/* Staff + Admin: Abuse Reports */}
         <Route element={<RoleProtectedRoute allowedRoles={['admin', 'staff']} />}>
           <Route path="/admin-abuse-reports" element={<AdminAbuseReports />} />
+          <Route path="/admin-tickets" element={<Tickets scope="all" />} />
           <Route path="/staff-observer" element={<AdminObserverFindings />} />
           <Route path="/admin-observer" element={<Navigate to="/staff-observer" replace />} />
           <Route path="/staff-blocklist" element={<StaffBlocklist />} />

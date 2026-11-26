@@ -3,6 +3,13 @@ import { decryptSettingSecret, encryptSettingSecret } from './security.js';
 import { store } from './store.js';
 
 const MODULE_PREFIX = 'module_config:';
+export const DEFAULT_TICKET_CATEGORIES = [
+  'DNS help: What are you trying to set up? | Which records have you tried? | Any error messages or links?',
+  'Request help: What do you need help with on your request? | Anything staff should know?',
+  'Abuse report: Which site or subdomain is involved? | What is happening? | Links or evidence',
+  'Account: What do you need help with? | When did the problem start?',
+  'Other: How can we help?',
+].join('\n');
 const cache = new Map();
 const CACHE_MS = 15_000;
 
@@ -210,6 +217,19 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: config.discordBot.enabled, application_id: config.discordBot.applicationId, public_key: config.discordBot.publicKey, bot_token: config.discordBot.token, guild_id: config.discordBot.guildId }),
   },
+  discord_tickets: {
+    name: 'Discord tickets', description: 'Support tickets in Discord with intake questions and subdomain selection from the linked Rootminster account. Needs the Discord bot module.', defaultEnabled: false,
+    fields: [
+      { key: 'open_category_id', label: 'Open tickets category ID', type: 'text', required: true, description: 'Each ticket gets its own private channel in this category. The bot needs Manage Channels, Manage Roles, View Channel, Send Messages, Read Message History and Embed Links on it.' },
+      { key: 'closed_category_id', label: 'Closed tickets category ID', type: 'text', required: true, description: 'Closed ticket channels move here and become read-only for staff. The ticket opener loses access. A category holds at most 50 channels, so set an automatic delete below.' },
+      { key: 'staff_role_id', label: 'Staff role ID', type: 'text', description: 'Can see and reply in every open ticket, and is pinged when one opens.' },
+      { key: 'transcript_channel_id', label: 'Transcript log channel ID', type: 'text', description: 'Optional staff-only channel that receives a transcript file when a ticket closes. Transcripts are always kept on the Tickets page.' },
+      { key: 'delete_closed_after_days', label: 'Delete closed ticket channels after (days)', type: 'number', min: 0, max: 365, step: 1, description: '0 keeps closed channels. The saved transcript is kept either way.' },
+      { key: 'max_open_tickets', label: 'Open tickets per user', type: 'number', min: 1, max: 10, step: 1 },
+      { key: 'categories', label: 'Categories and questions', type: 'textarea', description: 'One category per line: "Name: first question | second question". Up to 10 categories and 5 questions each; questions are cut to 45 characters.' },
+    ],
+    env: () => ({ enabled: false, open_category_id: '', closed_category_id: '', staff_role_id: '', transcript_channel_id: '', delete_closed_after_days: 14, max_open_tickets: 3, categories: DEFAULT_TICKET_CATEGORIES }),
+  },
   mcp: {
     name: 'MCP server', description: 'Role-aware ChatGPT and Claude account tools.', defaultEnabled: true,
     fields: [], env: () => ({ enabled: config.mcpEnabled }),
@@ -262,7 +282,7 @@ function normaliseField(field, value) {
     const selected = String(value ?? '');
     return field.options?.some((option) => option.value === selected) ? selected : String(field.options?.[0]?.value || '');
   }
-  return String(value ?? '').trim().slice(0, field.type === 'secret' ? 10_000 : 2_000);
+  return String(value ?? '').trim().slice(0, field.type === 'secret' ? 10_000 : field.type === 'textarea' ? 5_000 : 2_000);
 }
 
 async function storedModule(id) {

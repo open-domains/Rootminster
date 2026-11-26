@@ -19,7 +19,7 @@ import {
 import {
   Activity, AlertTriangle, Ban, BarChart3, Bell, BookOpen, Boxes, ChevronDown, CircleHelp, Container,
   FileBarChart, FileCode2, GitPullRequest, Globe2, Heart, LayoutDashboard, Mail,
-  LogOut, Menu, Newspaper, Search, Settings, Shield, ShieldOff, Users, UserX, Wrench,
+  LifeBuoy, LogOut, Menu, Newspaper, Search, Settings, Shield, ShieldOff, Users, UserX, Wrench,
   X,
 } from 'lucide-react';
 
@@ -28,6 +28,7 @@ const userNav = [
   { to: '/my-subdomains', icon: Globe2, label: 'My Domains' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/my-requests', icon: GitPullRequest, label: 'Requests' },
+  { to: '/tickets', icon: LifeBuoy, label: 'Support Tickets' },
   { to: '/settings', icon: Settings, label: 'Account Settings' },
 ];
 
@@ -45,6 +46,7 @@ const adminNav = [
   { to: '/admin-reports', icon: FileBarChart, label: 'Reports', adminOnly: true },
   { to: '/admin-account-deletions', icon: UserX, label: 'Account Deletions', adminOnly: true },
   { to: '/admin-abuse-reports', icon: AlertTriangle, label: 'Abuse Reports' },
+  { to: '/admin-tickets', icon: LifeBuoy, label: 'Discord Tickets' },
   { to: '/staff-observer', icon: Shield, label: 'Observer Findings' },
   { to: '/staff-blocklist', icon: ShieldOff, label: 'Blocklist' },
   { to: '/admin-audit-logs', icon: Activity, label: 'Audit Logs', adminOnly: true },
