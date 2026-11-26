@@ -47,7 +47,7 @@ jobs:
         run: npm run typecheck
 
       - name: Run test suite
-        run: node --test server/*.test.js server/lib/*.test.js tests/*.test.js
+        run: npm test
 
       - name: Build browser application
         run: npm run build
