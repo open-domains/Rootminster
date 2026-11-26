@@ -9,7 +9,6 @@ import CommandPalette from '@/components/CommandPalette';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import PasskeyManager from '@/components/PasskeyManager';
-import FloatingSupportChat from '@/components/FloatingSupportChat';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePublicConfig } from '@/lib/public-config';
@@ -352,7 +351,6 @@ export default function Layout() {
       </div>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} items={cmdItems} />
-      {config.features?.supportChat && <FloatingSupportChat user={user} />}
     </div>
     </Sheet>
   );
