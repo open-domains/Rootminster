@@ -116,7 +116,7 @@ test('ticket interactions: unlinked users get the link prompt and the wizard upd
   assert.deepEqual((await inject({ id: 't1', type: 3, token: 'a', user, data: { custom_id: 'tk:open' } })).json(), { type: 5, data: { flags: 64 } });
   await new Promise(resolve => setImmediate(resolve));
   const prompt = sent.find(item => item.url.includes('/webhooks/'));
-  assert.match(prompt.body.content, /first link your Rootminster account/);
+  assert.match(prompt.body.content, /first link your Open Domains account/);
   assert.match(prompt.body.components[0].components[0].url, /discord-link\?token=/);
 
   assert.deepEqual((await inject({ id: 't2', type: 3, token: 'b', user, data: { custom_id: 'tk:cat', values: ['other'] } })).json(), { type: 6 });
@@ -124,4 +124,35 @@ test('ticket interactions: unlinked users get the link prompt and the wizard upd
   const form = (await inject({ id: 't3', type: 3, token: 'c', user, data: { custom_id: 'tk:sub:other', values: ['none'] } })).json();
   assert.equal(form.type, 9);
   assert.equal(form.data.custom_id, 'tk:submit:other:none');
+});
+
+test('the link prompt uses the branded site name', async t => {
+  const { default: Fastify } = await import('fastify');
+  const { default: rawBody } = await import('fastify-raw-body');
+  const { registerDiscordRoutes } = await import('../../server/integrations/discord.js');
+  const { store } = await import('../../server/core/store.js');
+  const { pool } = await import('../../server/core/database.js');
+  const { getModuleConfig } = await import('../../server/core/module-settings.js');
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const publicHex = publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('hex');
+  const sent = [];
+  t.mock.method(store, 'filter', async (entity, filter) => [{ value: JSON.stringify(filter.key === 'module_config:branding'
+    ? { enabled: true, platform_name: 'Acme Hosting' }
+    : { enabled: true, application_id: '123', public_key: publicHex, bot_token: 'fake', guild_id: '456' }) }]);
+  await getModuleConfig('discord', { fresh: true });
+  await getModuleConfig('branding', { fresh: true });
+  t.mock.method(pool, 'query', async (sql) => (sql.includes('INSERT INTO discord_interactions') ? { rowCount: 1, rows: [{}] } : { rowCount: 0, rows: [] }));
+  t.mock.method(globalThis, 'fetch', async (url, options) => { sent.push({ url, body: JSON.parse(options.body) }); return { ok: true }; });
+  const app = Fastify();
+  await app.register(rawBody, { field: 'rawBody', global: false, encoding: 'utf8', runFirst: true });
+  await registerDiscordRoutes(app);
+  t.after(() => app.close());
+  const payload = JSON.stringify({ id: 'b1', type: 2, token: 'x', user: { id: '123456789012345678', username: 'someone' }, data: { name: 'ticket' } });
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = crypto.sign(null, Buffer.from(timestamp + payload), privateKey).toString('hex');
+  await app.inject({ method: 'POST', url: '/api/discord/interactions', payload, headers: { 'content-type': 'application/json', 'x-signature-timestamp': timestamp, 'x-signature-ed25519': signature } });
+  await new Promise(resolve => setImmediate(resolve));
+  const prompt = sent.find(item => item.url.includes('/webhooks/'));
+  assert.equal(prompt.body.content, 'To open a ticket, first link your Acme Hosting account so we can see your subdomains. Connect your Discord account to Acme Hosting. This private link expires in 15 minutes and can only be used once.');
+  assert.equal(prompt.body.components[0].components[0].label, 'Link Acme Hosting account');
 });

@@ -1,4 +1,5 @@
 import { createDiscordRequests, discordMessage, discordModal } from '../lib/discord-requests.js';
+import { platformName } from '../lib/platform-name.js';
 import { createDiscordApi, createDiscordTickets, transcriptText, updatesInPlace } from '../lib/discord-tickets.js';
 import crypto from 'node:crypto';
 import { authenticateRequest } from '../routes/auth.js';
@@ -25,11 +26,12 @@ export const tickets = createDiscordTickets({
   api: { call: async (...args) => (await botApi()).call(...args), upload: async (...args) => (await botApi()).upload(...args) },
   // A bot user's ID is its application's ID.
   botUserId: async () => (await botConfigured())?.application_id,
+  platformName,
 });
 
-const commands = [
+const commandList = (site) => [
   { name: 'panel', description: 'Open your request controls and staff review queue' },
-  { name: 'link', description: 'Link your Discord user to your Rootminster account' },
+  { name: 'link', description: `Link your Discord user to your ${site} account`.slice(0, 100) },
   { name: 'ticket', description: 'Open a private support ticket with the staff team', dm_permission: false },
   { name: 'tickets', description: 'List your tickets, or open tickets for staff', dm_permission: false },
   { name: 'ticket-panel', description: 'Staff: post an "Open a ticket" button in this channel', dm_permission: false, default_member_permissions: String(1 << 5) },
@@ -112,8 +114,9 @@ async function makeLink(interaction) {
      VALUES ($1, $2, $3, now() + interval '15 minutes')`,
     [sha256(token), identity.id, identity.username],
   );
-  return discordMessage('Connect your Discord account to Rootminster. This private link expires in 15 minutes and can only be used once.', [
-    { type: 1, components: [{ type: 2, style: 5, label: 'Link Rootminster account', url: `${config.appUrl}/discord-link?token=${encodeURIComponent(token)}` }] },
+  const site = await platformName();
+  return discordMessage(`Connect your Discord account to ${site}. This private link expires in 15 minutes and can only be used once.`, [
+    { type: 1, components: [{ type: 2, style: 5, label: `Link ${site} account`.slice(0, 80), url: `${config.appUrl}/discord-link?token=${encodeURIComponent(token)}` }] },
   ]);
 }
 
@@ -149,7 +152,7 @@ async function commandResponse(interaction) {
   const identity = discordIdentity(interaction);
   if ((interaction.data?.name === 'ticket' || interaction.data?.custom_id === 'tk:open') && !(await linkedUser(identity.id))) {
     const link = await makeLink(interaction);
-    return { ...link, content: `To open a ticket, first link your Rootminster account so we can see your subdomains. ${link.content}` };
+    return { ...link, content: `To open a ticket, first link your ${await platformName()} account so we can see your subdomains. ${link.content}` };
   }
   const actor = await requireLinked(interaction);
   if ([3, 5].includes(interaction.type)) return ticketControl ? tickets.component(interaction, actor, identity) : requestUi.component(interaction, actor);
@@ -186,7 +189,7 @@ async function registerCommands(logger) {
     : `${DISCORD_API}/applications/${bot.application_id}/commands`;
   try {
     const response = await fetch(target, {
-      method: 'PUT', headers: { Authorization: `Bot ${bot.bot_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(commands),
+      method: 'PUT', headers: { Authorization: `Bot ${bot.bot_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(commandList(await platformName())),
     });
     if (!response.ok) throw new Error(`Discord command registration failed (${response.status}): ${await response.text()}`);
     logger.info('Discord bot commands registered');
@@ -220,7 +223,7 @@ export async function registerDiscordRoutes(app) {
       return identity;
     });
     if (!linked) return reply.code(400).send({ error: 'This Discord link is invalid or has expired' });
-    if (linked.conflict) return reply.code(409).send({ error: 'This Discord account is already linked to a different Rootminster user' });
+    if (linked.conflict) return reply.code(409).send({ error: `This Discord account is already linked to a different ${await platformName()} user` });
     return { success: true, username: linked.discord_username };
   });
 

@@ -1,5 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { pool } from '../core/database.js';
+import { platformName } from '../lib/platform-name.js';
 
 function utcWeekKey(date) {
   const end = new Date(date);
@@ -44,8 +45,9 @@ export default async function (req) {
     );
     const users = await pool.query('SELECT count(*) AS new_users FROM users WHERE created_at >= $1', [weekAgo]);
     const counts = { ...stats.rows[0], ...users.rows[0] };
+    const site = await platformName();
     const embed = {
-      title: '📊 Weekly Stats — Open Domains',
+      title: `📊 Weekly Stats — ${site}`,
       description: `Here's a summary of activity for the past 7 days.`,
       color: 0x6366f1,
       fields: [
@@ -57,7 +59,7 @@ export default async function (req) {
         { name: '👤 New Users', value: String(counts.new_users), inline: true },
       ],
       timestamp: now.toISOString(),
-      footer: { text: 'Open Domains Platform' },
+      footer: { text: `${site} Platform` },
     };
     const res = await fetch(webhookUrl, {
       method: 'POST',
