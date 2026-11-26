@@ -8,7 +8,7 @@ Source inspected: `/root/Rootminster` at `26c9f26aacb006269da47e3788f8de338a623a
 
 - **Entities** — durable operational records exposed through `/api/entities/:entity`; regular users see only their own records while staff/admins get wider access.
 - **Function handlers** — domain-specific commands under `server/functions/` invoked through `/api/functions/:name` and internally by jobs/MCP/API adapters.
-- **Module settings** — optional integrations such as Cloudflare DNS, SMTP, Discord, Stripe, Umami, R2 backups, MCP, and branding are defined in `server/module-settings.js` and stored as encrypted settings.
+- **Module settings** — optional integrations such as Cloudflare DNS, SMTP, Discord, Stripe, Umami, R2 backups, MCP, and branding are defined in `server/core/module-settings.js` and stored as encrypted settings.
 - **Request bundles** — grouped subdomain requests and comments are handled together for staff review, approval, rejection, and MCP views.
 - **Ownership namespaces** — approved DNS records and `SubdomainOwnership` records determine what hostnames a user can later manage.
 - **Background automation** — `server/jobs.js` runs cleanup, DNS sync, DNS verification, weekly Discord stats, and scheduled R2 backups.

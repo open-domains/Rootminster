@@ -11,14 +11,14 @@ Durable state is PostgreSQL. Identity/session/security tables are relational; op
 - **React SPA** — routes and screens in `src/App.jsx`, `src/pages/`, and `src/components/`.
 - **Browser API client** — `src/api/rootminsterClient.js` wraps fetch calls for auth, entities, functions, admin modules, backups, Docker management, terms, passkeys, and API tokens.
 - **Fastify runtime** — `server/index.js` configures security middleware, rate limits, health checks, route modules, static frontend serving, and shutdown.
-- **Auth/session layer** — `server/auth.js`, `server/passkeys.js`, and `server/security.js` provide registration, login, OAuth, password reset, cookie sessions, impersonation-aware public user serialization, and MFA checks.
-- **Entity API + store** — `server/entity-routes.js` enforces read/write access; `server/store.js` maps entities to `users` or `entity_records` queries.
-- **Function runner** — `server/function-runner.js` imports allowed handlers from `server/functions/`, executes them over HTTP routes or internal calls, and masks server errors in production.
+- **Auth/session layer** — `server/routes/auth.js`, `server/routes/passkeys.js`, and `server/core/security.js` provide registration, login, OAuth, password reset, cookie sessions, impersonation-aware public user serialization, and MFA checks.
+- **Entity API + store** — `server/routes/entity-routes.js` enforces read/write access; `server/core/store.js` maps entities to `users` or `entity_records` queries.
+- **Function runner** — `server/core/function-runner.js` imports allowed handlers from `server/functions/`, executes them over HTTP routes or internal calls, and masks server errors in production.
 - **DNS and request workflows** — `submitRequest`, `approveRequest`, `rejectRequest`, `manageDnsRecord`, `verifyDnsRecords`, `scheduledSync`, and shared libraries coordinate validation, ownership, Cloudflare DNS, and audits.
-- **Public API** — `server/public-api.js` exposes `/api/v1` endpoints, creates/revokes scoped bearer tokens, validates token scope/hostname/type restrictions, and serves OpenAPI docs.
-- **MCP server** — `server/mcp.js` implements OAuth 2.1/PKCE dynamic-client flow and role-aware tools for users and staff.
-- **Module settings** — `server/module-settings.js` defines optional integrations and handles encrypted secret persistence.
-- **Jobs/backups** — `server/jobs.js` schedules operations; `server/backup-service.js` creates/restores encrypted PostgreSQL backups in Cloudflare R2.
+- **Public API** — `server/routes/public-api.js` exposes `/api/v1` endpoints, creates/revokes scoped bearer tokens, validates token scope/hostname/type restrictions, and serves OpenAPI docs.
+- **MCP server** — `server/routes/mcp.js` implements OAuth 2.1/PKCE dynamic-client flow and role-aware tools for users and staff.
+- **Module settings** — `server/core/module-settings.js` defines optional integrations and handles encrypted secret persistence.
+- **Jobs/backups** — `server/jobs.js` schedules operations; `server/lib/backup-service.js` creates/restores encrypted PostgreSQL backups in Cloudflare R2.
 
 ## System Diagram
 
@@ -28,18 +28,18 @@ flowchart TD
     Client --> Fastify["Fastify app
 server/index.js"]
     Fastify --> Auth["Auth routes
-server/auth.js"]
+server/routes/auth.js"]
     Fastify --> Entities["Entity routes
-server/entity-routes.js"]
+server/routes/entity-routes.js"]
     Fastify --> Functions["Function runner
-server/function-runner.js"]
+server/core/function-runner.js"]
     Fastify --> PublicAPI["Versioned API
-server/public-api.js"]
+server/routes/public-api.js"]
     Fastify --> MCP["MCP OAuth + tools
-server/mcp.js"]
+server/routes/mcp.js"]
     Auth --> DB[(PostgreSQL)]
     Entities --> Store["Entity store
-server/store.js"]
+server/core/store.js"]
     Store --> DB
     Functions --> Platform["Bound platform client"]
     Platform --> Store

@@ -1,6 +1,6 @@
-import { store } from '../store.js';
+import { store } from '../core/store.js';
 import { requestRecords } from '../../shared/subdomain-requests.js';
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 import { matchProtectedBrand, parseBrandList } from '../../shared/brand-protection.js';
 
 export const SAFETY_RULESET_VERSION = '2026-08-31.1';

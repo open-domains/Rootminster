@@ -30,7 +30,7 @@ sequenceDiagram
 ### Walkthrough
 
 1. Frontend uses `src/api/rootminsterClient.js:rootminster.functions.invoke`.
-2. `server/function-runner.js` authenticates and imports `server/functions/submitRequest.js`.
+2. `server/core/function-runner.js` authenticates and imports `server/functions/submitRequest.js`.
 3. `submitRequest` validates and persists request data through the platform client/store.
 
 ## Workflow: Staff approves a request
@@ -94,7 +94,7 @@ sequenceDiagram
 
 ### Walkthrough
 
-1. `server/public-api.js:createBrowserToken()` creates `od_...` tokens.
+1. `server/routes/public-api.js:createBrowserToken()` creates `od_...` tokens.
 2. Only the hash is stored; the raw token is returned once.
 3. DDNS tokens require hostname and A/AAAA restrictions.
 
@@ -123,5 +123,5 @@ sequenceDiagram
 ### Walkthrough
 
 1. `server/jobs.js` schedules `runScheduledBackup()` every 15 minutes.
-2. `server/backup-service.js` enforces R2 limits and retention before upload.
+2. `server/lib/backup-service.js` enforces R2 limits and retention before upload.
 3. Backup artifacts are encrypted before leaving the server.

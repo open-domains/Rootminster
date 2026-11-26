@@ -1,6 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { config } from '../config.js';
-import { getModuleConfig } from '../module-settings.js';
+import { config } from '../core/config.js';
+import { getModuleConfig } from '../core/module-settings.js';
 import { acknowledgementEmail, isOpenReport, mergedReportUpdate, newReporterSecret, reportedHostname, reporterEntry, statusToken } from '../lib/abuse-reports.js';
 import { escapeHtml } from '../lib/html.js';
 

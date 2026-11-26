@@ -1,0 +1,166 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+import { decryptSettingSecret, decryptTotpSecret, encryptSettingSecret, encryptTotpSecret } from '../../server/core/security.js';
+
+const source = (path) => readFile(new URL(path, import.meta.url), 'utf8');
+
+test('TOTP secrets encrypt with authenticated encryption when configured', () => {
+  const previous = process.env.TOTP_ENCRYPTION_KEY;
+  process.env.TOTP_ENCRYPTION_KEY = 'test-only-encryption-key-with-enough-entropy';
+  try {
+    const encrypted = encryptTotpSecret('JBSWY3DPEHPK3PXP');
+    assert.match(encrypted, /^enc:v1:/);
+    assert.notEqual(encrypted, 'JBSWY3DPEHPK3PXP');
+    assert.equal(decryptTotpSecret(encrypted), 'JBSWY3DPEHPK3PXP');
+    const parts = encrypted.split(':');
+    parts[3] = `${parts[3][0] === 'A' ? 'B' : 'A'}${parts[3].slice(1)}`;
+    assert.throws(() => decryptTotpSecret(parts.join(':')));
+  } finally {
+    if (previous === undefined) delete process.env.TOTP_ENCRYPTION_KEY;
+    else process.env.TOTP_ENCRYPTION_KEY = previous;
+  }
+});
+
+test('module secrets use a separate authenticated-encryption key domain', () => {
+  const previous = process.env.MODULE_ENCRYPTION_KEY;
+  process.env.MODULE_ENCRYPTION_KEY = 'test-only-module-key-with-enough-entropy';
+  try {
+    const encrypted = encryptSettingSecret('sk_live_not-a-real-secret');
+    assert.match(encrypted, /^enc:v1:/);
+    assert.equal(decryptSettingSecret(encrypted), 'sk_live_not-a-real-secret');
+    assert.notEqual(encrypted, encryptSettingSecret('sk_live_not-a-real-secret'));
+  } finally {
+    if (previous === undefined) delete process.env.MODULE_ENCRYPTION_KEY;
+    else process.env.MODULE_ENCRYPTION_KEY = previous;
+  }
+});
+
+test('module settings retain legacy ENV credentials as a missing-key recovery path', async () => {
+  const modules = await source('../../server/core/module-settings.js');
+  assert.match(modules, /const environment = definition\.env\(\)/);
+  assert.match(modules, /error\?\.status === 503 && environment\[field\.key\]/);
+  assert.match(modules, /else throw error/);
+});
+
+test('browser sessions carry server-side MFA assurance', async () => {
+  const auth = await source('../../server/routes/auth.js');
+  assert.match(auth, /s\.mfa_verified_at AS _session_mfa_verified_at/);
+  assert.match(auth, /if \(!mfaVerified && !allowMfaPending\) return null/);
+  assert.match(auth, /UPDATE sessions SET mfa_verified_at = now\(\)/);
+});
+
+test('scheduled jobs are not exposed through the HTTP function dispatcher', async () => {
+  const runner = await source('../../server/core/function-runner.js');
+  assert.match(runner, /HTTP_FUNCTION_NAMES\.delete\(internalOnly\)/);
+  assert.match(runner, /cleanupPendingDonations.*scheduledSync.*weeklyStatsDiscord/s);
+  const internalOnly = runner.match(/for \(const internalOnly of \[([^\]]*)\]\)/);
+  assert.ok(internalOnly, 'internal-only function list not found');
+  assert.match(internalOnly[1], /'observerScanAll'/);
+  assert.doesNotMatch(runner, /method:\s*\['GET',\s*'POST'/);
+});
+
+test('every scheduled job function is registered with the function runner', async () => {
+  const runner = await source('../../server/core/function-runner.js');
+  const jobs = await source('../../server/jobs.js');
+  const registry = runner.match(/const FUNCTION_NAMES = new Set\(\[([\s\S]*?)\]\);/);
+  assert.ok(registry, 'FUNCTION_NAMES declaration not found');
+  const registered = new Set([...registry[1].matchAll(/'([A-Za-z0-9_]+)'/g)].map(match => match[1]));
+  const scheduled = [...new Set([...jobs.matchAll(/\brun\('([A-Za-z0-9_]+)'/g)].map(match => match[1]))];
+  assert.ok(scheduled.length > 0, 'no run(...) calls found in jobs.js');
+  for (const name of scheduled) {
+    assert.ok(registered.has(name), `jobs.js runs ${name}, which is missing from FUNCTION_NAMES`);
+  }
+});
+
+test('DNS mutation never treats an API-token row ID as a credential', async () => {
+  const manager = await source('../../server/functions/manageDnsRecord.js');
+  assert.doesNotMatch(manager, /body\.api_token_id/);
+  assert.doesNotMatch(manager, /ApiToken\.filter\(\{ id:/);
+});
+
+test('comments authorize the target before creating a comment', async () => {
+  const comments = await source('../../server/functions/postComment.js');
+  const ownershipCheck = comments.indexOf('if (!elevated && !ownsRequest)');
+  const createComment = comments.indexOf('RequestComment.create');
+  assert.ok(ownershipCheck > 0);
+  assert.ok(createComment > ownershipCheck);
+});
+
+test('TOTP enrollment does not disclose its seed to a QR service', async () => {
+  const setup = await readFile(new URL('../../src/components/TwoFactorSetup.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(setup, /api\.qrserver\.com/);
+  assert.doesNotMatch(setup, /encodeURIComponent\(uri\)/);
+});
+
+test('trusted browser tokens survive normal logout and are checked before rendering the challenge', async () => {
+  const client = await readFile(new URL('../../src/api/rootminsterClient.js', import.meta.url), 'utf8');
+  const layout = await readFile(new URL('../../src/components/Layout.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(client, /removeItem\(['"]od_trusted_device['"]\)/);
+  assert.match(layout, /verify_trusted/);
+  assert.ok(layout.indexOf("action: 'verify_trusted'") < layout.indexOf('setAuthChecked(true)'), 'trusted-device verification must finish before the authenticated UI renders');
+});
+
+test('passkeys require verified WebAuthn ceremonies and single-use challenges', async () => {
+  const passkeys = await source('../../server/routes/passkeys.js');
+  assert.match(passkeys, /DELETE FROM webauthn_challenges/);
+  assert.match(passkeys, /requireUserVerification:\s*true/);
+  assert.match(passkeys, /expectedOrigin/);
+  assert.match(passkeys, /expectedRPID/);
+  assert.match(passkeys, /UPDATE webauthn_credentials SET counter/);
+  assert.match(passkeys, /canManagePasskeys/);
+});
+
+test('impersonation is admin-only, reasoned, visible and audited', async () => {
+  const routes = await source('../../server/routes/impersonation-routes.js');
+  const layout = await readFile(new URL('../../src/components/Layout.jsx', import.meta.url), 'utf8');
+  assert.match(routes, /actor\.role !== 'admin'/);
+  assert.match(routes, /reason\.length < 10/);
+  assert.match(routes, /target\.role !== 'user'/);
+  assert.match(routes, /impersonation_started/);
+  assert.match(routes, /impersonation_stopped/);
+  assert.match(routes, /impersonated_request/);
+  assert.match(routes, /security-sensitive action is unavailable/);
+  assert.match(layout, /Admin view-as session active/);
+  assert.match(layout, /Stop viewing as user/);
+  assert.match(layout, /import \{ Button \} from '@\/components\/ui\/button'/);
+});
+
+test('account names use full_name and validate profile updates', async () => {
+  const auth = await source('../../server/routes/auth.js');
+  const store = await source('../../server/core/store.js');
+  const settings = await readFile(new URL('../../src/pages/Settings.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(store, /display_name/);
+  assert.match(auth, /allowed = \['full_name', 'disable_email_notifications'\]/);
+  assert.match(auth, /Full name must be between 2 and 120 characters/);
+  assert.match(settings, /updateMe\(\{ full_name: fullName \}\)/);
+  assert.doesNotMatch(settings, /display_name|settings\.displayName/);
+});
+
+test('OAuth sign-in does not inherit credentials from an unverified pre-registration', async () => {
+  const auth = await source('../../server/routes/auth.js');
+  const upsert = auth.slice(auth.indexOf('async function upsertOauthUser'), auth.indexOf('export async function registerAuthRoutes'));
+  assert.match(upsert, /FOR UPDATE/);
+  assert.match(upsert, /if \(row && !row\.email_verified_at\)/);
+  assert.match(upsert, /password_hash = NULL, totp_secret = NULL, totp_enabled = false/);
+  for (const table of ['sessions', 'email_verifications', 'password_resets', 'webauthn_credentials']) {
+    assert.match(upsert, new RegExp(`DELETE FROM ${table} WHERE user_id = \\$1`));
+  }
+});
+
+test('registration endpoint enforces Turnstile before inserting a user record', async () => {
+  const auth = await source('../../server/routes/auth.js');
+  // Extract just the /api/auth/register handler body
+  const registerStart = auth.indexOf("app.post('/api/auth/register'");
+  const insertStart = auth.indexOf('INSERT INTO users', registerStart);
+  assert.ok(registerStart !== -1 && insertStart !== -1, 'register route and INSERT must both exist');
+  const handler = auth.slice(registerStart, insertStart);
+  // Turnstile config must be fetched
+  assert.match(handler, /getModuleConfig\('turnstile'\)/);
+  // Missing token must be rejected before the INSERT
+  assert.match(handler, /Please complete the CAPTCHA/);
+  // Failed verification must be rejected before the INSERT
+  assert.match(handler, /CAPTCHA verification failed/);
+  // siteverify call must be present
+  assert.match(handler, /challenges\.cloudflare\.com\/turnstile\/v0\/siteverify/);
+});

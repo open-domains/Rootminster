@@ -6,9 +6,9 @@
 // API hides `safety_*` fields from requesters, so they never see why a request
 // was or wasn't approved instantly.
 import { requestHostname, requestRecords } from '../../shared/subdomain-requests.js';
-import { getModuleConfig } from '../module-settings.js';
-import { scanObserverTarget } from '../observer.js';
-import { store } from '../store.js';
+import { getModuleConfig } from '../core/module-settings.js';
+import { scanObserverTarget } from '../integrations/observer.js';
+import { store } from '../core/store.js';
 import { cloudflareFetch } from './cloudflare.js';
 import { provisionRequestBundle } from './request-approval.js';
 import { withRequestLock } from './request-bundles.js';

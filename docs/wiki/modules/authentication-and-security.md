@@ -1,6 +1,6 @@
 # Module: Authentication and Security
 
-Authentication centers on `server/auth.js`, with supporting modules for password hashing, passkeys/MFA, impersonation, setup, terms, and route-level authorization.
+Authentication centers on `server/routes/auth.js`, with supporting modules for password hashing, passkeys/MFA, impersonation, setup, terms, and route-level authorization.
 
 ## Responsibilities
 
@@ -13,14 +13,14 @@ Authentication centers on `server/auth.js`, with supporting modules for password
 
 ## Key Files
 
-- `server/auth.js` — registration, login, sessions, OAuth user upsert, auth middleware, password reset, profile routes.
-- `server/security.js` — token generation, hashing, password verification, setting-secret encryption helpers.
-- `server/passkeys.js` — WebAuthn/passkey registration, login, and MFA flows.
-- `server/impersonation-routes.js` — admin impersonation session controls.
-- `server/setup.js` — initial administrator setup.
-- `server/terms-routes.js` — terms publishing and acceptance flows.
-- `server/csp.js` — browser security policy.
-- `server/entity-routes.js` — server-side read/write authorization for generic entities.
+- `server/routes/auth.js` — registration, login, sessions, OAuth user upsert, auth middleware, password reset, profile routes.
+- `server/core/security.js` — token generation, hashing, password verification, setting-secret encryption helpers.
+- `server/routes/passkeys.js` — WebAuthn/passkey registration, login, and MFA flows.
+- `server/routes/impersonation-routes.js` — admin impersonation session controls.
+- `server/routes/setup.js` — initial administrator setup.
+- `server/routes/terms-routes.js` — terms publishing and acceptance flows.
+- `server/core/csp.js` — browser security policy.
+- `server/routes/entity-routes.js` — server-side read/write authorization for generic entities.
 
 ## Session Model
 
@@ -28,7 +28,7 @@ Authentication centers on `server/auth.js`, with supporting modules for password
 
 ## Security Controls
 
-- Argon2id password hashing via `server/security.js`.
+- Argon2id password hashing via `server/core/security.js`.
 - HTTP-only, same-site session cookie; secure in production.
 - Origin check for unsafe cookie-authenticated requests.
 - MFA required for staff/admins and accounts with TOTP/passkeys.

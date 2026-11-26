@@ -1,6 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { config } from '../config.js';
-import { getModuleConfig } from '../module-settings.js';
+import { config } from '../core/config.js';
+import { getModuleConfig } from '../core/module-settings.js';
 import Stripe from 'stripe';
 export default async function (req) {
     const donations = await getModuleConfig('donations');

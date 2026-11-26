@@ -1,4 +1,4 @@
-import { randomToken, sha256 } from '../security.js';
+import { randomToken, sha256 } from '../core/security.js';
 import { escapeHtml } from './html.js';
 
 // Abuse report triage: reports about the same host merge into one open report, every

@@ -1,6 +1,6 @@
 # Module: Function Handlers and DNS Workflows
 
-Business commands live in `server/functions/*.js` and are executed by `server/function-runner.js`. DNS and request handling are the most important flows.
+Business commands live in `server/functions/*.js` and are executed by `server/core/function-runner.js`. DNS and request handling are the most important flows.
 
 ## Responsibilities
 
@@ -14,7 +14,7 @@ Business commands live in `server/functions/*.js` and are executed by `server/fu
 
 ## Key Files
 
-- `server/function-runner.js` — function allow-list, HTTP/internal execution, production error masking.
+- `server/core/function-runner.js` — function allow-list, HTTP/internal execution, production error masking.
 - `server/functions/submitRequest.js` — request validation, Turnstile, donation-gated NS checks, blocklists, safety screen, request creation.
 - `server/functions/approveRequest.js` — staff approval, Cloudflare provisioning, audits, email/Discord notifications.
 - `server/functions/rejectRequest.js` — staff rejection flow.

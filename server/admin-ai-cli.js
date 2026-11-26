@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { createAdminAiExecutor, DEFAULT_ADMIN_AI_ACTOR } from './admin-ai.js';
+import { createAdminAiExecutor, DEFAULT_ADMIN_AI_ACTOR } from './integrations/admin-ai.js';
 
 function actorFromEnvironment() {
   return {

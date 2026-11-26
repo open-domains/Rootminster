@@ -4,7 +4,7 @@
  * Runs on a schedule; no user auth required.
  */
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 export default async function (req) {
     if (!(await getModuleConfig('donations')).enabled)
         return Response.json({ skipped: true, message: 'Donations are disabled.' });

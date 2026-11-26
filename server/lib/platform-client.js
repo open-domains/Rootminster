@@ -1,5 +1,5 @@
-import { sendEmail } from '../mail.js';
-import { store } from '../store.js';
+import { sendEmail } from '../core/mail.js';
+import { store } from '../core/store.js';
 
 const actors = new WeakMap();
 
@@ -47,7 +47,7 @@ function clientFor(request, serviceRole = false) {
     },
     functions: {
       async invoke(name, body) {
-        const { invokeInternal } = await import('../function-runner.js');
+        const { invokeInternal } = await import('../core/function-runner.js');
         return { data: await invokeInternal(name, body, actor) };
       },
     },

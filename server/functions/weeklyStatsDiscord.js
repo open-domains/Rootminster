@@ -1,5 +1,5 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { pool } from '../database.js';
+import { pool } from '../core/database.js';
 
 function utcWeekKey(date) {
   const end = new Date(date);

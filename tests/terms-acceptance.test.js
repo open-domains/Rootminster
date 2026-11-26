@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { serializeUser } from '../server/store.js';
+import { serializeUser } from '../server/core/store.js';
 
 test('serializeUser exposes accepted terms version', () => {
   const user = serializeUser({

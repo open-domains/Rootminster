@@ -1,6 +1,6 @@
 # Module: Modules, Integrations, and Configuration
 
-`server/module-settings.js` defines Rootminster's optional integration modules and how their settings are loaded, normalized, encrypted, cached, and exposed to admins.
+`server/core/module-settings.js` defines Rootminster's optional integration modules and how their settings are loaded, normalized, encrypted, cached, and exposed to admins.
 
 ## Responsibilities
 
@@ -35,15 +35,15 @@ Defined modules include:
 
 ## Key Files
 
-- `server/module-settings.js` — module definitions and admin routes.
-- `server/config.js` — bootstrap environment config.
-- `server/security.js` — setting secret encryption/decryption.
-- `server/mail.js` — SMTP integration.
-- `server/discord.js` and `server/lib/discord-requests.js` — Discord interactions.
-- `server/r2.js` and `server/backup-service.js` — R2 backups.
-- `server/glitchtip.js` / `src/lib/glitchtip.js` — monitoring.
-- `server/docker-manager.js` — Hostinger VPS Docker manager integration.
-- `server/design.js` — Design site-builder authorization/publishing integration.
+- `server/core/module-settings.js` — module definitions and admin routes.
+- `server/core/config.js` — bootstrap environment config.
+- `server/core/security.js` — setting secret encryption/decryption.
+- `server/core/mail.js` — SMTP integration.
+- `server/integrations/discord.js` and `server/lib/discord-requests.js` — Discord interactions.
+- `server/integrations/r2.js` and `server/lib/backup-service.js` — R2 backups.
+- `server/integrations/glitchtip.js` / `src/lib/glitchtip.js` — monitoring.
+- `server/integrations/docker-manager.js` — Hostinger VPS Docker manager integration.
+- `server/routes/design.js` — Design site-builder authorization/publishing integration.
 
 ## Data Storage
 

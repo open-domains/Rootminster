@@ -1,12 +1,12 @@
 import { recordSetError, OPEN_REQUEST_STATUSES } from '../../shared/subdomain-requests.js';
 import { withRequestLock } from '../lib/request-bundles.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-import { getModuleConfig } from '../module-settings.js';
+import { getModuleConfig } from '../core/module-settings.js';
 import { getRequestPolicy, isReservedName } from '../lib/request-policy.js';
-import { scanObserverRequestTarget } from '../observer.js';
+import { scanObserverRequestTarget } from '../integrations/observer.js';
 import { tryInstantApproval } from '../lib/instant-approval.js';
 import { protectedBrandRefusal } from '../lib/brand-protection.js';
-import { pool } from '../database.js';
+import { pool } from '../core/database.js';
 import { blockedFeedTarget, blockedTargetMessage } from '../lib/threat-intel.js';
 import { checkRequestThreats } from '../lib/threat-intel-scan.js';
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9\-_\.~]*$|^[a-z0-9]$/;
