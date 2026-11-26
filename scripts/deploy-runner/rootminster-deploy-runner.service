@@ -1,0 +1,22 @@
+[Unit]
+Description=Rootminster deploy runner
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/rootminster-deploy-runner.env
+ExecStart=/usr/bin/python3 /opt/rootminster-deploy-runner/rootminster-deploy-runner.py
+Restart=on-failure
+RestartSec=5
+# The update script usually needs Docker, so the runner runs as root (or as a
+# user in the docker group: set User= below and give it the state directory).
+StateDirectory=rootminster-deploy-runner
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+# Leave the update script running if the runner itself is restarted.
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

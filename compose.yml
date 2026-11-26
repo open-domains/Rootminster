@@ -15,6 +15,9 @@ services:
       DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE}
       MODULE_ENCRYPTION_KEY: ${MODULE_ENCRYPTION_KEY}
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY}
+    # Lets the app reach the host-side deploy runner (docs/discord-deploy.md).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - opendomains-internal
     labels:

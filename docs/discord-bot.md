@@ -20,6 +20,7 @@ Users who sign in with Discord, or link Discord under **Settings → Linked acco
 | `/ticket` | Opens a support ticket. See [Support tickets](#support-tickets). |
 | `/tickets` | Lists your tickets, or open tickets for staff. |
 | `/ticket-panel` | Staff: posts an **Open a ticket** button in the current channel. |
+| `/deploy` | Admins (or staff, if allowed): redeploys the latest version after a confirmation. See [Redeploy from Discord](discord-deploy.md). |
 
 Request panels provide **Reply** for owners. Open staff requests provide **Approve**, **Reject**, **Ask for info**, and **Internal note**. Rejection, questions, notes, and replies use text-entry forms. Approval requires **Confirm DNS approval** before creating records. The shared backend checks record compatibility and current request status before writing DNS.
 

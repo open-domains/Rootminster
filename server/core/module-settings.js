@@ -230,6 +230,16 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: false, open_category_id: '', closed_category_id: '', staff_role_id: '', transcript_channel_id: '', delete_closed_after_days: 14, max_open_tickets: 3, categories: DEFAULT_TICKET_CATEGORIES }),
   },
+  discord_deploy: {
+    name: 'Discord deploy', description: 'Lets admins, or staff, redeploy the site with /deploy in Discord. Runs the update script through the deploy runner on the server. Needs the Discord bot module.', defaultEnabled: false,
+    fields: [
+      { key: 'runner_url', label: 'Deploy runner URL', type: 'url', required: true, description: 'Where the app reaches the runner on the host, for example http://host.docker.internal:9787. See docs/discord-deploy.md.' },
+      { key: 'shared_secret', label: 'Runner shared secret', type: 'secret', required: true, description: 'Must match DEPLOY_RUNNER_SECRET on the server. At least 32 characters.' },
+      { key: 'allowed_roles', label: 'Who can redeploy', type: 'select', options: [{ value: 'admin', label: 'Admins only' }, { value: 'staff', label: 'Staff and admins' }] },
+      { key: 'log_channel_id', label: 'Deploy log channel ID', type: 'text', description: 'Optional staff channel that gets a message when a redeploy starts and finishes.' },
+    ],
+    env: () => ({ enabled: Boolean(process.env.DEPLOY_RUNNER_URL && process.env.DEPLOY_RUNNER_SECRET), runner_url: process.env.DEPLOY_RUNNER_URL || '', shared_secret: process.env.DEPLOY_RUNNER_SECRET || '', allowed_roles: process.env.DEPLOY_ALLOWED_ROLES === 'staff' ? 'staff' : 'admin', log_channel_id: process.env.DEPLOY_LOG_CHANNEL_ID || '' }),
+  },
   mcp: {
     name: 'MCP server', description: 'Role-aware ChatGPT and Claude account tools.', defaultEnabled: true,
     fields: [], env: () => ({ enabled: config.mcpEnabled }),
@@ -353,6 +363,12 @@ export async function saveModule(id, input, actor, { importEnvironment = false }
     const { resolveHostingerMailbox } = await import('../integrations/hostinger-mail.js');
     const mailbox = await resolveHostingerMailbox({ ...output, api_token: decryptSettingSecret(output.api_token) });
     output.mailbox_resource_id = mailbox.resourceId;
+  }
+  if (id === 'discord_deploy' && output.enabled) {
+    let url;
+    try { url = new URL(output.runner_url); } catch { url = null; }
+    if (!url || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw Object.assign(new Error('Deploy runner URL must be an http or https address'), { status: 400 });
+    if (decryptSettingSecret(output.shared_secret).length < 32) throw Object.assign(new Error('Runner shared secret must be at least 32 characters'), { status: 400 });
   }
   if (id === 'r2_backup' && output.enabled) {
     const { validateR2Settings } = await import('../lib/backup-service.js');
