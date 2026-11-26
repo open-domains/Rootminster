@@ -145,6 +145,20 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: Boolean(config.smtp.host), ...config.smtp, contact_email: config.contactEmail, require_verification: config.emailVerificationRequired }),
   },
+  hostinger_mail: {
+    name: 'Hostinger Mail', description: 'Send verification links, password resets and status updates through the Hostinger Mail API instead of SMTP.', defaultEnabled: false,
+    fields: [
+      { key: 'api_token', label: 'Hostinger Mail API token', type: 'secret', required: true, description: 'Create a Mail API token in hPanel for the email order that holds the sending mailbox.' },
+      { key: 'mailbox_resource_id', label: 'Mailbox resource ID', type: 'text', description: 'Leave blank when the token manages a single mailbox; it is filled in on save.' },
+      { key: 'display_name', label: 'Sender display name', type: 'text', description: 'Shown next to the mailbox address. Defaults to the name in the Email module From address.' },
+    ],
+    env: () => ({
+      enabled: Boolean(process.env.HOSTINGER_MAIL_API_TOKEN),
+      api_token: process.env.HOSTINGER_MAIL_API_TOKEN || '',
+      mailbox_resource_id: process.env.HOSTINGER_MAIL_MAILBOX_ID || '',
+      display_name: process.env.HOSTINGER_MAIL_DISPLAY_NAME || '',
+    }),
+  },
   turnstile: {
     name: 'Cloudflare Turnstile', description: 'Bot protection for public registration and request forms.', defaultEnabled: false,
     fields: [
@@ -324,6 +338,11 @@ export async function saveModule(id, input, actor, { importEnvironment = false }
   if (id === 'glitchtip' && output.enabled) {
     const { buildEnvelopeEndpoint } = await import('./glitchtip.js');
     buildEnvelopeEndpoint(output.dsn);
+  }
+  if (id === 'hostinger_mail' && output.enabled) {
+    const { resolveHostingerMailbox } = await import('./hostinger-mail.js');
+    const mailbox = await resolveHostingerMailbox({ ...output, api_token: decryptSettingSecret(output.api_token) });
+    output.mailbox_resource_id = mailbox.resourceId;
   }
   if (id === 'r2_backup' && output.enabled) {
     const { validateR2Settings } = await import('./backup-service.js');

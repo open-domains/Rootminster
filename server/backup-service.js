@@ -8,7 +8,7 @@ import { backupEncryptionConfigured, decryptBackup, encryptBackup, sha256File } 
 import { config } from './config.js';
 import { pool, withAdvisoryLock } from './database.js';
 import { getModuleConfig } from './module-settings.js';
-import { sendEmail } from './mail.js';
+import { emailDeliveryEnabled, sendEmail } from './mail.js';
 import { createR2Client, r2Limits } from './r2.js';
 import { ensureDeletedUserTombstoneTable, upsertDeletedUserTombstones } from './lib/admin-user-deletion.js';
 
@@ -188,7 +188,7 @@ async function prepareCapacity(client, settings, incomingBytes, protectedKey = n
 async function notifyFailure(settings, error) {
   if (!settings.notify_on_failure) return;
   const email = await getModuleConfig('email');
-  if (!email.enabled || !email.contact_email) return;
+  if (!email.contact_email || !(await emailDeliveryEnabled())) return;
   await sendEmail({
     to: email.contact_email,
     subject: 'Rootminster backup failed',
