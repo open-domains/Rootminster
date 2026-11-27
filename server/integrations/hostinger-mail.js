@@ -1,4 +1,5 @@
 import { AccountApi, Configuration, SendApi } from 'hostinger-mail-api-sdk';
+import { htmlToText } from '../lib/email-format.js';
 
 // Hostinger Mail API delivery handler. Uses the official SDK
 // (https://github.com/hostinger/mail-api-typescript-sdk): a bearer token scoped
@@ -78,7 +79,7 @@ export async function sendHostingerMail(settings, { to, subject, body, text, dis
     to: recipients,
     subject: String(subject ?? '').slice(0, 998),
     html,
-    text: text || (html ? html.replace(/<[^>]*>/g, ' ') : undefined),
+    text: text || (html ? htmlToText(html) : undefined),
     ...(displayName ? { displayName } : {}),
   };
   try {

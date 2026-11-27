@@ -115,8 +115,12 @@ function cleanContactBody(value) {
 export async function registerFunctionRoutes(app) {
   app.post('/api/functions/sendEmail', { config: { rateLimit: { max: 8, timeWindow: '15 minutes' } } }, async (request, reply) => {
     const actor = await authenticateRequest(request);
-    const message = request.body || {};
+    const input = request.body || {};
+    // Only these fields reach sendEmail(): its layout options (footer, preheader)
+    // are for server-written emails, not for callers of this route.
+    const message = { to: input.to, subject: input.subject, body: input.body, text: input.text };
     if (!actor) {
+      delete message.text;
       const email = await getModuleConfig('email');
       message.to = email.contact_email || config.contactEmail;
       message.subject = cleanContactBody(message.subject).slice(0, 200);

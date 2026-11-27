@@ -2,6 +2,8 @@ import nodemailer from 'nodemailer';
 import { config } from './config.js';
 import { displayNameFor, sendHostingerMail } from '../integrations/hostinger-mail.js';
 import { getModuleConfig } from './module-settings.js';
+import { buildEmailParts } from '../lib/email-format.js';
+import { platformName } from '../lib/platform-name.js';
 
 let transporter;
 let transporterKey;
@@ -44,11 +46,17 @@ export async function emailDeliveryEnabled() {
   return Boolean(await activeEmailHandler());
 }
 
-export async function sendEmail({ to, subject, body, text }) {
+// `body` is an HTML fragment (or a full HTML document, sent as is). Fragments
+// are wrapped in the branded email layout, and a plain-text part with the
+// links written out is added unless `text` is given. `preheader` is the short
+// summary inboxes show beside the subject; `footer` replaces the default
+// footer line (trusted HTML).
+export async function sendEmail({ to, subject, body, text, preheader, footer }) {
+  const parts = buildEmailParts({ subject, body, text, preheader, footer, platformName: await platformName(), appUrl: config.appUrl });
   const hostinger = await getModuleConfig('hostinger_mail');
   if (hostingerReady(hostinger)) {
     const smtp = await getModuleConfig('email');
-    return sendHostingerMail(hostinger, { to, subject, body, text, displayName: displayNameFor(hostinger, smtp.from) });
+    return sendHostingerMail(hostinger, { to, subject, body: parts.html, text: parts.text, displayName: displayNameFor(hostinger, smtp.from) });
   }
   const { transport, smtp } = await getTransporter();
   if (!transport) {
@@ -59,7 +67,7 @@ export async function sendEmail({ to, subject, body, text }) {
     from: smtp.from,
     to,
     subject,
-    html: body,
-    text: text || String(body || '').replace(/<[^>]*>/g, ' '),
+    html: parts.html,
+    text: parts.text,
   });
 }

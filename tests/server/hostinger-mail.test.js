@@ -29,7 +29,7 @@ test('sendHostingerMail posts to the configured mailbox with html, text and disp
   const result = await sendHostingerMail(settings, { to: 'user@example.com', subject: 'Hello', body: '<p>Hi <b>there</b></p>', displayName: 'Open Domains' }, { mailClient: client });
   assert.deepEqual(result, { accepted: ['user@example.com'], provider: 'hostinger_mail' });
   assert.equal(client.calls[0].id, 'mbx_1');
-  assert.deepEqual(client.calls[0].request, { to: ['user@example.com'], subject: 'Hello', html: '<p>Hi <b>there</b></p>', text: ' Hi  there  ', displayName: 'Open Domains' });
+  assert.deepEqual(client.calls[0].request, { to: ['user@example.com'], subject: 'Hello', html: '<p>Hi <b>there</b></p>', text: 'Hi there', displayName: 'Open Domains' });
 });
 
 test('sendHostingerMail refuses empty recipients and hides the token in errors', async () => {

@@ -234,25 +234,47 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
+// Every message carries its own plain-text version with the sign-in link
+// written out, a preheader, and a footer that says why the person got it.
 export function inactivityEmail(kind, { user, platformName = 'Open Domains', appUrl, closesAt, lastActivityAt, closureAction = 'delete' }) {
-  const name = escapeHtml(user.full_name || 'there');
+  const rawName = String(user.full_name || '').trim() || 'there';
+  const name = escapeHtml(rawName);
   const platform = escapeHtml(platformName);
   const loginUrl = `${appUrl}/login`;
-  const button = `<p><a href="${loginUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#fff;text-decoration:none;font-weight:600">Sign in to keep my account</a></p>`;
-  const how = '<p>Signing in any way you normally do keeps your account: email and password, a passkey, or a linked Google, GitHub or Discord account.</p>';
+  const safeLoginUrl = escapeHtml(loginUrl);
   const outcome = closureAction === 'disable' ? 'closed' : 'closed and its data permanently deleted';
+  const footer = `You are receiving this because an account at ${platform} is registered to this email address. This is a one-off service notice about that account, not a marketing email.`;
   if (kind === 'notice' || kind === 'reminder') {
-    const lead = kind === 'reminder'
-      ? `<p>This is a reminder that your ${platform} account will be ${outcome} on <strong>${formatDate(closesAt)}</strong> because it has been inactive.</p>`
-      : `<p>Your ${platform} account has had no activity since ${formatDate(lastActivityAt)} and has no subdomains, so it is scheduled to be ${outcome} on <strong>${formatDate(closesAt)}</strong>.</p>`;
+    const closes = formatDate(closesAt);
+    const leadText = kind === 'reminder'
+      ? `This is a reminder that your ${platformName} account will be ${outcome} on ${closes} because it has been inactive.`
+      : `Your ${platformName} account has had no activity since ${formatDate(lastActivityAt)} and has no subdomains, so it is scheduled to be ${outcome} on ${closes}.`;
+    const leadHtml = escapeHtml(leadText).replace(escapeHtml(closes), `<strong>${escapeHtml(closes)}</strong>`);
+    const keep = 'If you want to keep it, just sign in before then and nothing else is needed.';
+    const how = 'Signing in any way you normally do keeps your account: email and password, a passkey, or a linked Google, GitHub or Discord account.';
+    const nothing = 'If you no longer need the account, you do not have to do anything.';
     return {
       subject: kind === 'reminder' ? `Reminder: your ${platformName} account closes soon` : `Your ${platformName} account will be closed for inactivity`,
-      body: `<p>Hi ${name},</p>${lead}<p>If you want to keep it, just sign in before then and nothing else is needed.</p>${button}${how}<p>If you no longer need the account, you do not have to do anything.</p>`,
+      preheader: `Sign in before ${closes} to keep your account.`,
+      footer,
+      body: `<p style="margin:0 0 16px">Hi ${name},</p>`
+        + `<p style="margin:0 0 16px">${leadHtml}</p>`
+        + `<p style="margin:0 0 16px">${escapeHtml(keep)}</p>`
+        + `<p style="margin:0 0 16px"><a href="${safeLoginUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#ffffff;text-decoration:none;font-weight:600">Sign in to keep my account</a></p>`
+        + `<p style="margin:0 0 16px">${escapeHtml(how)}</p>`
+        + `<p style="margin:0 0 16px">${escapeHtml(nothing)}</p>`
+        + `<p style="margin:0;font-size:13px;color:#6b7280">If the button does not work, copy this link into your browser:<br><a href="${safeLoginUrl}" style="color:#6d5dfc">${safeLoginUrl}</a></p>`,
+      text: `Hi ${rawName},\n\n${leadText}\n\n${keep}\n\nSign in to keep your account: ${loginUrl}\n\n${how}\n\n${nothing}`,
     };
   }
+  const closedText = `Your ${platformName} account has been ${outcome} because it stayed inactive after our earlier notice.`;
+  const again = 'You are welcome to create a new account at any time. If you think this was a mistake, please contact support.';
   return {
     subject: `Your ${platformName} account has been closed`,
-    body: `<p>Hi ${name},</p><p>Your ${platform} account has been ${outcome} because it stayed inactive after our earlier notice.</p><p>You are welcome to create a new account at any time. If you think this was a mistake, please contact support.</p>`,
+    preheader: 'Your account was closed after a period of inactivity.',
+    footer,
+    body: `<p style="margin:0 0 16px">Hi ${name},</p><p style="margin:0 0 16px">${escapeHtml(closedText)}</p><p style="margin:0">${escapeHtml(again)}</p>`,
+    text: `Hi ${rawName},\n\n${closedText}\n\n${again}`,
   };
 }
 

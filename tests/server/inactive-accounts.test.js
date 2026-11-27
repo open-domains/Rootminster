@@ -174,6 +174,20 @@ test('emails escape names and explain how to keep the account', () => {
   assert.match(email.body, /Discord/);
 });
 
+test('inactivity emails carry a plain-text part with the sign-in link, a preheader and a footer', () => {
+  const email = inactivityEmail('notice', { user: { full_name: 'Sam' }, appUrl: 'https://open-domains.test', closesAt: '2026-12-27T03:45:00Z', lastActivityAt: '2025-11-02T00:00:00Z' });
+  assert.match(email.text, /^Hi Sam,\n\n/);
+  assert.match(email.text, /Sign in to keep your account: https:\/\/open-domains\.test\/login/);
+  assert.match(email.text, /27 December 2026/);
+  assert.ok(!/<[a-z]/i.test(email.text));
+  assert.match(email.preheader, /27 December 2026/);
+  assert.match(email.footer, /registered to this email address/);
+  assert.match(email.body, /<strong>27 December 2026<\/strong>/);
+  const closed = inactivityEmail('closed', { user: {}, appUrl: 'https://open-domains.test', closureAction: 'disable' });
+  assert.match(closed.text, /^Hi there,/);
+  assert.ok(!/deleted/.test(closed.text));
+});
+
 test('impersonated and MFA-pending sessions are not counted as activity', async () => {
   const auth = await readFile(new URL('../../server/routes/auth.js', import.meta.url), 'utf8');
   assert.match(auth, /if \(mfaVerified && !row\._impersonator_user_id\) recordUserActivity\(pool, row\.id\)/);
