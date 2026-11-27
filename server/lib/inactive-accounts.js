@@ -28,6 +28,7 @@ export const INACTIVE_ACCOUNT_DEFAULTS = Object.freeze({
   closure_action: 'delete',
   max_notices_per_run: 100,
   max_closures_per_run: 50,
+  skip_emails: false,
 });
 
 const DAY_MS = 86_400_000;
@@ -51,6 +52,7 @@ export function inactivitySettings(settings = {}) {
     closure_action: settings.closure_action === 'disable' ? 'disable' : 'delete',
     max_notices_per_run: clampInt(settings.max_notices_per_run, INACTIVE_ACCOUNT_DEFAULTS.max_notices_per_run, 1, 1000),
     max_closures_per_run: clampInt(settings.max_closures_per_run, INACTIVE_ACCOUNT_DEFAULTS.max_closures_per_run, 1, 1000),
+    skip_emails: settings.skip_emails === true || settings.skip_emails === 'true',
   };
 }
 
@@ -197,7 +199,7 @@ export function reminderDueAt(notice, settings) {
 export function describeNotice(row, rawSettings) {
   const settings = inactivitySettings(rawSettings);
   const closed = Boolean(row.closed_at);
-  const reminderDue = row.reminder_sent_at || closed ? null : reminderDueAt(row, settings);
+  const reminderDue = row.reminder_sent_at || closed || settings.skip_emails ? null : reminderDueAt(row, settings);
   let status = 'notified';
   if (closed) status = 'closed';
   else if (row.reminder_sent_at) status = 'reminded';
@@ -234,26 +236,70 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
+// Every message carries its own plain-text version with the sign-in link
+// written out, a preheader, and a footer that says why the person got it.
 export function inactivityEmail(kind, { user, platformName = 'Open Domains', appUrl, closesAt, lastActivityAt, closureAction = 'delete' }) {
-  const name = escapeHtml(user.full_name || 'there');
+  const rawName = String(user.full_name || '').trim() || 'there';
+  const name = escapeHtml(rawName);
   const platform = escapeHtml(platformName);
   const loginUrl = `${appUrl}/login`;
-  const button = `<p><a href="${loginUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#fff;text-decoration:none;font-weight:600">Sign in to keep my account</a></p>`;
-  const how = '<p>Signing in any way you normally do keeps your account: email and password, a passkey, or a linked Google, GitHub or Discord account.</p>';
+  const safeLoginUrl = escapeHtml(loginUrl);
   const outcome = closureAction === 'disable' ? 'closed' : 'closed and its data permanently deleted';
+  const footer = `You are receiving this because an account at ${platform} is registered to this email address. This is a one-off service notice about that account, not a marketing email.`;
   if (kind === 'notice' || kind === 'reminder') {
-    const lead = kind === 'reminder'
-      ? `<p>This is a reminder that your ${platform} account will be ${outcome} on <strong>${formatDate(closesAt)}</strong> because it has been inactive.</p>`
-      : `<p>Your ${platform} account has had no activity since ${formatDate(lastActivityAt)} and has no subdomains, so it is scheduled to be ${outcome} on <strong>${formatDate(closesAt)}</strong>.</p>`;
+    const closes = formatDate(closesAt);
+    const leadText = kind === 'reminder'
+      ? `This is a reminder that your ${platformName} account will be ${outcome} on ${closes} because it has been inactive.`
+      : `Your ${platformName} account has had no activity since ${formatDate(lastActivityAt)} and has no subdomains, so it is scheduled to be ${outcome} on ${closes}.`;
+    const leadHtml = escapeHtml(leadText).replace(escapeHtml(closes), `<strong>${escapeHtml(closes)}</strong>`);
+    const keep = 'If you want to keep it, just sign in before then and nothing else is needed.';
+    const how = 'Signing in any way you normally do keeps your account: email and password, a passkey, or a linked Google, GitHub or Discord account.';
+    const nothing = 'If you no longer need the account, you do not have to do anything.';
     return {
       subject: kind === 'reminder' ? `Reminder: your ${platformName} account closes soon` : `Your ${platformName} account will be closed for inactivity`,
-      body: `<p>Hi ${name},</p>${lead}<p>If you want to keep it, just sign in before then and nothing else is needed.</p>${button}${how}<p>If you no longer need the account, you do not have to do anything.</p>`,
+      preheader: `Sign in before ${closes} to keep your account.`,
+      footer,
+      body: `<p style="margin:0 0 16px">Hi ${name},</p>`
+        + `<p style="margin:0 0 16px">${leadHtml}</p>`
+        + `<p style="margin:0 0 16px">${escapeHtml(keep)}</p>`
+        + `<p style="margin:0 0 16px"><a href="${safeLoginUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#ffffff;text-decoration:none;font-weight:600">Sign in to keep my account</a></p>`
+        + `<p style="margin:0 0 16px">${escapeHtml(how)}</p>`
+        + `<p style="margin:0 0 16px">${escapeHtml(nothing)}</p>`
+        + `<p style="margin:0;font-size:13px;color:#6b7280">If the button does not work, copy this link into your browser:<br><a href="${safeLoginUrl}" style="color:#6d5dfc">${safeLoginUrl}</a></p>`,
+      text: `Hi ${rawName},\n\n${leadText}\n\n${keep}\n\nSign in to keep your account: ${loginUrl}\n\n${how}\n\n${nothing}`,
     };
   }
+  const closedText = `Your ${platformName} account has been ${outcome} because it stayed inactive after our earlier notice.`;
+  const again = 'You are welcome to create a new account at any time. If you think this was a mistake, please contact support.';
   return {
     subject: `Your ${platformName} account has been closed`,
-    body: `<p>Hi ${name},</p><p>Your ${platform} account has been ${outcome} because it stayed inactive after our earlier notice.</p><p>You are welcome to create a new account at any time. If you think this was a mistake, please contact support.</p>`,
+    preheader: 'Your account was closed after a period of inactivity.',
+    footer,
+    body: `<p style="margin:0 0 16px">Hi ${name},</p><p style="margin:0 0 16px">${escapeHtml(closedText)}</p><p style="margin:0">${escapeHtml(again)}</p>`,
+    text: `Hi ${rawName},\n\n${closedText}\n\n${again}`,
   };
+}
+
+const TEST_EMAIL_KINDS = new Set(['notice', 'reminder', 'closed']);
+const TEST_EMAIL_PATTERN = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
+
+// Admin test: send one inactivity email to any address, filled in with the
+// admin's name and dates worked out from the saved settings. Nothing is
+// recorded and no account is affected. Sent even when skip_emails is on, so the
+// wording can be checked before turning emails back on.
+export async function sendInactivityTestEmail({ to, kind = 'notice', actor, settings: rawSettings, sendEmail, appUrl, platformName = 'Open Domains', now = new Date() }) {
+  const address = String(to ?? '').trim();
+  if (!TEST_EMAIL_PATTERN.test(address) || address.length > 254) throw Object.assign(new Error('Enter a valid email address'), { status: 400 });
+  const type = kind || 'notice';
+  if (!TEST_EMAIL_KINDS.has(type)) throw Object.assign(new Error('Unknown test email type'), { status: 400 });
+  const settings = inactivitySettings(rawSettings);
+  const nowMs = new Date(now).getTime();
+  const closesAt = new Date(nowMs + (type === 'reminder' ? settings.reminder_days || 7 : settings.grace_days) * DAY_MS);
+  const lastActivityAt = new Date(nowMs - settings.inactivity_days * DAY_MS);
+  const message = inactivityEmail(type, { user: { full_name: actor?.full_name }, platformName, appUrl, closesAt, lastActivityAt, closureAction: settings.closure_action });
+  const delivery = await sendEmail({ to: address, ...message });
+  if (delivery?.disabled) throw Object.assign(new Error('Email delivery is not configured. Set up the Email or Hostinger Mail module first.'), { status: 409 });
+  return { to: address, kind: type, subject: message.subject };
 }
 
 async function auditLog(store, action, notice, description) {
@@ -294,7 +340,10 @@ export async function runInactiveAccountCleanup({
   const summary = { notified: 0, reminded: 0, cancelled: 0, closed: 0, failed: 0 };
   if (!settings.enabled) return { skipped: true, reason: 'disabled', ...summary };
   const nowMs = new Date(now).getTime();
-  const mail = (kind, notice, extra = {}) => {
+  // With skip_emails on, nothing is sent: notices are still recorded and accounts
+  // still close after the grace period, but nobody is warned.
+  const mail = async (kind, notice, extra = {}) => {
+    if (settings.skip_emails) return { skipped: true };
     const message = inactivityEmail(kind, {
       user: { full_name: notice.full_name }, platformName, appUrl, closureAction: settings.closure_action, ...extra,
     });
@@ -333,7 +382,7 @@ export async function runInactiveAccountCleanup({
     }
   }
 
-  for (const notice of plan.remind) {
+  for (const notice of settings.skip_emails ? [] : plan.remind) {
     try {
       const delivery = await mail('reminder', notice, { closesAt: notice.closes_at });
       if (delivery?.disabled) break;
@@ -363,7 +412,9 @@ export async function runInactiveAccountCleanup({
         [candidate.id, candidate.email, candidate.last_activity_at, closesAt],
       );
       summary.notified += 1;
-      await auditLog(store, 'inactive_account_notified', candidate, `Inactivity notice sent; account closes on ${closesAt.toISOString()} unless the user is active again.`);
+      await auditLog(store, 'inactive_account_notified', candidate, settings.skip_emails
+        ? `Inactivity notice recorded without an email (notification emails are skipped); account closes on ${closesAt.toISOString()} unless the user is active again.`
+        : `Inactivity notice sent; account closes on ${closesAt.toISOString()} unless the user is active again.`);
     } catch (error) {
       summary.failed += 1;
       console.error(`[inactive-accounts] notice to ${candidate.id} failed`, error);

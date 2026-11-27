@@ -193,6 +193,7 @@ export const rootminster = {
     async importEnvironment() { return request('/api/admin/modules/import-environment', { method: 'POST', body: {} }); },
     async testGlitchTip() { return request('/api/admin/modules/glitchtip/test', { method: 'POST', body: {} }); },
     async inactiveAccountNotices() { return request('/api/admin/modules/inactive_accounts/notices'); },
+    async sendInactiveAccountTestEmail(email, kind) { return request('/api/admin/modules/inactive_accounts/test-email', { method: 'POST', body: { email, kind } }); },
   },
   observer: {
     async findings() { return request('/api/admin/observer/findings'); },
