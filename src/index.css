@@ -122,6 +122,28 @@
 .review-modal-scroll::-webkit-scrollbar-thumb:hover { background: hsl(217 28% 34%); }
 .review-modal-scroll { scrollbar-width: thin; scrollbar-color: hsl(217 28% 26%) transparent; }
 
+/* Date inputs: leading icon (rendered by DateInput), whole field opens the picker */
+.date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  background: transparent;
+}
+.date-input::-webkit-datetime-edit {
+  padding: 0;
+}
+.date-input[data-empty="true"]:not(:focus)::-webkit-datetime-edit {
+  color: hsl(var(--muted-foreground));
+}
+.dark .date-input {
+  color-scheme: dark;
+}
+
 /* Mobile resilience shared across public and authenticated surfaces */
 html, body, #root {
   width: 100%;
