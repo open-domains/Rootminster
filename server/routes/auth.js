@@ -10,6 +10,7 @@ import { OAUTH_PROVIDERS, oauthProvider, providerConfigured } from '../lib/oauth
 import { recordUserActivity } from '../lib/inactive-accounts.js';
 import { findIdentity, IdentityError, linkIdentity, listIdentities, rememberIdentity, touchIdentity, unlinkIdentity } from '../lib/oauth-identities.js';
 import { platformName } from '../lib/platform-name.js';
+import { passwordSignupAllowed } from '../lib/signup-policy.js';
 import { passwordResetEmail, verificationEmail } from '../../shared/email-templates.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -274,6 +275,9 @@ async function oauthCallback(name, request, reply) {
 
 export async function registerAuthRoutes(app) {
   app.post('/api/auth/register', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, async (request, reply) => {
+    if (!(await passwordSignupAllowed())) {
+      return reply.code(403).send({ error: 'New accounts can only be created with a social sign-in provider', code: 'password_signup_disabled' });
+    }
     const emailModule = await getModuleConfig('email');
     const verificationRequired = emailModule.require_verification !== false;
     if (verificationRequired && !(await emailDeliveryEnabled())) return reply.code(503).send({ error: 'Registration is unavailable until an email module is enabled' });

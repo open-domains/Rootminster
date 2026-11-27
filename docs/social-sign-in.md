@@ -6,6 +6,21 @@ optional module under **Admin → Module Settings** (`google_oauth`,
 pages, and under **Settings → Linked accounts**, only when its module is
 enabled with a client ID and secret.
 
+## Social-only sign-ups
+
+Turn on the **Social-only sign-ups** module (`social_signup_only`) to stop new
+accounts being created with an email and password. While it is on:
+
+- `POST /api/auth/register` answers `403` with code `password_signup_disabled`
+  and writes nothing, so the API cannot be used to get around the hidden form;
+- the register page shows only the configured provider buttons;
+- new users sign up through Google, GitHub or Discord as usual;
+- existing password accounts still sign in, verify their email and reset their
+  password, and pending accounts can still finish verification.
+
+The module cannot be turned on until at least one provider module is enabled
+with a client ID and secret, so sign-ups are never closed by accident.
+
 ## Discord setup
 
 1. In the [Discord developer portal](https://discord.com/developers/applications),

@@ -14,6 +14,8 @@ import { usePublicConfig } from '@/lib/public-config';
 
 export default function Register() {
   const { config } = usePublicConfig();
+  const passwordSignup = config.features.passwordSignup !== false;
+  const socialSignup = config.oauth.google || config.oauth.github || config.oauth.discord;
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -98,7 +100,13 @@ export default function Register() {
         </div>
       )}
 
-      {(config.oauth.google || config.oauth.github || config.oauth.discord) && (
+      {!passwordSignup && (
+        <p className={`${socialSignup ? "mb-4 " : ""}text-sm text-muted-foreground text-center`}>
+          {socialSignup ? "New accounts are created with one of the sign-in providers below." : "New sign-ups are closed right now."}
+        </p>
+      )}
+
+      {socialSignup && (
         <>
           <div className="mb-4 space-y-2">
             {config.oauth.google && (
@@ -117,14 +125,16 @@ export default function Register() {
               </Button>
             )}
           </div>
-          <div className="relative mb-4">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-            <div className="relative flex justify-center text-xs text-muted-foreground"><span className="bg-card px-2">or continue with email</span></div>
-          </div>
+          {passwordSignup && (
+            <div className="relative mb-4">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center text-xs text-muted-foreground"><span className="bg-card px-2">or continue with email</span></div>
+            </div>
+          )}
         </>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      {passwordSignup && <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="firstName">First Name</Label>
           <div className="relative">
@@ -190,7 +200,7 @@ export default function Register() {
             "Create Account"
           )}
         </Button>
-      </form>
+      </form>}
     </AuthLayout>
   );
 }
