@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
@@ -72,6 +72,7 @@ export default function TermsOfService() {
           </>
         )}
       </main>
+      <PublicFooter />
     </div>
   );
 }

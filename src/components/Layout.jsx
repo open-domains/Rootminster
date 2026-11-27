@@ -9,6 +9,7 @@ import CommandPalette from '@/components/CommandPalette';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import PasskeyManager from '@/components/PasskeyManager';
+import SiteFooter from '@/components/SiteFooter';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePublicConfig } from '@/lib/public-config';
@@ -278,7 +279,7 @@ export default function Layout() {
           <ProductSidebar user={user} mobile onClose={() => setMobileNav(false)} />
         </SheetContent>
 
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-background/92 px-3 backdrop-blur-xl sm:h-16 sm:gap-3 sm:px-6 lg:px-7">
             <SheetTrigger asChild><button onClick={() => setMobileNav(true)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden" aria-label="Open navigation"><Menu size={18} /></button></SheetTrigger>
 
@@ -343,12 +344,17 @@ export default function Layout() {
             id="main-content"
             tabIndex={-1}
             className={cn(
-              'mx-auto w-full px-3 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-7',
+              'mx-auto w-full flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-7 lg:py-7',
               isAdminPath ? 'max-w-[1640px] bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.07),transparent_34rem)]' : 'max-w-[1500px]'
             )}
           >
             <Outlet />
           </main>
+
+          <SiteFooter
+            showBrand={false}
+            containerClassName={cn('px-3 sm:px-6 lg:px-7', isAdminPath ? 'max-w-[1640px]' : 'max-w-[1500px]')}
+          />
         </div>
       </div>
 

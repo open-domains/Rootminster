@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, AlertTriangle } from 'lucide-react';
@@ -186,6 +186,7 @@ export default function ReportAbuse() {
           <p className="text-slate-400 text-xs leading-relaxed">We review all abuse reports within 24 hours on business days. Confirmed abusive subdomains are suspended immediately upon verification. We cooperate with law enforcement and maintain records of abuse reports as required by law. Repeat or serious offenders may have their accounts permanently banned.</p>
         </div>
       </div>
+      <PublicFooter />
     </div>
   );
 }

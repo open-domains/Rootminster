@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { Link } from 'react-router-dom';
 import { Heart, Globe, Shield, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -68,6 +68,7 @@ export default function About() {
           </Link>
         </div>
       </div>
+      <PublicFooter />
     </div>
   );
 }

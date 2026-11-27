@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, MessageCircle, Shield } from 'lucide-react';
@@ -101,6 +101,7 @@ export default function Contact() {
           </form>
         </div>
       </div>
+      <PublicFooter />
     </div>
   );
 }
