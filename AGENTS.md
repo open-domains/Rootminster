@@ -39,7 +39,14 @@ Tests use `node:test` and `node:assert/strict`; name files `*.test.js`. Add focu
 
 ## Commit & Pull Request Guidelines
 
-Recent commits use short imperative subjects, such as `Fix impersonation banner` and `Add passkeys`; no mandatory prefix is evident. Keep commits focused. PRs should explain the problem, resulting behavior, validation commands, related issues, and configuration or migration impacts. Include screenshots for visual changes.
+Commits must follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>(<optional scope>): <description>`.
+
+- Types: `feat` (new feature), `fix` (bug fix), `docs`, `style` (formatting only), `refactor`, `perf`, `test`, `build` (dependencies, build tooling), `ci`, `chore`, `revert`.
+- Scopes are optional and name the affected area, such as `ui`, `api`, `dns`, `auth`, `jobs` or `db`.
+- Write the description in the imperative mood and lowercase, with no trailing period, and keep the subject line under 72 characters (`fix(ui): restore contrast in conversation thread`).
+- Use the body to explain what changed and why when the subject is not enough.
+- Mark breaking changes with `!` after the type or scope (`feat(api)!: ...`) and a `BREAKING CHANGE:` footer describing the migration.
+- Keep commits focused: one logical change per commit. Pull request titles follow the same format. PRs should explain the problem, resulting behavior, validation commands, related issues, and configuration or migration impacts. Include screenshots for visual changes.
 
 ## Security & Configuration
 
