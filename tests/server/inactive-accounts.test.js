@@ -7,6 +7,8 @@ import {
   planNoticeActions,
   recordUserActivity,
   runInactiveAccountCleanup,
+  describeNotice,
+  sendInactivityTestEmail,
 } from '../../server/lib/inactive-accounts.js';
 import { MODULE_DEFINITIONS } from '../../server/core/module-settings.js';
 
@@ -238,4 +240,53 @@ test('only admins can list notified accounts', async () => {
   const route = source.slice(source.indexOf("app.get('/api/admin/modules/inactive_accounts/notices'"));
   assert.ok(route.length > 0);
   assert.match(route.slice(0, 400), /actor\.role !== 'admin'\) return reply\.code\(403\)/);
+});
+
+test('skipping emails still records notices and closes accounts, without sending anything', async () => {
+  const settings = inactivitySettings({ ...SETTINGS, skip_emails: 'true' });
+  assert.equal(settings.skip_emails, true);
+  assert.equal(inactivitySettings({}).skip_emails, false);
+  const sent = [];
+  const sendEmail = async (message) => { sent.push(message); return { disabled: true }; };
+  const candidate = { id: 'u9', email: 'idle@example.test', full_name: 'Idle', last_activity_at: ago(400) };
+  const db = fakeDb({ candidates: [candidate], notices: [notice({ user_id: 'u2', notified_at: ago(31), closes_at: ago(1) }), notice({ user_id: 'u3', notified_at: ago(25), closes_at: ahead(5) })] });
+  const deleted = [];
+  const summary = await run({ db, settings, sendEmail, deleteAccounts: async (ids) => { deleted.push(...ids); return { users: 1 }; } });
+  assert.equal(sent.length, 0);
+  assert.equal(summary.notified, 1);
+  assert.equal(summary.closed, 1);
+  assert.equal(summary.reminded, 0);
+  assert.deepEqual(deleted, ['u2']);
+  assert.ok(db.calls.some((call) => call.sql.includes('INSERT INTO inactive_account_notices')));
+  assert.ok(!db.calls.some((call) => call.sql.includes('reminder_sent_at = now()')));
+  assert.equal(describeNotice(notice({ notified_at: ago(25), closes_at: ahead(5) }), settings).reminder_due_at, null);
+});
+
+test('the module exposes the skip emails toggle, off by default', () => {
+  const field = MODULE_DEFINITIONS.inactive_accounts.fields.find((item) => item.key === 'skip_emails');
+  assert.equal(field.type, 'boolean');
+  assert.equal(MODULE_DEFINITIONS.inactive_accounts.env().skip_emails, false);
+});
+
+test('a test email goes to the given address with the chosen template and touches nothing else', async () => {
+  const sent = [];
+  const sendEmail = async (message) => { sent.push(message); return { accepted: [message.to] }; };
+  const base = { actor: { full_name: 'Andrew' }, settings: { ...SETTINGS, skip_emails: true }, sendEmail, appUrl: 'https://open-domains.test', now: NOW };
+  const result = await sendInactivityTestEmail({ ...base, to: ' admin@example.test ' });
+  assert.deepEqual(result, { to: 'admin@example.test', kind: 'notice', subject: 'Your Open Domains account will be closed for inactivity' });
+  assert.equal(sent[0].to, 'admin@example.test');
+  assert.match(sent[0].text, /^Hi Andrew,/);
+  assert.match(sent[0].text, /23 December 2026/);
+  await sendInactivityTestEmail({ ...base, to: 'admin@example.test', kind: 'closed' });
+  assert.match(sent[1].subject, /has been closed/);
+  await assert.rejects(sendInactivityTestEmail({ ...base, to: 'not-an-email' }), (error) => error.status === 400);
+  await assert.rejects(sendInactivityTestEmail({ ...base, to: 'a@b.test', kind: 'other' }), (error) => error.status === 400);
+  await assert.rejects(sendInactivityTestEmail({ ...base, to: 'a@b.test', sendEmail: async () => ({ disabled: true }) }), (error) => error.status === 409);
+});
+
+test('only admins can send a test email, and it is rate limited', async () => {
+  const source = await readFile(new URL('../../server/core/module-settings.js', import.meta.url), 'utf8');
+  const route = source.slice(source.indexOf("'/api/admin/modules/inactive_accounts/test-email'"));
+  assert.match(route.slice(0, 400), /rateLimit: \{ max: 5/);
+  assert.match(route.slice(0, 600), /actor\.role !== 'admin'\) return reply\.code\(403\)/);
 });

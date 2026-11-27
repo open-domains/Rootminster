@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import R2BackupPanel from '@/components/R2BackupPanel';
 import InactiveAccountNoticesPanel from '@/components/InactiveAccountNoticesPanel';
+import InactiveAccountTestEmail from '@/components/InactiveAccountTestEmail';
 import { moduleCategory, moduleStatus } from '@/lib/module-presentation';
 
 const icons = { DNS: Cloud, Email: Mail, Authentication: KeyRound, Storage: Database, Monitoring: BarChart3, Integrations: MessageSquare, Payments: CreditCard, Appearance: Palette, Security: ShieldCheck, Infrastructure: Container };
@@ -131,6 +132,7 @@ function ModuleSettings({ module, encryptionConfigured, onSaved, onBack }) {
             <p className="text-xs leading-5 text-muted-foreground">{module.enabled ? 'This status is based on required settings, not a live connection check.' : 'This module is switched off in the saved configuration.'}</p>
             <div className="flex gap-2 border-t border-border pt-4"><KeyRound size={16} className="shrink-0 text-primary" /><p className="text-xs leading-5 text-muted-foreground">Stored secrets are never returned to your browser. Leave a secret blank to keep its existing value.</p></div>
             {module.id === 'glitchtip' && <><Button variant="outline" onClick={testGlitchTip} disabled={!module.enabled || dirty || saving || testing} className="w-full gap-2">{testing ? <Loader2 size={14} className="animate-spin" /> : <Bug size={14} />}Send Test Event</Button><p className="text-xs text-muted-foreground">Uses saved settings. Save changes before testing.</p></>}
+            {module.id === 'inactive_accounts' && <InactiveAccountTestEmail disabled={dirty || saving} />}
           </aside>
         </div>
       </TabsContent>

@@ -86,8 +86,9 @@ export const MODULE_DEFINITIONS = Object.freeze({
       { key: 'closure_action', label: 'When an account is closed', type: 'select', options: [{ value: 'delete', label: 'Delete the account and its data' }, { value: 'disable', label: 'Disable the account (reversible)' }] },
       { key: 'max_notices_per_run', label: 'Notices per daily run', type: 'number', min: 1, max: 1000, step: 1, description: 'Caps how many accounts are notified each day, so enabling this on a large backlog ramps up gradually.' },
       { key: 'max_closures_per_run', label: 'Closures per daily run', type: 'number', min: 1, max: 1000, step: 1 },
+      { key: 'skip_emails', label: 'Skip notification emails', type: 'boolean', description: 'Send no notice, reminder or closure emails. Accounts are still listed under Notified Accounts and closed after the grace period unless they become active again, but their owners are not warned. Email delivery does not need to be set up while this is on.' },
     ],
-    env: () => ({ enabled: false, inactivity_days: 365, grace_days: 30, reminder_days: 7, closure_action: 'delete', max_notices_per_run: 100, max_closures_per_run: 50 }),
+    env: () => ({ enabled: false, inactivity_days: 365, grace_days: 30, reminder_days: 7, closure_action: 'delete', max_notices_per_run: 100, max_closures_per_run: 50, skip_emails: false }),
   },
   threat_intel: {
     name: 'Threat intelligence', description: 'Check live subdomains and new requests against Google Safe Browsing and public malware and phishing feeds. Matches open an abuse report for staff; nothing is suspended automatically.', defaultEnabled: false,
@@ -413,6 +414,27 @@ export async function registerModuleSettingsRoutes(app) {
     const [{ pool }, { inactivitySettings, listInactiveAccountNotices }] = await Promise.all([import('./database.js'), import('../lib/inactive-accounts.js')]);
     const settings = inactivitySettings(await getModuleConfig('inactive_accounts', { fresh: true }));
     return { settings, notices: await listInactiveAccountNotices(pool, settings) };
+  });
+
+  app.post('/api/admin/modules/inactive_accounts/test-email', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
+    const { authenticateRequest } = await import('../routes/auth.js');
+    const actor = await authenticateRequest(request);
+    if (!actor || actor.role !== 'admin') return reply.code(403).send({ error: 'Forbidden' });
+    const [{ sendEmail }, { sendInactivityTestEmail }, { platformName }] = await Promise.all([import('./mail.js'), import('../lib/inactive-accounts.js'), import('../lib/platform-name.js')]);
+    try {
+      const result = await sendInactivityTestEmail({
+        to: request.body?.email,
+        kind: request.body?.kind,
+        actor,
+        settings: await getModuleConfig('inactive_accounts', { fresh: true }),
+        sendEmail,
+        appUrl: config.appUrl,
+        platformName: await platformName(),
+      });
+      return { success: true, ...result };
+    } catch (error) {
+      return reply.code(error.status || 500).send({ error: error.status ? error.message : 'Could not send the test email' });
+    }
   });
 
   app.put('/api/admin/modules/:id', async (request, reply) => {

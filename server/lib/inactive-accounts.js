@@ -28,6 +28,7 @@ export const INACTIVE_ACCOUNT_DEFAULTS = Object.freeze({
   closure_action: 'delete',
   max_notices_per_run: 100,
   max_closures_per_run: 50,
+  skip_emails: false,
 });
 
 const DAY_MS = 86_400_000;
@@ -51,6 +52,7 @@ export function inactivitySettings(settings = {}) {
     closure_action: settings.closure_action === 'disable' ? 'disable' : 'delete',
     max_notices_per_run: clampInt(settings.max_notices_per_run, INACTIVE_ACCOUNT_DEFAULTS.max_notices_per_run, 1, 1000),
     max_closures_per_run: clampInt(settings.max_closures_per_run, INACTIVE_ACCOUNT_DEFAULTS.max_closures_per_run, 1, 1000),
+    skip_emails: settings.skip_emails === true || settings.skip_emails === 'true',
   };
 }
 
@@ -197,7 +199,7 @@ export function reminderDueAt(notice, settings) {
 export function describeNotice(row, rawSettings) {
   const settings = inactivitySettings(rawSettings);
   const closed = Boolean(row.closed_at);
-  const reminderDue = row.reminder_sent_at || closed ? null : reminderDueAt(row, settings);
+  const reminderDue = row.reminder_sent_at || closed || settings.skip_emails ? null : reminderDueAt(row, settings);
   let status = 'notified';
   if (closed) status = 'closed';
   else if (row.reminder_sent_at) status = 'reminded';
@@ -278,6 +280,28 @@ export function inactivityEmail(kind, { user, platformName = 'Open Domains', app
   };
 }
 
+const TEST_EMAIL_KINDS = new Set(['notice', 'reminder', 'closed']);
+const TEST_EMAIL_PATTERN = /^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/;
+
+// Admin test: send one inactivity email to any address, filled in with the
+// admin's name and dates worked out from the saved settings. Nothing is
+// recorded and no account is affected. Sent even when skip_emails is on, so the
+// wording can be checked before turning emails back on.
+export async function sendInactivityTestEmail({ to, kind = 'notice', actor, settings: rawSettings, sendEmail, appUrl, platformName = 'Open Domains', now = new Date() }) {
+  const address = String(to ?? '').trim();
+  if (!TEST_EMAIL_PATTERN.test(address) || address.length > 254) throw Object.assign(new Error('Enter a valid email address'), { status: 400 });
+  const type = kind || 'notice';
+  if (!TEST_EMAIL_KINDS.has(type)) throw Object.assign(new Error('Unknown test email type'), { status: 400 });
+  const settings = inactivitySettings(rawSettings);
+  const nowMs = new Date(now).getTime();
+  const closesAt = new Date(nowMs + (type === 'reminder' ? settings.reminder_days || 7 : settings.grace_days) * DAY_MS);
+  const lastActivityAt = new Date(nowMs - settings.inactivity_days * DAY_MS);
+  const message = inactivityEmail(type, { user: { full_name: actor?.full_name }, platformName, appUrl, closesAt, lastActivityAt, closureAction: settings.closure_action });
+  const delivery = await sendEmail({ to: address, ...message });
+  if (delivery?.disabled) throw Object.assign(new Error('Email delivery is not configured. Set up the Email or Hostinger Mail module first.'), { status: 409 });
+  return { to: address, kind: type, subject: message.subject };
+}
+
 async function auditLog(store, action, notice, description) {
   if (!store) return;
   await store.create('AuditLog', {
@@ -316,7 +340,10 @@ export async function runInactiveAccountCleanup({
   const summary = { notified: 0, reminded: 0, cancelled: 0, closed: 0, failed: 0 };
   if (!settings.enabled) return { skipped: true, reason: 'disabled', ...summary };
   const nowMs = new Date(now).getTime();
-  const mail = (kind, notice, extra = {}) => {
+  // With skip_emails on, nothing is sent: notices are still recorded and accounts
+  // still close after the grace period, but nobody is warned.
+  const mail = async (kind, notice, extra = {}) => {
+    if (settings.skip_emails) return { skipped: true };
     const message = inactivityEmail(kind, {
       user: { full_name: notice.full_name }, platformName, appUrl, closureAction: settings.closure_action, ...extra,
     });
@@ -355,7 +382,7 @@ export async function runInactiveAccountCleanup({
     }
   }
 
-  for (const notice of plan.remind) {
+  for (const notice of settings.skip_emails ? [] : plan.remind) {
     try {
       const delivery = await mail('reminder', notice, { closesAt: notice.closes_at });
       if (delivery?.disabled) break;
@@ -385,7 +412,9 @@ export async function runInactiveAccountCleanup({
         [candidate.id, candidate.email, candidate.last_activity_at, closesAt],
       );
       summary.notified += 1;
-      await auditLog(store, 'inactive_account_notified', candidate, `Inactivity notice sent; account closes on ${closesAt.toISOString()} unless the user is active again.`);
+      await auditLog(store, 'inactive_account_notified', candidate, settings.skip_emails
+        ? `Inactivity notice recorded without an email (notification emails are skipped); account closes on ${closesAt.toISOString()} unless the user is active again.`
+        : `Inactivity notice sent; account closes on ${closesAt.toISOString()} unless the user is active again.`);
     } catch (error) {
       summary.failed += 1;
       console.error(`[inactive-accounts] notice to ${candidate.id} failed`, error);
