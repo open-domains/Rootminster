@@ -448,7 +448,7 @@ export default function UserDashboard() {
                   <span className="text-sm font-medium text-foreground">Manage DNS</span>
                 </Link>
                 <Link to="/settings" className="flex flex-col items-start gap-2 rounded-xl border border-border p-3 hover:bg-muted/40 transition-colors text-left">
-                  <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center"><ShieldCheck size={15} /></span>
+                  <span className="w-8 h-8 rounded-lg bg-violet-500/15 text-violet-700 dark:text-violet-300 flex items-center justify-center"><ShieldCheck size={15} /></span>
                   <span className="text-sm font-medium text-foreground">Settings</span>
                 </Link>
               </div>

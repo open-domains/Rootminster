@@ -11,15 +11,28 @@ import { Loader2, Send, Lock, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import QuickChips from '@/components/QuickChips';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const roleColors = {
-  admin: 'bg-accent/20 text-accent border-accent/30',
+  admin: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/40',
   staff: 'bg-primary/20 text-primary border-primary/30',
   user: 'bg-muted text-muted-foreground border-border',
 };
 
+const viewerTimeZone = () => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; }
+};
+
+const formatExactTime = (date, locale) => {
+  try {
+    return new Intl.DateTimeFormat(locale || undefined, { dateStyle: 'full', timeStyle: 'long' }).format(date);
+  } catch {
+    return date.toString();
+  }
+};
+
 export default function ConversationThread({ requestId, requestType = 'subdomain', currentUser, readOnly = false, onStatusChange }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [comments, setComments] = useState([]);
   const [userNames, setUserNames] = useState({});
   const [loadError, setLoadError] = useState(false);
@@ -31,6 +44,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
   const scrollContainerRef = useRef(null);
   const loadVersion = useRef(0);
   const isStaffOrAdmin = currentUser?.role === 'admin' || currentUser?.role === 'staff';
+  const timeZone = viewerTimeZone();
 
   const typeLabel = (type) => {
     switch (type) {
@@ -111,6 +125,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
         {comments.length > 0 && <span className="text-muted-foreground text-xs">({comments.length})</span>}
       </div>
 
+      <TooltipProvider delayDuration={200}>
       <div ref={scrollContainerRef} className="max-h-80 overflow-y-auto review-modal-scroll p-4 space-y-3">
         {loading ? (
           <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
@@ -119,6 +134,8 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
         ) : comments.map(c => {
           const name = authorLabel(c);
           const title = isStaffOrAdmin ? c.author_email : undefined;
+          const parsedDate = c.created_date ? new Date(c.created_date) : null;
+          const createdAt = parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : null;
           return (
           <div key={c.id} className="flex gap-3 flex-row">
             <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 border', roleColors[c.author_role] || roleColors.user)}>
@@ -128,13 +145,26 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <span className="text-foreground text-xs font-medium" title={title}>{name}</span>
                 <span className={cn('text-xs px-1.5 py-0.5 rounded border', roleColors[c.author_role] || roleColors.user)}>{roleLabel(c.author_role)}</span>
-                {c.is_internal && <span className="flex items-center gap-0.5 text-xs text-muted-foreground"><Lock size={10} /> {t('conversation.internal')}</span>}
-                <span className="text-muted-foreground/60 text-xs ml-auto">{c.created_date ? format(new Date(c.created_date), 'MMM d, HH:mm') : ''}</span>
+                {c.is_internal && <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded border border-dashed border-muted-foreground/50 text-muted-foreground"><Lock size={10} /> {t('conversation.internalLabel')}</span>}
+                {createdAt && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <time dateTime={createdAt.toISOString()} tabIndex={0}
+                        className="ml-auto text-muted-foreground text-xs cursor-help rounded-sm underline-offset-2 decoration-dotted hover:underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        {format(createdAt, 'MMM d, HH:mm')}
+                      </time>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="end">
+                      <p className="font-medium">{formatExactTime(createdAt, i18n.language)}</p>
+                      {timeZone && <p className="text-muted-foreground mt-0.5">{timeZone}</p>}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               <div className={cn('rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
                 c.message_type === 'question' ? 'bg-amber-500/10 border border-amber-500/30 text-foreground' :
                 c.message_type === 'reply' ? 'bg-primary/10 border border-primary/30 text-foreground' :
-                c.is_internal ? 'bg-muted border border-dashed border-border text-muted-foreground' :
+                c.is_internal ? 'bg-muted/60 border border-dashed border-muted-foreground/50 text-foreground' :
                 'bg-muted border border-border text-foreground'
               )}>
                 {c.message_type !== 'comment' && <span className="text-xs font-semibold opacity-60 block mb-1">{typeLabel(c.message_type)}</span>}
@@ -144,6 +174,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
           </div>
         ); })}
       </div>
+      </TooltipProvider>
 
       {!readOnly && (
         <div className="p-4 border-t border-border space-y-3">
@@ -189,7 +220,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
             </Button>
           </div>
           {!isStaffOrAdmin && <p className="text-muted-foreground text-xs">{t('conversation.userNote')}</p>}
-          {isStaffOrAdmin && messageType === 'question' && <p className="text-accent/80 text-xs">{t('conversation.questionNote')}</p>}
+          {isStaffOrAdmin && messageType === 'question' && <p className="text-amber-700 dark:text-amber-300 text-xs">{t('conversation.questionNote')}</p>}
         </div>
       )}
     </div>
