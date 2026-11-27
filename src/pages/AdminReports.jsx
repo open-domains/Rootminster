@@ -2,14 +2,16 @@ import { useMemo, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { rootminster } from '@/api/rootminsterClient';
 import { usePublicConfig } from '@/lib/public-config';
+import { cn } from '@/lib/utils';
+import { AdminHeader, AdminPage, AdminSection } from '@/components/AdminPageShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DateInput } from '@/components/ui/date-input';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { FileDown, FileText, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
+import { CheckCircle2, FileDown, FileText, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DATASETS = [
@@ -31,6 +33,52 @@ const PRESETS = {
   security: ['users', 'abuse', 'audit', 'email'],
   full: DATASETS.map(d => d.id),
 };
+
+const PRESET_OPTIONS = [
+  { id: 'executive', label: 'Executive' },
+  { id: 'operations', label: 'Operations' },
+  { id: 'security', label: 'Security' },
+  { id: 'full', label: 'Everything' },
+];
+
+const MIN_ROWS = 10;
+const MAX_ROWS = 500;
+const DEFAULT_ROWS = 150;
+
+function toInputDate(date) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function daysAgo(days) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return toInputDate(date);
+}
+
+const RANGE_PRESETS = [
+  { id: '7d', label: 'Last 7 Days', range: () => [daysAgo(6), toInputDate(new Date())] },
+  { id: '30d', label: 'Last 30 Days', range: () => [daysAgo(29), toInputDate(new Date())] },
+  { id: '90d', label: 'Last 90 Days', range: () => [daysAgo(89), toInputDate(new Date())] },
+  { id: 'ytd', label: 'Year to Date', range: () => [`${new Date().getFullYear()}-01-01`, toInputDate(new Date())] },
+  { id: 'all', label: 'All Time', range: () => ['', ''] },
+];
+
+function formatInputDate(value) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function clampRows(value) {
+  const number = Math.round(Number(value));
+  if (!Number.isFinite(number) || number <= 0) return DEFAULT_ROWS;
+  return Math.min(MAX_ROWS, Math.max(MIN_ROWS, number));
+}
+
+function sameSelection(a, b) {
+  return a.length === b.length && a.every(id => b.includes(id));
+}
 
 function cleanValue(value) {
   if (value === null || value === undefined || value === '') return '—';
@@ -177,17 +225,33 @@ export default function AdminReports() {
   const [to, setTo] = useState('');
   const [includeDetails, setIncludeDetails] = useState(true);
   const [includeDistributions, setIncludeDistributions] = useState(true);
-  const [maxRows, setMaxRows] = useState(150);
+  const [maxRows, setMaxRows] = useState(String(DEFAULT_ROWS));
   const [loading, setLoading] = useState(false);
   const [lastSummary, setLastSummary] = useState(null);
 
   const selectedDatasets = useMemo(() => DATASETS.filter(dataset => selected.includes(dataset.id)), [selected]);
+  const activePreset = PRESET_OPTIONS.find(preset => sameSelection(selected, PRESETS[preset.id]))?.id;
+  const activeRange = RANGE_PRESETS.find(preset => {
+    const [presetFrom, presetTo] = preset.range();
+    return presetFrom === from && presetTo === to;
+  })?.id;
+  const rangeInvalid = Boolean(from && to && from > to);
+  const rowLimit = clampRows(maxRows);
+  const windowSummary = from || to
+    ? `${formatInputDate(from) || 'Beginning'} – ${formatInputDate(to) || 'Today'}`
+    : 'All available records';
 
   const toggle = id => setSelected(current => current.includes(id) ? current.filter(item => item !== id) : [...current, id]);
   const applyPreset = preset => setSelected(PRESETS[preset]);
+  const applyRange = preset => {
+    const [nextFrom, nextTo] = preset.range();
+    setFrom(nextFrom);
+    setTo(nextTo);
+  };
 
   const generate = async () => {
     if (!selectedDatasets.length) return toast.error('Choose at least one data section.');
+    if (rangeInvalid) return toast.error('The start date must be on or before the end date.');
     setLoading(true);
     try {
       const datasets = [];
@@ -294,11 +358,11 @@ export default function AdminReports() {
         if (includeDetails) {
           const availableFields = dataset.fields.filter(field => dataset.rows.some(row => row[field] !== undefined && row[field] !== null));
           const fields = (availableFields.length ? availableFields : Object.keys(dataset.rows[0]).filter(key => !['id'].includes(key))).slice(0, 5);
-          y = drawTable(doc, dataset.rows.slice(0, Math.max(1, Math.min(Number(maxRows) || 150, 500))), fields, y);
-          if (dataset.rows.length > maxRows) {
+          y = drawTable(doc, dataset.rows.slice(0, rowLimit), fields, y);
+          if (dataset.rows.length > rowLimit) {
             doc.setFontSize(7.5);
             doc.setTextColor(105, 113, 128);
-            doc.text(`Detail table limited to ${maxRows} rows. Summary count includes all ${dataset.rows.length} matching records.`, 14, y);
+            doc.text(`Detail table limited to ${rowLimit} rows. Summary count includes all ${dataset.rows.length} matching records.`, 14, y);
             y += 8;
           }
         }
@@ -328,90 +392,211 @@ export default function AdminReports() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2"><Badge variant="secondary"><Sparkles size={12} className="mr-1" />Built-In Module</Badge><Badge variant="outline"><ShieldCheck size={12} className="mr-1" />Admin Only</Badge></div>
-          <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Build polished PDF reports from live Rootminster data. Choose exactly what goes in, set a reporting window, and export a presentation-ready document.</p>
-        </div>
-        <Button onClick={generate} disabled={loading || !selected.length} className="gap-2">
-          {loading ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
-          {loading ? 'Building report…' : 'Generate PDF'}
-        </Button>
-      </div>
+  const generateButton = className => (
+    <Button onClick={generate} disabled={loading || !selected.length || rangeInvalid} className={className}>
+      {loading ? <Loader2 className="animate-spin" /> : <FileDown />}
+      {loading ? 'Building Report…' : 'Generate PDF'}
+    </Button>
+  );
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)]">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>What Should This Report Include?</CardTitle><CardDescription>Select individual data sources or start with a preset.</CardDescription></CardHeader>
-            <CardContent className="space-y-5">
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => applyPreset('executive')}>Executive</Button>
-                <Button variant="outline" size="sm" onClick={() => applyPreset('operations')}>Operations</Button>
-                <Button variant="outline" size="sm" onClick={() => applyPreset('security')}>Security</Button>
-                <Button variant="outline" size="sm" onClick={() => applyPreset('full')}>Everything</Button>
-                <Button variant="ghost" size="sm" onClick={() => setSelected([])}>Clear</Button>
+  return (
+    <AdminPage>
+      <AdminHeader
+        eyebrow="Built-In Module"
+        title="Reports"
+        meta="Admin Only"
+        description="Build polished PDF reports from live Rootminster data. Choose exactly what goes in, set a reporting window, and export a presentation-ready document."
+        actions={generateButton('w-full sm:w-auto')}
+      />
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,380px)]">
+        <div className="min-w-0 space-y-6">
+          <AdminSection
+            title="Data Sections"
+            description="Select individual data sources or start with a preset."
+            action={<span className="text-xs font-medium tabular-nums text-muted-foreground">{selected.length} of {DATASETS.length} Selected</span>}
+          >
+            <div className="space-y-4">
+              <div role="group" aria-label="Section presets" className="flex flex-wrap items-center gap-2">
+                {PRESET_OPTIONS.map(preset => {
+                  const active = activePreset === preset.id;
+                  return (
+                    <Button
+                      key={preset.id}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      aria-pressed={active}
+                      onClick={() => applyPreset(preset.id)}
+                      className={cn(active && 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary')}
+                    >
+                      {preset.label}
+                    </Button>
+                  );
+                })}
+                <Button type="button" size="sm" variant="ghost" onClick={() => setSelected([])} disabled={!selected.length} className="text-muted-foreground">Clear</Button>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {DATASETS.map(dataset => {
                   const checked = selected.includes(dataset.id);
                   return (
-                    <label key={dataset.id} className={`flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors ${checked ? 'border-primary/40 bg-primary/5' : 'border-border hover:bg-muted/40'}`}>
+                    <label
+                      key={dataset.id}
+                      className={cn(
+                        'flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 transition-colors has-[:focus-visible]:ring-1 has-[:focus-visible]:ring-ring',
+                        checked ? 'border-primary/40 bg-primary/5' : 'border-border hover:border-primary/20 hover:bg-muted/40'
+                      )}
+                    >
                       <Checkbox checked={checked} onCheckedChange={() => toggle(dataset.id)} className="mt-0.5" />
-                      <span><span className="block text-sm font-medium">{dataset.label}</span><span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{dataset.description}</span></span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium leading-5 text-foreground">{dataset.label}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{dataset.description}</span>
+                      </span>
                     </label>
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </AdminSection>
 
-          <Card>
-            <CardHeader><CardTitle>Report Content</CardTitle><CardDescription>Give the PDF a purpose and a little polish.</CardDescription></CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2"><Label htmlFor="report-title">Title</Label><Input id="report-title" value={title} onChange={e => setTitle(e.target.value)} /></div>
-              <div className="grid gap-2"><Label htmlFor="report-subtitle">Subtitle</Label><Input id="report-subtitle" value={subtitle} onChange={e => setSubtitle(e.target.value)} /></div>
-              <div className="grid gap-2"><Label htmlFor="report-notes">Admin Notes</Label><Textarea id="report-notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional context, decisions, observations or handover notes…" rows={4} /></div>
-            </CardContent>
-          </Card>
+          <AdminSection title="Report Content" description="Give the PDF a purpose and a little polish.">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="report-title">Title</Label>
+                <Input id="report-title" value={title} onChange={e => setTitle(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="report-subtitle">Subtitle</Label>
+                <Input id="report-subtitle" value={subtitle} onChange={e => setSubtitle(e.target.value)} />
+              </div>
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="report-notes">Admin Notes</Label>
+                <Textarea id="report-notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional context, decisions, observations or handover notes…" rows={4} />
+                <p className="text-xs text-muted-foreground">Shown on the cover page when provided.</p>
+              </div>
+            </div>
+          </AdminSection>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle>Report Window</CardTitle><CardDescription>Leave blank to include the full available history.</CardDescription></CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-              <div className="grid gap-2"><Label htmlFor="report-from">From</Label><Input id="report-from" type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
-              <div className="grid gap-2"><Label htmlFor="report-to">To</Label><Input id="report-to" type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
-            </CardContent>
-          </Card>
+        <div className="min-w-0 space-y-6">
+          <AdminSection title="Report Window" description="Leave blank to include the full available history.">
+            <div className="space-y-4">
+              <div role="group" aria-label="Quick date ranges" className="flex flex-wrap gap-1.5">
+                {RANGE_PRESETS.map(preset => {
+                  const active = activeRange === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => applyRange(preset)}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                        active ? 'border-primary/50 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="report-from">From</Label>
+                  <DateInput id="report-from" value={from} max={to || undefined} onChange={e => setFrom(e.target.value)} aria-invalid={rangeInvalid || undefined} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="report-to">To</Label>
+                  <DateInput id="report-to" value={to} min={from || undefined} onChange={e => setTo(e.target.value)} aria-invalid={rangeInvalid || undefined} />
+                </div>
+              </div>
+              {rangeInvalid && <p role="alert" className="text-xs text-destructive">The start date must be on or before the end date.</p>}
+            </div>
+          </AdminSection>
 
-          <Card>
-            <CardHeader><CardTitle>Layout Options</CardTitle><CardDescription>Control how detailed the exported PDF becomes.</CardDescription></CardHeader>
-            <CardContent className="space-y-4">
-              <label className="flex items-start gap-3"><Checkbox checked={includeDistributions} onCheckedChange={value => setIncludeDistributions(Boolean(value))} /><span><span className="block text-sm font-medium">Visual Breakdowns</span><span className="text-xs text-muted-foreground">Add compact status, role and record-type charts.</span></span></label>
-              <label className="flex items-start gap-3"><Checkbox checked={includeDetails} onCheckedChange={value => setIncludeDetails(Boolean(value))} /><span><span className="block text-sm font-medium">Detail Tables</span><span className="text-xs text-muted-foreground">Include record-level tables after each summary.</span></span></label>
-              {includeDetails && <div className="grid gap-2"><Label htmlFor="max-rows">Maximum Detail Rows per Section</Label><Input id="max-rows" type="number" min="10" max="500" value={maxRows} onChange={e => setMaxRows(Number(e.target.value))} /></div>}
-            </CardContent>
-          </Card>
+          <AdminSection title="Layout Options" description="Control how detailed the exported PDF becomes.">
+            <div className="divide-y divide-border">
+              <div className="flex items-start justify-between gap-4 pb-3">
+                <div className="min-w-0">
+                  <Label htmlFor="opt-distributions" className="cursor-pointer">Visual Breakdowns</Label>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Add compact status, role and record-type charts.</p>
+                </div>
+                <Switch id="opt-distributions" checked={includeDistributions} onCheckedChange={value => setIncludeDistributions(Boolean(value))} className="mt-0.5" />
+              </div>
+              <div className={cn('flex items-start justify-between gap-4 pt-3', includeDetails && 'pb-3')}>
+                <div className="min-w-0">
+                  <Label htmlFor="opt-details" className="cursor-pointer">Detail Tables</Label>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">Include record-level tables after each summary.</p>
+                </div>
+                <Switch id="opt-details" checked={includeDetails} onCheckedChange={value => setIncludeDetails(Boolean(value))} className="mt-0.5" />
+              </div>
+              {includeDetails && (
+                <div className="grid gap-2 pt-3">
+                  <Label htmlFor="max-rows">Maximum Detail Rows per Section</Label>
+                  <Input
+                    id="max-rows"
+                    type="number"
+                    inputMode="numeric"
+                    min={MIN_ROWS}
+                    max={MAX_ROWS}
+                    step="10"
+                    value={maxRows}
+                    onChange={e => setMaxRows(e.target.value)}
+                    onBlur={() => setMaxRows(String(rowLimit))}
+                    className="tabular-nums"
+                  />
+                  <p className="text-xs text-muted-foreground">Between {MIN_ROWS} and {MAX_ROWS} rows.</p>
+                </div>
+              )}
+            </div>
+          </AdminSection>
 
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-muted/30"><CardTitle className="flex items-center gap-2"><FileText size={17} />Export Preview</CardTitle><CardDescription>{selected.length} Sections Selected</CardDescription></CardHeader>
-            <CardContent className="space-y-3 pt-5">
-              {selectedDatasets.map(dataset => <div key={dataset.id} className="flex items-center justify-between text-sm"><span>{dataset.label}</span><Badge variant="outline">Included</Badge></div>)}
-              {!selected.length && <p className="text-sm text-muted-foreground">Choose some data sections to get started.</p>}
-            </CardContent>
-          </Card>
+          <AdminSection title="Export Summary" description={`${selected.length} ${selected.length === 1 ? 'Section' : 'Sections'} Selected`}>
+            <div className="space-y-4">
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-xs">
+                <dt className="text-muted-foreground">Window</dt>
+                <dd className="text-right font-medium text-foreground tabular-nums">{windowSummary}</dd>
+                <dt className="text-muted-foreground">Breakdowns</dt>
+                <dd className="text-right font-medium text-foreground">{includeDistributions ? 'On' : 'Off'}</dd>
+                <dt className="text-muted-foreground">Detail Rows</dt>
+                <dd className="text-right font-medium text-foreground tabular-nums">{includeDetails ? `Up to ${rowLimit} per section` : 'Off'}</dd>
+              </dl>
 
-          {lastSummary && (
-            <Card className="border-primary/20 bg-primary/5">
-              <CardHeader><CardTitle className="text-base">Last Export</CardTitle></CardHeader>
-              <CardContent className="space-y-1 text-sm"><p className="font-medium">{lastSummary.filename}</p><p className="text-muted-foreground">{lastSummary.records.toLocaleString()} records • {lastSummary.sections} sections • {lastSummary.pages} pages</p><p className="text-xs text-muted-foreground">{lastSummary.generatedAt.toLocaleString()}</p></CardContent>
-            </Card>
-          )}
+              {selectedDatasets.length ? (
+                <ul className="divide-y divide-border rounded-lg border border-border">
+                  {selectedDatasets.map(dataset => (
+                    <li key={dataset.id} className="flex items-center justify-between gap-3 py-1.5 pl-3 pr-1.5 text-sm">
+                      <span className="truncate">{dataset.label}</span>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => toggle(dataset.id)} aria-label={`Remove ${dataset.label}`} className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground">
+                        <X />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border px-4 py-6 text-center">
+                  <FileText size={18} className="text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Choose some data sections to get started.</p>
+                </div>
+              )}
+
+              {generateButton('w-full')}
+
+              {lastSummary && (
+                <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />
+                  <div className="min-w-0 space-y-0.5 text-xs">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Last Export</p>
+                    <p className="truncate text-sm font-medium text-foreground" title={lastSummary.filename}>{lastSummary.filename}</p>
+                    <p className="text-muted-foreground tabular-nums">{lastSummary.records.toLocaleString()} records • {lastSummary.sections} sections • {lastSummary.pages} pages</p>
+                    <p className="text-muted-foreground tabular-nums">{lastSummary.generatedAt.toLocaleString()}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </AdminSection>
         </div>
       </div>
-    </div>
+    </AdminPage>
   );
 }
