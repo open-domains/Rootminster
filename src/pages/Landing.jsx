@@ -70,21 +70,20 @@ function ProductPreview() {
         </div>
         <Link to="/dashboard"><Button variant="outline" size="sm">Manage DNS</Button></Link>
       </div>
-      <div className="grid min-h-[330px] md:grid-cols-[150px_1fr]">
+      <div className="grid min-h-[330px] md:grid-cols-[150px_minmax(0,1fr)]">
         <aside className="hidden border-r border-border bg-muted/20 p-3 md:block">
           {['Overview', 'DNS Records', 'Requests', 'Guides', 'Security', 'Settings'].map((x, i) => (
             <div key={x} className={`mb-1 rounded-md px-3 py-2 text-xs ${i === 1 ? 'bg-background font-medium text-foreground ring-1 ring-border' : 'text-muted-foreground'}`}>{x}</div>
           ))}
         </aside>
-        <div className="p-4">
+        <div className="min-w-0 p-4">
           <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900/60 dark:bg-blue-950/20">
             <p className="font-medium text-foreground">DNS Check Passed</p>
             <p className="mt-1 text-xs text-muted-foreground">Records resolve and proxy settings are valid.</p>
           </div>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <div className="min-w-[520px]">
-            <div className="grid grid-cols-[70px_1fr_1.4fr_80px] border-b border-border bg-muted/30 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground">
-              <span>Type</span><span>Name</span><span>Content</span><span>Status</span>
+          <div className="overflow-hidden rounded-lg border border-border">
+            <div className="grid grid-cols-[52px_minmax(0,0.6fr)_minmax(0,1.4fr)] sm:grid-cols-[60px_minmax(0,0.6fr)_minmax(0,1.4fr)_76px] gap-x-2 border-b border-border bg-muted/30 px-3 py-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span>Type</span><span>Name</span><span>Content</span><span className="hidden sm:block">Status</span>
             </div>
             {[
               ['A', '@', '192.0.2.1', 'Active'],
@@ -92,11 +91,10 @@ function ProductPreview() {
               ['TXT', '@', 'v=spf1 include:_spf', 'DNS Only'],
               ['MX', '@', 'mail.open-domains.com', 'Verified'],
             ].map((r) => (
-              <div key={r.join()} className="grid grid-cols-[70px_1fr_1.4fr_80px] items-center border-b border-border/70 px-3 py-2.5 text-xs last:border-0">
-                <span className="font-semibold text-primary">{r[0]}</span><span className="font-mono text-muted-foreground">{r[1]}</span><span className="truncate font-mono text-muted-foreground">{r[2]}</span><span className="rounded-full bg-emerald-500/10 px-2 py-1 text-center text-[10px] font-medium text-emerald-700 dark:text-emerald-400">{r[3]}</span>
+              <div key={r.join()} className="grid grid-cols-[52px_minmax(0,0.6fr)_minmax(0,1.4fr)] sm:grid-cols-[60px_minmax(0,0.6fr)_minmax(0,1.4fr)_76px] items-center gap-x-2 border-b border-border/70 px-3 py-2.5 text-xs last:border-0">
+                <span className="font-semibold text-primary">{r[0]}</span><span className="truncate font-mono text-muted-foreground">{r[1]}</span><span className="truncate font-mono text-muted-foreground">{r[2]}</span><span className="hidden whitespace-nowrap rounded-full bg-emerald-500/10 px-2 py-1 text-center sm:block text-[10px] font-medium text-emerald-700 dark:text-emerald-400">{r[3]}</span>
               </div>
             ))}
-            </div>
           </div>
         </div>
       </div>
@@ -144,7 +142,7 @@ export default function Landing() {
                 ))}
               </div>
             </div>
-            <div className="landing-preview"><p className="preview-caption">Task-first DNS workspace · illustrative data</p><ProductPreview /></div>
+            <div className="landing-preview min-w-0"><p className="preview-caption">Task-first DNS workspace · illustrative data</p><ProductPreview /></div>
           </div>
         </section>
 

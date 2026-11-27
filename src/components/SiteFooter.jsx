@@ -11,7 +11,7 @@ export function CookieSettingsButton({ className, showIcon = true }) {
   const { t } = useTranslation();
   return (
     <button type="button" onClick={openCookieSettings} className={cn('inline-flex items-center gap-1.5 transition-colors hover:text-foreground', className)}>
-      {showIcon && <Cookie size={13} aria-hidden="true" />}
+      {showIcon && <Cookie size={15} aria-hidden="true" />}
       {t('footer.cookieSettings')}
     </button>
   );
@@ -34,7 +34,7 @@ export default function SiteFooter({ className, containerClassName, showBrand = 
 
   return (
     <footer className={cn('border-t border-border bg-background', className)}>
-      <div className={cn('mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 text-xs text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8', containerClassName)}>
+      <div className={cn('mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8', containerClassName)}>
         {showBrand ? (
           <div className="flex items-center gap-2">
             <img src={branding.logo_url} alt="" className="h-6 w-6 rounded bg-white p-0.5 ring-1 ring-border" />

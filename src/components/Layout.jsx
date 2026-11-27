@@ -353,6 +353,7 @@ export default function Layout() {
 
           <SiteFooter
             showBrand={false}
+            className="bg-muted/80 dark:bg-black/30"
             containerClassName={cn('px-3 sm:px-6 lg:px-7', isAdminPath ? 'max-w-[1640px]' : 'max-w-[1500px]')}
           />
         </div>
