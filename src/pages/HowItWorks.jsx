@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { Link } from 'react-router-dom';
 import { Globe, Shield, Zap, MessageCircle, CheckCircle, XCircle, Edit, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -74,6 +74,7 @@ export default function HowItWorks() {
           </Link>
         </div>
       </div>
+      <PublicFooter />
     </div>
   );
 }

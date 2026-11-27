@@ -7,20 +7,23 @@ import {
   DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
-export default function ThemeToggle({ className, compact = false }) {
+export default function ThemeToggle({ className, compact = false, variant = 'button', align = 'end', side = 'bottom' }) {
+  const isLink = variant === 'link';
   const { style, mode, setStyle, setMode } = useAppearance();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label="Choose appearance" title="Choose appearance" className={cn(
-          'inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          compact && 'w-9 px-0', className,
+          isLink
+            ? 'inline-flex shrink-0 items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:text-foreground'
+            : 'inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          !isLink && compact && 'w-9 px-0', className,
         )}>
-          <Palette size={16} aria-hidden="true" />
+          <Palette size={isLink ? 13 : 16} aria-hidden="true" />
           {!compact && <span>Appearance</span>}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8} className="appearance-menu w-72 p-2">
+      <DropdownMenuContent align={align} side={side} sideOffset={8} className="appearance-menu w-72 p-2">
         <DropdownMenuLabel>Site Theme</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={style} onValueChange={setStyle} aria-label="Site theme">
           {THEMES.map(theme => (

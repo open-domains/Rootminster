@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, Loader2, Sparkles } from 'lucide-react';
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { rootminster } from '@/api/rootminsterClient';
 
 export default function Showcase() {
@@ -60,6 +60,7 @@ export default function Showcase() {
         )}
         <p className="mt-10 text-xs text-slate-500">Listed sites are run by their owners, not by Open Domains. See something wrong? <Link to="/report-abuse" className="text-indigo-300 hover:underline">Report it</Link>.</p>
       </main>
+      <PublicFooter />
     </div>
   );
 }

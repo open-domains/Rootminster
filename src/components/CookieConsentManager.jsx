@@ -65,12 +65,6 @@ export default function CookieConsentManager() {
         </section>
       )}
 
-      {consent && (
-        <button type="button" onClick={() => setSettingsOpen(true)} className="fixed bottom-3 left-3 z-40 inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-medium text-muted-foreground shadow-lg transition-colors hover:text-foreground" aria-label="Open cookie settings">
-          <Cookie size={14} /> Cookie Settings
-        </button>
-      )}
-
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Cookie size={17} /> Cookie Settings</DialogTitle></DialogHeader>

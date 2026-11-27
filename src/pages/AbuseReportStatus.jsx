@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CheckCircle2, Clock, Loader2, Search, Shield } from 'lucide-react';
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { rootminster } from '@/api/rootminsterClient';
 
 const STEPS = [
@@ -75,6 +75,7 @@ export default function AbuseReportStatus() {
           </div>
         )}
       </main>
+      <PublicFooter />
     </div>
   );
 }

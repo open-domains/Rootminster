@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import { usePublicConfig } from '@/lib/public-config';
+import { CookieSettingsButton } from '@/components/SiteFooter';
 
 export function PublicNav() {
   const { config } = usePublicConfig();
@@ -89,7 +90,7 @@ export function PublicFooter() {
             <div className="space-y-2">
               <Link to="/guides" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.allGuides')}</Link>
               <Link to="/blog" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('nav.blog')}</Link>
-              <Link to="/showcase" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">Showcase</Link>
+              <Link to="/showcase" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.showcase')}</Link>
               <Link to="/guides/dns-basics/what-is-dns" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.whatIsDns')}</Link>
             </div>
           </div>
@@ -106,8 +107,9 @@ export function PublicFooter() {
             <p className="text-foreground text-sm font-semibold mb-3">{t('footer.legal')}</p>
             <div className="space-y-2">
               <Link to="/privacy-policy" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.privacyPolicy')}</Link>
-              <Link to="/cookie-policy" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">Cookie Policy</Link>
+              <Link to="/cookie-policy" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.cookiePolicy')}</Link>
               <Link to="/terms-of-service" className="block text-muted-foreground hover:text-foreground text-xs transition-colors">{t('footer.termsOfService')}</Link>
+              <CookieSettingsButton showIcon={false} className="block text-left text-muted-foreground hover:text-foreground text-xs" />
             </div>
           </div>
         </div>

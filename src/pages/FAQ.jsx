@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/PublicPageLayout';
+import { PublicFooter, PublicNav } from '@/components/PublicPageLayout';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -55,6 +55,7 @@ export default function FAQ() {
           <Link to="/contact"><Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white">Contact Us</Button></Link>
         </div>
       </div>
+      <PublicFooter />
     </div>
   );
 }

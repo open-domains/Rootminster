@@ -25,7 +25,14 @@
     "privacyPolicy": "गोपनीयता नीति",
     "termsOfService": "सेवा की शर्तें",
     "rights": "© 2026 Open Domains. सर्वाधिकार सुरक्षित।",
-    "poweredBy": "Cloudflare DNS द्वारा संचालित · मनुष्यों द्वारा समीक्षित"
+    "poweredBy": "Cloudflare DNS द्वारा संचालित · मनुष्यों द्वारा समीक्षित",
+    "cookiePolicy": "कुकी नीति",
+    "cookieSettings": "कुकी सेटिंग्स",
+    "apiDocs": "API दस्तावेज़",
+    "showcase": "शोकेस",
+    "privacy": "गोपनीयता",
+    "terms": "शर्तें",
+    "home": "होम"
   },
   "sidebar": {
     "dashboard": "डैशबोर्ड",

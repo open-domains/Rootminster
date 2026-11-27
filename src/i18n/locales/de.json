@@ -25,7 +25,14 @@
     "privacyPolicy": "Datenschutzrichtlinie",
     "termsOfService": "Nutzungsbedingungen",
     "rights": "© 2026 Open Domains. Alle Rechte vorbehalten.",
-    "poweredBy": "Powered by Cloudflare DNS · Überprüft von Menschen"
+    "poweredBy": "Powered by Cloudflare DNS · Überprüft von Menschen",
+    "cookiePolicy": "Cookie-Richtlinie",
+    "cookieSettings": "Cookie-Einstellungen",
+    "apiDocs": "API-Dokumentation",
+    "showcase": "Showcase",
+    "privacy": "Datenschutz",
+    "terms": "Bedingungen",
+    "home": "Startseite"
   },
   "sidebar": {
     "dashboard": "Dashboard",
