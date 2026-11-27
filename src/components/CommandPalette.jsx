@@ -1,9 +1,30 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, CornerDownLeft } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, CornerDownLeft, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Geometry: the panel uses the 12px container radius (rounded-xl) and the list
+// is inset by 6px (p-1.5), so rows take the 6px control radius (rounded-md) and
+// stay concentric with the panel. The header uses the same 14px horizontal
+// inset as the rows (6px list padding + 8px row padding) so icons line up.
+
+function Kbd({ children, className }) {
+  return (
+    <kbd
+      className={cn(
+        'inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-border bg-muted px-1.5 font-sans text-[10px] font-medium leading-none text-muted-foreground',
+        className
+      )}
+    >
+      {children}
+    </kbd>
+  );
+}
+
 export default function CommandPalette({ open, onClose, items }) {
+  const navigate = useNavigate();
+  const listId = useId();
+  const listRef = useRef(null);
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
 
@@ -26,49 +47,112 @@ export default function CommandPalette({ open, onClose, items }) {
       else if (e.key === 'Enter') {
         e.preventDefault();
         const it = filtered[active];
-        if (it) onClose();
+        if (it) { onClose(); navigate(it.to); }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, filtered, active, onClose]);
+  }, [open, filtered, active, onClose, navigate]);
+
+  // Keep the keyboard selection visible while arrowing through a long list.
+  useEffect(() => {
+    if (!open) return;
+    listRef.current
+      ?.querySelector(`[data-index="${active}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [open, active]);
 
   if (!open) return null;
 
+  const activeId = filtered[active] ? `${listId}-${active}` : undefined;
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-4">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-xl bg-popover border border-border rounded-2xl shadow-raised overflow-hidden">
-        <div className="flex items-center gap-2.5 px-4 h-12 border-b border-border">
-          <Search size={16} className="text-muted-foreground shrink-0" />
+    <div className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[12vh]">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search pages and actions"
+        className="relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-raised"
+      >
+        <div className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-3.5">
+          <Search size={16} className="shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
             autoFocus
             value={q}
             onChange={e => { setQ(e.target.value); setActive(0); }}
             placeholder="Search pages and actions…"
-            className="flex-1 bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls={listId}
+            aria-activedescendant={activeId}
+            aria-autocomplete="list"
+            autoComplete="off"
+            spellCheck={false}
+            className="h-full min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:outline-none"
           />
-          <kbd className="text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5 shrink-0">ESC</kbd>
+          <Kbd>Esc</Kbd>
         </div>
-        <div className="max-h-80 overflow-y-auto review-modal-scroll py-2">
+
+        <div
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          aria-label="Results"
+          className="review-modal-scroll max-h-[min(20rem,55vh)] scroll-py-1.5 overflow-y-auto overscroll-contain p-1.5"
+        >
           {filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground text-sm py-10">No Results</p>
-          ) : filtered.map((it, i) => (
-            <Link
-              key={it.to}
-              to={it.to}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 mx-1.5 px-2.5 py-2 rounded-lg text-sm transition-colors',
-                i === active ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
-              )}
-            >
-              {it.icon ? <it.icon size={15} className="shrink-0" /> : <span className="w-[15px] shrink-0" />}
-              <span className="flex-1 truncate">{it.label}</span>
-              {it.group && <span className="text-[10px] text-muted-foreground shrink-0">{it.group}</span>}
-              {i === active && <CornerDownLeft size={13} className="text-muted-foreground shrink-0" />}
-            </Link>
-          ))}
+            <div className="flex flex-col items-center gap-1 px-4 py-10 text-center">
+              <p className="text-sm font-medium text-foreground">No Results</p>
+              <p className="text-xs text-muted-foreground">Try a different search term.</p>
+            </div>
+          ) : filtered.map((it, i) => {
+            const isActive = i === active;
+            return (
+              <Link
+                key={it.to}
+                id={`${listId}-${i}`}
+                to={it.to}
+                role="option"
+                aria-selected={isActive}
+                data-index={i}
+                tabIndex={-1}
+                onClick={onClose}
+                onMouseMove={() => { if (!isActive) setActive(i); }}
+                className={cn(
+                  'flex h-9 items-center gap-3 rounded-md px-2 text-sm outline-none transition-colors',
+                  isActive ? 'bg-primary/10 text-primary' : 'text-foreground'
+                )}
+              >
+                {it.icon
+                  ? <it.icon size={16} className={cn('shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} aria-hidden="true" />
+                  : <span className="w-4 shrink-0" aria-hidden="true" />}
+                <span className="flex-1 truncate font-medium">{it.label}</span>
+                {it.group && <span className="shrink-0 text-xs text-muted-foreground">{it.group}</span>}
+                <CornerDownLeft
+                  size={14}
+                  aria-hidden="true"
+                  className={cn('shrink-0 text-muted-foreground transition-opacity', isActive ? 'opacity-100' : 'opacity-0')}
+                />
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="hidden h-10 shrink-0 items-center gap-4 border-t border-border px-3.5 text-xs text-muted-foreground sm:flex">
+          <span className="flex items-center gap-1.5">
+            <Kbd><ArrowUp size={11} aria-hidden="true" /></Kbd>
+            <Kbd><ArrowDown size={11} aria-hidden="true" /></Kbd>
+            Navigate
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Kbd><CornerDownLeft size={11} aria-hidden="true" /></Kbd>
+            Open
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Kbd>Esc</Kbd>
+            Close
+          </span>
         </div>
       </div>
     </div>
