@@ -126,7 +126,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
       </div>
 
       <TooltipProvider delayDuration={200}>
-      <div ref={scrollContainerRef} className="max-h-80 overflow-y-auto review-modal-scroll p-4 space-y-3">
+      <div ref={scrollContainerRef} className="max-h-80 overflow-y-auto review-modal-scroll px-4 py-5 space-y-5">
         {loading ? (
           <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
         ) : loadError ? (<p role="alert" className="text-sm text-destructive">Could not load this conversation. <button onClick={load} className="underline">Retry</button></p>) : comments.length === 0 ? (
@@ -138,19 +138,19 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
           const createdAt = parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : null;
           return (
           <div key={c.id} className="flex gap-3 flex-row">
-            <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 border', roleColors[c.author_role] || roleColors.user)}>
+            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 border', roleColors[c.author_role] || roleColors.user)}>
               {name?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="text-foreground text-xs font-medium" title={title}>{name}</span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-h-8 mb-1">
+                <span className="text-foreground text-sm font-medium" title={title}>{name}</span>
                 <span className={cn('text-xs px-1.5 py-0.5 rounded border', roleColors[c.author_role] || roleColors.user)}>{roleLabel(c.author_role)}</span>
                 {c.is_internal && <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded border border-dashed border-muted-foreground/50 text-muted-foreground"><Lock size={10} /> {t('conversation.internalLabel')}</span>}
                 {createdAt && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <time dateTime={createdAt.toISOString()} tabIndex={0}
-                        className="ml-auto text-muted-foreground text-xs cursor-help rounded-sm underline-offset-2 decoration-dotted hover:underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        className="text-muted-foreground text-xs cursor-help rounded-sm underline-offset-2 decoration-dotted hover:underline hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         {format(createdAt, 'MMM d, HH:mm')}
                       </time>
                     </TooltipTrigger>
@@ -161,7 +161,7 @@ export default function ConversationThread({ requestId, requestType = 'subdomain
                   </Tooltip>
                 )}
               </div>
-              <div className={cn('rounded-xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
+              <div className={cn('w-fit max-w-full sm:max-w-[85%] rounded-2xl rounded-tl-md px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words',
                 c.message_type === 'question' ? 'bg-amber-500/10 border border-amber-500/30 text-foreground' :
                 c.message_type === 'reply' ? 'bg-primary/10 border border-primary/30 text-foreground' :
                 c.is_internal ? 'bg-muted/60 border border-dashed border-muted-foreground/50 text-foreground' :
