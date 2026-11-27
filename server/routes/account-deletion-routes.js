@@ -3,7 +3,8 @@ import { sendEmail } from '../core/mail.js';
 import { store } from '../core/store.js';
 import { accountExportFileName, deletionRequiresManualReview, publicAccountExport } from '../lib/account-privacy.js';
 import { deleteUserAccounts } from '../lib/admin-user-deletion.js';
-import { escapeHtml } from '../lib/html.js';
+import { platformName } from '../lib/platform-name.js';
+import { accountDeletionOutcomeEmail } from '../../shared/email-templates.js';
 import { requireAdmin, requireUser } from './route-guards.js';
 
 
@@ -158,12 +159,9 @@ async function auditPrivacyAction(user, action, description) {
 
 async function notifyOutcome(requestRow, outcome, reason = '') {
   const approved = outcome === 'approved';
-  const subject = approved ? 'Your Open Domains account deletion request was approved' : 'Your Open Domains account deletion request was not approved';
-  const body = approved
-    ? `<p>Hi ${escapeHtml(requestRow.user_name || 'there')},</p><p>Your account deletion request has been approved and your Open Domains account and associated managed data have been permanently deleted.</p><p>If you did not expect this message, please contact support.</p>`
-    : `<p>Hi ${escapeHtml(requestRow.user_name || 'there')},</p><p>Your account deletion request was reviewed and was not approved.</p>${reason ? `<p><strong>Reason:</strong> ${escapeHtml(reason)}</p>` : ''}<p>Your account remains active. You can contact support if you have questions.</p>`;
+  const message = accountDeletionOutcomeEmail({ platform: await platformName(), approved, reason });
   try {
-    const delivery = await sendEmail({ to: requestRow.user_email, subject, body });
+    const delivery = await sendEmail({ to: requestRow.user_email, ...message });
     if (delivery?.disabled) throw new Error('Email delivery is disabled');
     await pool.query(
       `UPDATE account_deletion_requests SET notification_status = 'sent', notification_error = NULL, updated_at = now() WHERE id = $1`,
