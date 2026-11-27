@@ -6,6 +6,8 @@ import ReviewRequestModal from '@/components/ReviewRequestModal';
 import SafetyBadge from '@/components/SafetyBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useStoredPreference } from '@/lib/stored-preference';
 import { Eye, AlertTriangle, Loader2, Search, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -25,6 +27,17 @@ const observerVerdictFor = (request) => {
 };
 
 const observerScoreFor = (request) => Number(request.observer_score) || 0;
+
+const STATUS_FILTERS = ['all', 'pending', 'approved', 'rejected', 'needs_info'];
+const STATUS_FILTER_KEY = 'od_admin_requests_status_filter';
+
+const RISK_FILTERS = [
+  { value: 'all', label: 'All Risk Levels' },
+  { value: 'high_risk', label: 'High Risk' },
+  { value: 'review', label: 'Needs Review' },
+  { value: 'clear', label: 'Clear' },
+  { value: 'incomplete', label: 'Incomplete' },
+];
 
 function RequestCard({ request, onReview, userNames = {} }) {
   return (
@@ -83,7 +96,7 @@ export default function AdminRequests() {
   const [observerError, setObserverError] = useState('');
   const [dnsIssues, setDnsIssues] = useState([]);
   const [userNames, setUserNames] = useState({});
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useStoredPreference(STATUS_FILTER_KEY, STATUS_FILTERS, 'all');
   const [riskFilter, setRiskFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
@@ -227,16 +240,15 @@ export default function AdminRequests() {
           </div>
           {tab === 'subdomain' && (
             <div className="flex gap-2 flex-wrap">
-              <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground">
-                <option value="all">All Risk Levels</option>
-                <option value="high_risk">High Risk</option>
-                <option value="review">Needs Review</option>
-                <option value="clear">Clear</option>
-                <option value="incomplete">Incomplete</option>
-              </select>
-              <div className="flex gap-1 flex-wrap">
-              {['all', 'pending', 'approved', 'rejected', 'needs_info'].map(s => (
-                <button key={s} onClick={() => setStatusFilter(s)}
+              <Select value={riskFilter} onValueChange={setRiskFilter}>
+                <SelectTrigger aria-label="Filter by risk level" className="h-8 w-full text-xs sm:w-40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {RISK_FILTERS.map((option) => <SelectItem key={option.value} value={option.value} className="text-xs">{option.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1 flex-wrap" role="group" aria-label="Filter by status">
+              {STATUS_FILTERS.map(s => (
+                <button key={s} type="button" onClick={() => setStatusFilter(s)} aria-pressed={statusFilter === s}
                   className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors capitalize ${statusFilter === s ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>
                   {filterLabels[s]}
                 </button>

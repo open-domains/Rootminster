@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { rootminster } from '@/api/rootminsterClient';
 import TermsContent from '@/components/TermsContent';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 
@@ -57,12 +58,21 @@ export default function TermsOfService() {
                   {!terms.is_current && <p className="mt-2 text-sm font-medium text-amber-400">You are viewing a previous version.</p>}
                 </div>
                 {versions.length > 1 && (
-                  <label className="text-xs text-slate-400">
-                    View Version
-                    <select value={terms.version} onChange={(event) => setSearchParams(event.target.value === currentVersion ? {} : { version: event.target.value })} className="mt-1 block min-w-44 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white">
-                      {versions.map((item) => <option key={item.id} value={item.version}>{item.version}{item.is_current ? ' (current)' : ''}</option>)}
-                    </select>
-                  </label>
+                  <div className="text-xs text-slate-400">
+                    <span id="terms-version-label">View Version</span>
+                    <Select value={terms.version} onValueChange={(version) => setSearchParams(version === currentVersion ? {} : { version })}>
+                      <SelectTrigger aria-labelledby="terms-version-label" className="mt-1 h-auto min-w-44 border-slate-700 bg-slate-900 py-2 text-sm text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-slate-700 bg-slate-900 text-white">
+                        {versions.map((item) => (
+                          <SelectItem key={item.id} value={item.version} className="focus:bg-slate-800 focus:text-white">
+                            {item.version}{item.is_current ? ' (current)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </div>
               {terms.summary && <p className="mt-6 rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-sm leading-relaxed text-slate-300">{terms.summary}</p>}

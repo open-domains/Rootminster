@@ -1,6 +1,6 @@
 import { groupSubdomainRequests, recordSetError } from '../../shared/subdomain-requests.js';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -13,10 +13,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { rootminster } from '@/api/rootminsterClient';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle, XCircle, StickyNote, HelpCircle, Copy, Info, RefreshCw, ShieldAlert } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, StickyNote, HelpCircle, Copy, RefreshCw, ShieldAlert, ExternalLink, FileText, Network, UserRound, CalendarClock, Lock } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import StatusBadge from './StatusBadge';
 import ConversationThread from './ConversationThread';
@@ -30,6 +31,39 @@ const normalizeUrl = (url) => {
   const trimmed = url.trim();
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 };
+
+const formatDateTime = (value) => {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? format(date, 'MMM d, yyyy · HH:mm') : null;
+};
+
+function ColumnHeading({ children }) {
+  return <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{children}</h3>;
+}
+
+function ReviewSection({ icon: Icon, title, aside, className, children }) {
+  return (
+    <section className={cn('overflow-hidden rounded-lg border border-border bg-card', className)}>
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon size={15} className="shrink-0 text-muted-foreground" />
+          <span className="truncate text-sm font-medium text-foreground">{title}</span>
+        </div>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div className="min-w-0 rounded-md bg-muted/50 px-3 py-2.5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1">{children}</dd>
+    </div>
+  );
+}
 
 export default function ReviewRequestModal({ open, onClose, request, onSuccess }) {
   const { t } = useTranslation();
@@ -64,6 +98,7 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
   const reviewGateFrameRef = useRef(null);
+  const scrolledToEndRef = useRef(false);
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -76,14 +111,18 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
     setAdminNotes('');
     setRejectionReason('');
     setReviewGateMet(false);
+    scrolledToEndRef.current = false;
   }, [open, request]);
 
   const evaluateReviewGate = useCallback(() => {
     const node = scrollRef.current;
     if (!node) return false;
     const hasNoScroll = node.scrollHeight <= node.clientHeight + 8;
-    const reachedReviewControls = node.scrollTop + node.clientHeight >= node.scrollHeight - 64;
-    const gateMet = hasNoScroll || reachedReviewControls;
+    const reachedEnd = node.scrollTop + node.clientHeight >= node.scrollHeight - 64;
+    // Once staff have scrolled through everything, content that grows afterwards
+    // (a rejection reason box, a new message) must not lock the decision again.
+    if (!hasNoScroll && reachedEnd) scrolledToEndRef.current = true;
+    const gateMet = scrolledToEndRef.current || hasNoScroll;
     setReviewGateMet(gateMet);
     return gateMet;
   }, []);
@@ -142,6 +181,19 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
   const observerVerdict = observerStatus === 'flagged'
     ? (['critical', 'high'].includes(String(observerSeverity).toLowerCase()) ? 'high_risk' : 'review')
     : observerStatus === 'clear' ? 'clear' : 'incomplete';
+  const hostname = `${request.subdomain}.${request.root_domain}`;
+  const submittedAt = formatDateTime(request.created_date);
+  const threatMatches = requestRows.flatMap((row) => row.threat_intel_matches || []);
+
+  const copyText = (text, message) => {
+    if (!navigator.clipboard?.writeText) {
+      toast.error('Copying isn\'t available in this browser.');
+      return;
+    }
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success(message))
+      .catch(() => toast.error('Could not copy to the clipboard.'));
+  };
 
   const openExternal = (url) => {
     if (externalWarning) {
@@ -211,211 +263,228 @@ export default function ReviewRequestModal({ open, onClose, request, onSuccess }
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="flex max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-3xl flex-col overflow-hidden rounded-lg p-0"
+          className="flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[1600px] flex-col gap-0 overflow-hidden rounded-lg p-0 sm:h-[90vh] sm:w-[calc(100vw-3rem)] lg:w-[80vw]"
         >
-          <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
-            <DialogTitle className="text-base">{t('reviewRequest.title')}</DialogTitle>
+          <DialogHeader className="shrink-0 space-y-2 border-b border-border px-5 py-4 pr-14 text-left sm:px-6">
+            <DialogTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t('reviewRequest.title')}</DialogTitle>
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="min-w-0 break-all font-mono text-lg font-semibold text-primary sm:text-xl">{hostname}</p>
+              <Button type="button" variant="ghost" size="icon" aria-label="Copy hostname" onClick={() => copyText(hostname, 'Hostname copied.')} className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground">
+                <Copy size={14} />
+              </Button>
+            </div>
+            <DialogDescription asChild>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <StatusBadge status={conversationStatus || request.status} />
+                <SafetyBadge verdict={observerVerdict} score={observerScore} />
+                <span className="inline-flex items-center gap-1"><Network size={12} /> {t('reviewRequest.dnsRecords', { count: records.length })}</span>
+                {submittedAt && <span className="inline-flex items-center gap-1"><CalendarClock size={12} /> Submitted {submittedAt}</span>}
+              </div>
+            </DialogDescription>
           </DialogHeader>
 
-          <div ref={scrollRef} onScroll={evaluateReviewGate} className="flex-1 space-y-4 overflow-y-auto px-6 py-5 review-modal-scroll" style={{ scrollbarGutter: 'stable' }}>
-            <div className="overflow-hidden rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                <Info size={15} className="text-muted-foreground" />
-                <span className="text-foreground text-sm font-medium">{t('reviewRequest.info')}</span>
-              </div>
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-xs">{t('reviewRequest.status')}</span>
-                  <StatusBadge status={conversationStatus || request.status} />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-muted-foreground text-xs">{t('reviewRequest.requestedBy')}</span>
-                  <div className="bg-muted/60 rounded-lg px-3 py-2">
-                    <span className="text-foreground text-sm break-all">{requesterName || request.requester_email}</span>
-                    {requesterName && <p className="text-muted-foreground text-xs mt-0.5 break-all">{request.requester_email}</p>}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-muted-foreground text-xs">{t('reviewRequest.subdomain')}</span>
-                  <div className="bg-muted/60 rounded-lg px-3 py-2">
-                    <span className="text-primary font-mono text-sm font-medium break-all">{request.subdomain}.{request.root_domain}</span>
-                  </div>
-                </div>
+          <div ref={scrollRef} onScroll={evaluateReviewGate} className="min-h-0 flex-1 overflow-y-auto review-modal-scroll" style={{ scrollbarGutter: 'stable' }}>
+            <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start">
+              <div className="min-w-0 space-y-4">
+                <ColumnHeading>Request Details</ColumnHeading>
 
-                <div className="pt-2 border-t border-border space-y-2">
-                  <p className="text-muted-foreground text-xs">{t('reviewRequest.dnsRecords', { count: records.length })}</p>
-                  {records.map((r, i) => (
-                    <div key={i} className="bg-muted/60 rounded-lg px-3 py-2 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{r.record_type}</span>
-                        <StatusBadge status={r.status} />
-                      </div>
-                      <p className="font-mono text-xs text-foreground break-all">{r.record_value}</p>
-                      <p className="text-muted-foreground text-xs">{r.proxied ? t('reviewRequest.ttlProxied', { ttl: r.ttl }) : t('reviewRequest.ttlNotProxied', { ttl: r.ttl })}</p>
-                    </div>
-                  ))}
-                </div>
+                <ReviewSection icon={UserRound} title={t('reviewRequest.info')}>
+                  <dl className="grid gap-3 p-4 sm:grid-cols-2">
+                    <Field label={t('reviewRequest.requestedBy')}>
+                      <p className="break-all text-sm font-medium text-foreground">{requesterName || request.requester_email}</p>
+                      {requesterName && <p className="mt-0.5 break-all text-xs text-muted-foreground">{request.requester_email}</p>}
+                    </Field>
+                    <Field label="Submitted">
+                      <p className="text-sm text-foreground">{submittedAt || '—'}</p>
+                    </Field>
+                  </dl>
+                </ReviewSection>
 
-                {request.reason && (
-                  <div className="pt-2 border-t border-border space-y-1">
-                    <p className="text-muted-foreground text-xs">{t('reviewRequest.projectDescription')}</p>
-                    <div className="bg-muted/60 rounded-lg px-3 py-2">
-                      <p className="text-foreground text-sm break-words">{request.reason}</p>
-                    </div>
-                  </div>
-                )}
-                {request.preview_link && (
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-muted-foreground text-xs mb-1">{t('reviewRequest.previewLink')}</p>
-                    <a href={previewUrl} onClick={(e) => { e.preventDefault(); openExternal(previewUrl); }}
-                      className="text-primary hover:opacity-80 text-sm break-all underline cursor-pointer">
-                      {request.preview_link}
-                    </a>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(request.preview_link);
-                        toast.success(t('reviewRequest.linkCopied'));
-                      }}
-                      className="mt-2 w-full"
-                    >
-                      <Copy size={16} className="mr-2" /> {t('reviewRequest.copyLink')}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <InstantApprovalPanel request={request} onChanged={async () => { await onSuccess?.(); onClose(); }} />
-
-            {requestRows.some((row) => row.threat_intel_matches?.length) && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
-                <p className="flex items-center gap-2 text-sm font-medium text-foreground"><ShieldAlert size={15} className="text-destructive" /> Threat Intelligence Match</p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                  {requestRows.flatMap((row) => row.threat_intel_matches || []).map((match, index) => <li key={`${match.source}-${match.indicator}-${index}`} className="break-words">{match.detail}</li>)}
-                </ul>
-                <p className="mt-2 text-muted-foreground">This request was kept out of instant approval. Feeds can be wrong, so check the target yourself before deciding.</p>
-              </div>
-            )}
-
-            <div className="overflow-hidden rounded-lg border border-border bg-card">
-              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert size={15} className="text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Observer Automated Screening</span>
-                </div>
-                <SafetyBadge verdict={observerVerdict} score={observerScore} />
-              </div>
-              <div className="space-y-4 p-4">
-                <div className="grid gap-2 text-xs sm:grid-cols-3">
-                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Observer Status</p><p className="mt-1 font-semibold capitalize text-foreground">{observerStatus}</p></div>
-                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Severity</p><p className="mt-1 font-mono capitalize text-foreground">{observerSeverity || '—'}</p></div>
-                  <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Findings</p><p className="mt-1 text-foreground">{observerFindingCount} · {observerScore}/100</p></div>
-                </div>
-                <p className="text-xs text-muted-foreground">Observer is triggered automatically for every new request. Flagged requests list the matched policy/category below, with screenshot evidence when Observer provides it.</p>
-                {observerFindings.length > 0 ? (
-                  <div className="space-y-2 border-t border-border pt-4">
-                    <p className="text-xs font-medium text-foreground">Flagged Against</p>
-                    {observerFindings.map((finding) => (
-                      <div key={finding.id || `${finding.finding_type}-${finding.observed_at}`} className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-medium text-foreground">{finding.policy_section || finding.finding_type || 'Observer Policy Finding'}</p>
-                          <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-mono text-amber-700 dark:text-amber-300">{finding.severity || 'unknown'} · {Number(finding.score) || 0}</span>
+                <ReviewSection icon={Network} title={t('reviewRequest.dnsRecords', { count: records.length })}>
+                  <ul className="divide-y divide-border">
+                    {records.map((r, i) => (
+                      <li key={r.id || i} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1.5 px-4 py-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto]">
+                        <span className="mt-0.5 rounded bg-muted px-1.5 py-0.5 text-center font-mono text-xs font-medium text-foreground">{r.record_type}</span>
+                        <div className="min-w-0">
+                          <p className="break-all font-mono text-sm text-foreground">{r.record_value}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{r.proxied ? t('reviewRequest.ttlProxied', { ttl: r.ttl }) : t('reviewRequest.ttlNotProxied', { ttl: r.ttl })}</p>
                         </div>
-                        {finding.evidence && <p className="mt-2 whitespace-pre-line break-words leading-relaxed text-muted-foreground">{readableEvidence(finding.evidence)}</p>}
-                        {finding.screenshot_url && (
-                          <button type="button" onClick={() => openExternal(finding.screenshot_url)} className="mt-2 text-primary underline hover:opacity-80">
-                            Open Observer Screenshot
-                          </button>
-                        )}
-                      </div>
+                        <div className="col-start-2 sm:col-start-auto sm:justify-self-end"><StatusBadge status={r.status} /></div>
+                      </li>
                     ))}
-                  </div>
-                ) : (
-                  <p className="rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">No active Observer findings are attached to this request.</p>
+                  </ul>
+                </ReviewSection>
+
+                {(request.reason || request.preview_link) && (
+                  <ReviewSection icon={FileText} title={t('reviewRequest.projectDescription')}>
+                    <div className="space-y-4 p-4">
+                      {request.reason ? (
+                        <p className="whitespace-pre-line break-words text-sm leading-relaxed text-foreground">{request.reason}</p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No project description was provided.</p>
+                      )}
+                      {request.preview_link && (
+                        <div className="rounded-md border border-border bg-muted/40 p-3">
+                          <p className="text-xs font-medium text-muted-foreground">{t('reviewRequest.previewLink')}</p>
+                          <a href={previewUrl} onClick={(e) => { e.preventDefault(); openExternal(previewUrl); }}
+                            className="mt-1 block cursor-pointer break-all text-sm text-primary underline hover:opacity-80">
+                            {request.preview_link}
+                          </a>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Button type="button" size="sm" variant="outline" onClick={() => openExternal(previewUrl)} className="gap-1.5">
+                              <ExternalLink size={13} /> Open Preview
+                            </Button>
+                            <Button type="button" size="sm" variant="outline" onClick={() => copyText(request.preview_link, t('reviewRequest.linkCopied'))} className="gap-1.5">
+                              <Copy size={13} /> {t('reviewRequest.copyLink')}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </ReviewSection>
                 )}
-                <div className="border-t border-border pt-4">
-                  <Button type="button" size="sm" variant="outline" disabled={safetyLoading} onClick={handleObserverRerun} className="gap-2">
-                    {safetyLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-Run Observer Scan
-                  </Button>
-                </div>
-              </div>
-            </div>
 
-            {action === 'reject' && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t('reviewRequest.rejectionReason')}</Label>
-                <QuickChips
-                  titleKey="reviewRequest.quickRejectTitle"
-                  tone="destructive"
-                  options={[
-                    { labelKey: 'reviewRequest.quickReject.reserved', text: t('reviewRequest.quickReject.reserved') },
-                    { labelKey: 'reviewRequest.quickReject.privateIp', text: t('reviewRequest.quickReject.privateIp') },
-                    { labelKey: 'reviewRequest.quickReject.insufficientReason', text: t('reviewRequest.quickReject.insufficientReason') },
-                    { labelKey: 'reviewRequest.quickReject.invalidPreview', text: t('reviewRequest.quickReject.invalidPreview') },
-                    { labelKey: 'reviewRequest.quickReject.blockedValue', text: t('reviewRequest.quickReject.blockedValue') },
-                    { labelKey: 'reviewRequest.quickReject.nonCommercial', text: t('reviewRequest.quickReject.nonCommercial') },
-                  ]}
-                  onSelect={(text) => setRejectionReason(prev => (prev ? `${prev}\n\n${text}` : text))}
-                />
-                <Textarea value={rejectionReason} onChange={e => setRejectionReason(e.target.value)}
-                  placeholder={t('reviewRequest.rejectionPlaceholder')}
-                  className="resize-none h-20" />
-              </div>
-            )}
-
-            <div className="overflow-visible rounded-lg border border-border bg-card">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                <StickyNote size={15} className="text-muted-foreground" />
-                <span className="text-foreground text-sm font-medium">{t('reviewRequest.adminNotes')}</span>
-                <div className="relative group">
-                  <HelpCircle size={14} className="text-muted-foreground cursor-help" />
-                  <div className="absolute top-full mt-2 left-0 hidden group-hover:block bg-popover text-popover-foreground text-xs rounded-lg px-3 py-2 w-52 z-50 shadow-soft border border-border">
-                    {t('reviewRequest.adminNotesHelp')}
+                {threatMatches.length > 0 && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs">
+                    <p className="flex items-center gap-2 text-sm font-medium text-foreground"><ShieldAlert size={15} className="text-destructive" /> Threat Intelligence Match</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                      {threatMatches.map((match, index) => <li key={`${match.source}-${match.indicator}-${index}`} className="break-words">{match.detail}</li>)}
+                    </ul>
+                    <p className="mt-2 text-muted-foreground">This request was kept out of instant approval. Feeds can be wrong, so check the target yourself before deciding.</p>
                   </div>
-                </div>
+                )}
+
+                <ReviewSection icon={ShieldAlert} title="Observer Automated Screening" aside={<SafetyBadge verdict={observerVerdict} score={observerScore} />}>
+                  <div className="space-y-4 p-4">
+                    <div className="grid gap-2 text-xs sm:grid-cols-3">
+                      <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Observer Status</p><p className="mt-1 font-semibold capitalize text-foreground">{observerStatus}</p></div>
+                      <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Severity</p><p className="mt-1 font-mono capitalize text-foreground">{observerSeverity || '—'}</p></div>
+                      <div className="rounded-md bg-muted/60 p-2.5"><p className="text-muted-foreground">Findings</p><p className="mt-1 text-foreground">{observerFindingCount} · {observerScore}/100</p></div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Observer is triggered automatically for every new request. Flagged requests list the matched policy/category below, with screenshot evidence when Observer provides it.</p>
+                    {observerFindings.length > 0 ? (
+                      <div className="space-y-2 border-t border-border pt-4">
+                        <p className="text-xs font-medium text-foreground">Flagged Against</p>
+                        {observerFindings.map((finding) => (
+                          <div key={finding.id || `${finding.finding_type}-${finding.observed_at}`} className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-xs">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="font-medium text-foreground">{finding.policy_section || finding.finding_type || 'Observer Policy Finding'}</p>
+                              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-mono text-amber-700 dark:text-amber-300">{finding.severity || 'unknown'} · {Number(finding.score) || 0}</span>
+                            </div>
+                            {finding.evidence && <p className="mt-2 whitespace-pre-line break-words leading-relaxed text-muted-foreground">{readableEvidence(finding.evidence)}</p>}
+                            {finding.screenshot_url && (
+                              <button type="button" onClick={() => openExternal(finding.screenshot_url)} className="mt-2 text-primary underline hover:opacity-80">
+                                Open Observer Screenshot
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">No active Observer findings are attached to this request.</p>
+                    )}
+                    <div className="border-t border-border pt-4">
+                      <Button type="button" size="sm" variant="outline" disabled={safetyLoading} onClick={handleObserverRerun} className="gap-2">
+                        {safetyLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-Run Observer Scan
+                      </Button>
+                    </div>
+                  </div>
+                </ReviewSection>
               </div>
-              <div className="p-4">
-                <Textarea value={adminNotes} onChange={e => setAdminNotes(e.target.value)}
-                  placeholder={t('reviewRequest.adminNotesPlaceholder')}
-                  className="resize-none h-16 text-sm" />
+
+              <div className="min-w-0 space-y-4">
+                <ColumnHeading>Discussion and Decision</ColumnHeading>
+
+                <InstantApprovalPanel request={request} onChanged={async () => { await onSuccess?.(); onClose(); }} />
+
+                <ConversationThread
+                  requestId={request.id}
+                  requestType="subdomain"
+                  currentUser={currentUser}
+                  onStatusChange={setConversationStatus}
+                />
+
+                <ReviewSection
+                  icon={StickyNote}
+                  title={t('reviewRequest.adminNotes')}
+                  aside={(
+                    <div className="relative group">
+                      <HelpCircle size={14} className="text-muted-foreground cursor-help" />
+                      <div className="absolute right-0 top-full z-50 mt-2 hidden w-52 rounded-lg border border-border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-soft group-hover:block">
+                        {t('reviewRequest.adminNotesHelp')}
+                      </div>
+                    </div>
+                  )}
+                  className="overflow-visible"
+                >
+                  <div className="p-4">
+                    <Textarea value={adminNotes} onChange={e => setAdminNotes(e.target.value)}
+                      placeholder={t('reviewRequest.adminNotesPlaceholder')}
+                      className="h-20 resize-none text-sm" />
+                  </div>
+                </ReviewSection>
+
+                {action === 'reject' && (
+                  <ReviewSection icon={XCircle} title={t('reviewRequest.rejectionReason')} className="border-destructive/40">
+                    <div className="space-y-2 p-4">
+                      <QuickChips
+                        titleKey="reviewRequest.quickRejectTitle"
+                        tone="destructive"
+                        options={[
+                          { labelKey: 'reviewRequest.quickReject.reserved', text: t('reviewRequest.quickReject.reserved') },
+                          { labelKey: 'reviewRequest.quickReject.privateIp', text: t('reviewRequest.quickReject.privateIp') },
+                          { labelKey: 'reviewRequest.quickReject.insufficientReason', text: t('reviewRequest.quickReject.insufficientReason') },
+                          { labelKey: 'reviewRequest.quickReject.invalidPreview', text: t('reviewRequest.quickReject.invalidPreview') },
+                          { labelKey: 'reviewRequest.quickReject.blockedValue', text: t('reviewRequest.quickReject.blockedValue') },
+                          { labelKey: 'reviewRequest.quickReject.nonCommercial', text: t('reviewRequest.quickReject.nonCommercial') },
+                        ]}
+                        onSelect={(text) => setRejectionReason(prev => (prev ? `${prev}\n\n${text}` : text))}
+                      />
+                      <Textarea autoFocus value={rejectionReason} onChange={e => setRejectionReason(e.target.value)}
+                        aria-label="Rejection reason"
+                        placeholder={t('reviewRequest.rejectionPlaceholder')}
+                        className="h-28 resize-none" />
+                    </div>
+                  </ReviewSection>
+                )}
+
+                {compatibilityError && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{compatibilityError} Ask the requester to submit a corrected request after this one is rejected.</p>}
               </div>
             </div>
+          </div>
 
-            <ConversationThread
-              requestId={request.id}
-              requestType="subdomain"
-              currentUser={currentUser}
-              onStatusChange={setConversationStatus}
-            />
-
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-blue-200">
-              <p className="font-medium">Required Review Step</p>
-              <p className="mt-1">Approval and rejection controls are enabled only after staff scroll through the request details, DNS records, project description, Observer screening and conversation context.</p>
-            </div>
-
-            {compatibilityError && <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{compatibilityError} Ask the requester to submit a corrected request after this one is rejected.</p>}
+          <div className="flex shrink-0 flex-col gap-3 border-t border-border bg-muted/30 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            {pendingRecords.length === 0 ? (
+              <p className="text-xs text-muted-foreground">This request has no pending records to decide on.</p>
+            ) : (
+              <p className={`flex items-center gap-1.5 text-xs ${reviewGateMet ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                {reviewGateMet ? <CheckCircle size={13} /> : <Lock size={13} />}
+                {reviewGateMet
+                  ? 'Review context read. Decisions are unlocked.'
+                  : 'Scroll through the request details, Observer screening and conversation to unlock decisions.'}
+              </p>
+            )}
             {pendingRecords.length === 0 ? null : !action ? (
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-2 sm:shrink-0">
                 <Button disabled={!reviewGateMet} onClick={() => setAction('reject')} variant="outline"
-                  className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10">
+                  className="flex-1 border-destructive/40 text-destructive hover:bg-destructive/10 sm:flex-none">
                   <XCircle size={16} className="mr-2" /> {t('reviewRequest.reject')}
                 </Button>
                 <Button disabled={!reviewGateMet || !!compatibilityError} onClick={() => setAction('approve')}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white">
+                  className="flex-1 bg-emerald-600 text-white hover:bg-emerald-500 sm:flex-none">
                   <CheckCircle size={16} className="mr-2" /> {pendingRecords.length > 1 ? t('reviewRequest.approveAll', { count: pendingRecords.length }) : t('reviewRequest.approve')}
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setAction(null)} disabled={loading} className="flex-1">
+              <div className="flex gap-2 sm:shrink-0">
+                <Button variant="outline" onClick={() => setAction(null)} disabled={loading} className="flex-1 sm:flex-none">
                   {t('reviewRequest.back')}
                 </Button>
                 <Button
                   onClick={action === 'approve' ? handleApprove : handleReject}
                   disabled={loading || !reviewGateMet || (action === 'approve' && !!compatibilityError) || (action === 'reject' && !rejectionReason)}
                   variant={action === 'approve' ? 'default' : 'destructive'}
-                  className={action === 'approve' ? 'flex-1 bg-emerald-600 hover:bg-emerald-500 text-white' : 'flex-1'}
+                  className={action === 'approve' ? 'flex-1 bg-emerald-600 text-white hover:bg-emerald-500 sm:flex-none' : 'flex-1 sm:flex-none'}
                 >
                   {loading && <Loader2 size={14} className="mr-2 animate-spin" />}
                   {action === 'approve' ? t('reviewRequest.confirmApproval') : t('reviewRequest.confirmRejection')}
