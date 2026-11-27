@@ -208,6 +208,10 @@ export const MODULE_DEFINITIONS = Object.freeze({
     ],
     env: () => ({ enabled: Boolean(config.discordClientId && config.discordClientSecret), client_id: config.discordClientId, client_secret: config.discordClientSecret }),
   },
+  social_signup_only: {
+    name: 'Social-only sign-ups', description: 'Only let new users sign up with Google, GitHub or Discord. Creating an account with an email and password is turned off, including through the API. Existing password accounts can still sign in, verify their email and reset their password. Needs at least one sign-in provider module set up.', defaultEnabled: false,
+    fields: [], env: () => ({ enabled: false }),
+  },
   discord: {
     name: 'Discord bot', description: 'Signed slash commands for users and staff request management.', defaultEnabled: false,
     fields: [
@@ -370,6 +374,10 @@ export async function saveModule(id, input, actor, { importEnvironment = false }
     try { url = new URL(output.runner_url); } catch { url = null; }
     if (!url || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw Object.assign(new Error('Deploy runner URL must be an http or https address'), { status: 400 });
     if (decryptSettingSecret(output.shared_secret).length < 32) throw Object.assign(new Error('Runner shared secret must be at least 32 characters'), { status: 400 });
+  }
+  if (id === 'social_signup_only' && output.enabled) {
+    const { configuredSocialProviders } = await import('../lib/signup-policy.js');
+    if (!(await configuredSocialProviders({ fresh: true })).length) throw Object.assign(new Error('Set up the Google, GitHub or Discord OAuth module before turning on social-only sign-ups'), { status: 400 });
   }
   if (id === 'r2_backup' && output.enabled) {
     const { validateR2Settings } = await import('../lib/backup-service.js');
