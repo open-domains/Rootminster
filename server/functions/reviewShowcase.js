@@ -1,4 +1,6 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
+import { config } from '../core/config.js';
+import { showcaseReviewEmail } from '../../shared/email-templates.js';
 
 // Staff: list pending showcase submissions and approve or reject them.
 export default async function (req) {
@@ -31,10 +33,7 @@ export default async function (req) {
         if (entry.owner_email) {
             await platform.asServiceRole.integrations.Core.SendEmail({
                 to: entry.owner_email,
-                subject: approved ? `${entry.hostname} is now in the showcase` : `Your showcase listing for ${entry.hostname} was not approved`,
-                body: approved
-                    ? `<p>Your project is now listed in the public showcase.</p>`
-                    : `<p>Your showcase listing was not approved.</p>${note ? `<p>Reviewer note: ${note.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])}</p>` : ''}<p>You can edit and resubmit it from the DNS manager.</p>`,
+                ...showcaseReviewEmail({ appUrl: config.appUrl, hostname: entry.hostname, approved, note }),
             }).catch(() => null);
         }
         return Response.json({ success: true, listing: updated });

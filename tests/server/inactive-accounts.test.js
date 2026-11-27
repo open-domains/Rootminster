@@ -169,24 +169,26 @@ test('recording activity is throttled and cancels an open notice', async () => {
   assert.equal(db.calls.length, 1);
 });
 
-test('emails escape names and explain how to keep the account', () => {
-  const email = inactivityEmail('notice', { user: { full_name: '<b>Eve</b>' }, appUrl: 'https://open-domains.test', closesAt: ahead(30), lastActivityAt: ago(400) });
-  assert.ok(!email.body.includes('<b>Eve</b>'));
+test('emails leave out the account name and explain how to keep the account', () => {
+  const email = inactivityEmail('notice', { user: { full_name: '<b>Eve</b> visit spam.example' }, appUrl: 'https://open-domains.test', closesAt: ahead(30), lastActivityAt: ago(400) });
+  assert.ok(!email.body.includes('Eve'));
+  assert.ok(!email.text.includes('Eve'));
   assert.match(email.body, /https:\/\/open-domains\.test\/login/);
   assert.match(email.body, /Discord/);
+  assert.doesNotMatch(email.subject, /[!\u{1F300}-\u{1FAFF}☀-➿]/u);
 });
 
 test('inactivity emails carry a plain-text part with the sign-in link, a preheader and a footer', () => {
   const email = inactivityEmail('notice', { user: { full_name: 'Sam' }, appUrl: 'https://open-domains.test', closesAt: '2026-12-27T03:45:00Z', lastActivityAt: '2025-11-02T00:00:00Z' });
-  assert.match(email.text, /^Hi Sam,\n\n/);
-  assert.match(email.text, /Sign in to keep your account: https:\/\/open-domains\.test\/login/);
+  assert.match(email.text, /^Hi,\n\n/);
+  assert.match(email.text, /Sign in: https:\/\/open-domains\.test\/login/);
   assert.match(email.text, /27 December 2026/);
   assert.ok(!/<[a-z]/i.test(email.text));
   assert.match(email.preheader, /27 December 2026/);
   assert.match(email.footer, /registered to this email address/);
   assert.match(email.body, /<strong>27 December 2026<\/strong>/);
   const closed = inactivityEmail('closed', { user: {}, appUrl: 'https://open-domains.test', closureAction: 'disable' });
-  assert.match(closed.text, /^Hi there,/);
+  assert.match(closed.text, /^Hi,/);
   assert.ok(!/deleted/.test(closed.text));
 });
 
@@ -273,9 +275,9 @@ test('a test email goes to the given address with the chosen template and touche
   const sendEmail = async (message) => { sent.push(message); return { accepted: [message.to] }; };
   const base = { actor: { full_name: 'Andrew' }, settings: { ...SETTINGS, skip_emails: true }, sendEmail, appUrl: 'https://open-domains.test', now: NOW };
   const result = await sendInactivityTestEmail({ ...base, to: ' admin@example.test ' });
-  assert.deepEqual(result, { to: 'admin@example.test', kind: 'notice', subject: 'Your Open Domains account will be closed for inactivity' });
+  assert.deepEqual(result, { to: 'admin@example.test', kind: 'notice', subject: 'Do you still use your Open Domains account?' });
   assert.equal(sent[0].to, 'admin@example.test');
-  assert.match(sent[0].text, /^Hi Andrew,/);
+  assert.match(sent[0].text, /^Hi,\n/);
   assert.match(sent[0].text, /23 December 2026/);
   await sendInactivityTestEmail({ ...base, to: 'admin@example.test', kind: 'closed' });
   assert.match(sent[1].subject, /has been closed/);

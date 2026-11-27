@@ -1,5 +1,5 @@
 import { randomToken, sha256 } from '../core/security.js';
-import { escapeHtml } from './html.js';
+import { button, code, escapeEmailHtml, paragraph } from '../../shared/email-templates.js';
 
 // Abuse report triage: reports about the same host merge into one open report, every
 // reporter gets a private status link, and reporters hear when the report is closed.
@@ -95,30 +95,32 @@ export function reportersToNotify(report, status) {
 }
 
 
-function shell(title, body) {
-  return `<!DOCTYPE html><html><body style="font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 20px;">
-<div style="max-width: 560px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px;">
-<h1 style="margin: 0 0 12px; font-size: 18px;">${title}</h1>${body}
-<p style="margin: 24px 0 0; color: #64748b; font-size: 12px;">You are receiving this because you reported abuse to the Open Domains safety team.</p>
-</div></body></html>`;
-}
+const REPORTER_FOOTER = 'You are receiving this because this address was given when reporting abuse to our safety team. If that was not you, you can ignore this email.';
 
+// Sent to the address a visitor typed on the public report form, so it says
+// as little as possible: no text from the report, only the hostname.
 export function acknowledgementEmail({ host, statusUrl }) {
-  const safeHost = escapeHtml(host);
+  const hostname = String(host).slice(0, 200);
   return {
-    subject: `We received your abuse report about ${String(host).slice(0, 200)}`,
-    body: shell('Thanks, we received your report', `<p style="font-size: 14px; line-height: 1.6;">Our safety team will review your report about <strong style="font-family: monospace;">${safeHost}</strong>, usually within 24 hours on business days.</p>
-<p style="font-size: 14px; line-height: 1.6;">You can check its status at any time. Keep this link private.</p>
-<p><a href="${escapeHtml(statusUrl)}" style="display: inline-block; background: #4f46e5; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">View report status</a></p>`),
+    subject: `We received your report about ${hostname}`,
+    preheader: 'Our safety team will review it, usually within one business day.',
+    footer: REPORTER_FOOTER,
+    body: paragraph('Hi,')
+      + paragraph(`Thanks for your report about ${code(hostname)}. Our safety team will review it, usually within 24 hours on business days.`)
+      + paragraph('You can check its status with the link below. Keep the link private, because anyone who has it can see the status.')
+      + button(statusUrl, 'View report status'),
   };
 }
 
 export function closedEmail({ host, status, statusUrl }) {
-  const safeHost = escapeHtml(host);
+  const hostname = String(host).slice(0, 200);
   return {
-    subject: `Your abuse report about ${String(host).slice(0, 200)} is closed`,
-    body: shell('Your report is closed', `<p style="font-size: 14px; line-height: 1.6;">The safety team has finished reviewing your report about <strong style="font-family: monospace;">${safeHost}</strong>.</p>
-<p style="font-size: 14px; line-height: 1.6;">Status: <strong>${escapeHtml(statusLabel(status))}</strong></p>
-${statusUrl ? `<p><a href="${escapeHtml(statusUrl)}" style="color: #4f46e5;">View report status</a></p>` : ''}`),
+    subject: `Your report about ${hostname} is closed`,
+    preheader: `Outcome: ${statusLabel(status)}.`,
+    footer: REPORTER_FOOTER,
+    body: paragraph('Hi,')
+      + paragraph(`Our safety team has finished reviewing your report about ${code(hostname)}.`)
+      + paragraph(`Outcome: <strong>${escapeEmailHtml(statusLabel(status))}</strong>`)
+      + (statusUrl ? button(statusUrl, 'View report status') : ''),
   };
 }

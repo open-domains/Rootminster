@@ -12,7 +12,7 @@
 // cancels it: recordUserActivity() deletes the open notice as soon as the person
 // signs in, and every run re-checks open notices before closing anything.
 import { OPEN_REQUEST_STATUSES } from '../../shared/subdomain-requests.js';
-import { escapeHtml } from './html.js';
+import { button, escapeEmailHtml, paragraph, siteUrl } from '../../shared/email-templates.js';
 
 export const INACTIVE_ACCOUNT_ACTOR = Object.freeze({
   id: null,
@@ -236,47 +236,43 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
-// Every message carries its own plain-text version with the sign-in link
-// written out, a preheader, and a footer that says why the person got it.
-export function inactivityEmail(kind, { user, platformName = 'Open Domains', appUrl, closesAt, lastActivityAt, closureAction = 'delete' }) {
-  const rawName = String(user.full_name || '').trim() || 'there';
-  const name = escapeHtml(rawName);
-  const platform = escapeHtml(platformName);
-  const loginUrl = `${appUrl}/login`;
-  const safeLoginUrl = escapeHtml(loginUrl);
-  const outcome = closureAction === 'disable' ? 'closed' : 'closed and its data permanently deleted';
-  const footer = `You are receiving this because an account at ${platform} is registered to this email address. This is a one-off service notice about that account, not a marketing email.`;
+// Written to read as a routine service notice rather than an urgent warning,
+// since "your account will be deleted, sign in now" is what phishing looks
+// like. No names (they are typed by whoever registered the address), one
+// sign-in link to the site's own address, and a plain-text part to match.
+export function inactivityEmail(kind, { platformName = 'Open Domains', appUrl, closesAt, lastActivityAt, closureAction = 'delete' }) {
+  const platform = escapeEmailHtml(platformName);
+  const loginUrl = siteUrl(appUrl, '/login');
+  const outcome = closureAction === 'disable' ? 'closed' : 'closed and its data deleted';
+  const footer = `You are receiving this because an account at ${platform} is registered to this email address. This is a one-off notice about that account, not a marketing email.`;
   if (kind === 'notice' || kind === 'reminder') {
     const closes = formatDate(closesAt);
-    const leadText = kind === 'reminder'
-      ? `This is a reminder that your ${platformName} account will be ${outcome} on ${closes} because it has been inactive.`
-      : `Your ${platformName} account has had no activity since ${formatDate(lastActivityAt)} and has no subdomains, so it is scheduled to be ${outcome} on ${closes}.`;
-    const leadHtml = escapeHtml(leadText).replace(escapeHtml(closes), `<strong>${escapeHtml(closes)}</strong>`);
-    const keep = 'If you want to keep it, just sign in before then and nothing else is needed.';
-    const how = 'Signing in any way you normally do keeps your account: email and password, a passkey, or a linked Google, GitHub or Discord account.';
-    const nothing = 'If you no longer need the account, you do not have to do anything.';
+    const lead = kind === 'reminder'
+      ? `This is a reminder that your unused ${platformName} account is due to be ${outcome} on ${closes}.`
+      : `Your ${platformName} account has not been used since ${formatDate(lastActivityAt)} and has no subdomains. We tidy up unused accounts, so this one is due to be ${outcome} on ${closes}.`;
+    const leadHtml = escapeEmailHtml(lead).replace(escapeEmailHtml(closes), `<strong>${escapeEmailHtml(closes)}</strong>`);
+    const keep = 'If you want to keep it, sign in once before then. Any sign-in method works: email and password, a passkey, or a linked Google, GitHub or Discord account.';
+    const nothing = 'If you no longer need the account, you do not need to do anything.';
     return {
-      subject: kind === 'reminder' ? `Reminder: your ${platformName} account closes soon` : `Your ${platformName} account will be closed for inactivity`,
-      preheader: `Sign in before ${closes} to keep your account.`,
+      subject: kind === 'reminder' ? `Your unused ${platformName} account will be closed on ${closes}` : `Do you still use your ${platformName} account?`,
+      preheader: `If you want to keep it, sign in before ${closes}.`,
       footer,
-      body: `<p style="margin:0 0 16px">Hi ${name},</p>`
-        + `<p style="margin:0 0 16px">${leadHtml}</p>`
-        + `<p style="margin:0 0 16px">${escapeHtml(keep)}</p>`
-        + `<p style="margin:0 0 16px"><a href="${safeLoginUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#ffffff;text-decoration:none;font-weight:600">Sign in to keep my account</a></p>`
-        + `<p style="margin:0 0 16px">${escapeHtml(how)}</p>`
-        + `<p style="margin:0 0 16px">${escapeHtml(nothing)}</p>`
-        + `<p style="margin:0;font-size:13px;color:#6b7280">If the button does not work, copy this link into your browser:<br><a href="${safeLoginUrl}" style="color:#6d5dfc">${safeLoginUrl}</a></p>`,
-      text: `Hi ${rawName},\n\n${leadText}\n\n${keep}\n\nSign in to keep your account: ${loginUrl}\n\n${how}\n\n${nothing}`,
+      body: paragraph('Hi,')
+        + paragraph(leadHtml)
+        + paragraph(escapeEmailHtml(keep))
+        + button(loginUrl, `Sign in to ${platformName}`)
+        + paragraph(escapeEmailHtml(nothing), 'color:#6b7280'),
+      text: `Hi,\n\n${lead}\n\n${keep}\n\nSign in: ${loginUrl}\n\n${nothing}`,
     };
   }
-  const closedText = `Your ${platformName} account has been ${outcome} because it stayed inactive after our earlier notice.`;
+  const closedText = `Your ${platformName} account has been ${outcome} because it was not used after our earlier notice.`;
   const again = 'You are welcome to create a new account at any time. If you think this was a mistake, please contact support.';
   return {
     subject: `Your ${platformName} account has been closed`,
-    preheader: 'Your account was closed after a period of inactivity.',
+    preheader: 'Your account was closed after a period without use.',
     footer,
-    body: `<p style="margin:0 0 16px">Hi ${name},</p><p style="margin:0 0 16px">${escapeHtml(closedText)}</p><p style="margin:0">${escapeHtml(again)}</p>`,
-    text: `Hi ${rawName},\n\n${closedText}\n\n${again}`,
+    body: paragraph('Hi,') + paragraph(escapeEmailHtml(closedText)) + paragraph(escapeEmailHtml(again)),
+    text: `Hi,\n\n${closedText}\n\n${again}`,
   };
 }
 

@@ -13,6 +13,8 @@ import { cloudflareFetch } from './cloudflare.js';
 import { provisionRequestBundle } from './request-approval.js';
 import { withRequestLock } from './request-bundles.js';
 import { notifyRequestApproved } from './request-notifications.js';
+import { config } from '../core/config.js';
+import { requestPausedEmail } from '../../shared/email-templates.js';
 import { assessDeterministic } from './safety-screening.js';
 import { syncOwnershipForNamespace } from './subdomain-ownership.js';
 
@@ -201,11 +203,6 @@ export async function tryInstantApproval(platform, request, user, observer, deps
   return { decision: 'approved', reasons: decision.reasons, dnsRecords: provisioned.dnsRecords };
 }
 
-function pausedEmailHtml(hostname) {
-  const safe = String(hostname).replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-  return `<p>Hi,</p><p>Your subdomain <strong>${safe}</strong> has been taken offline and returned to the review queue after an automated check of the live site.</p><p>A member of staff will review it and either restore it or contact you through the request conversation. You don't need to submit a new request.</p><p>Open Domains</p>`;
-}
-
 // Remove the hostname's live records and return the request to the staff queue.
 // Callers hold the hostname's request lock.
 export async function revokeInstantApproval(platform, request, { reason, actor = INSTANT_APPROVAL_ACTOR, cfFetch = cloudflareFetch, now = new Date() }) {
@@ -261,8 +258,7 @@ export async function revokeInstantApproval(platform, request, { reason, actor =
   try {
     await platform.asServiceRole.integrations.Core.SendEmail({
       to: request.requester_email,
-      subject: `Your subdomain ${hostname} is under review`,
-      body: pausedEmailHtml(hostname),
+      ...requestPausedEmail({ appUrl: config.appUrl, hostname }),
     });
   } catch { /* the request is already back in the staff queue */ }
   try {

@@ -1,6 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { invokeInternal } from '../core/function-runner.js';
-import { escapeHtml } from '../lib/html.js';
+import { config } from '../core/config.js';
+import { heldDnsChangeEmail } from '../../shared/email-templates.js';
 
 // Staff: approve or reject a DNS change that re-screening held for review. Approving
 // applies the change exactly as the user submitted it, on the user's behalf.
@@ -48,11 +49,9 @@ export default async function (req) {
             description: `${status === 'approved' ? 'Approved' : 'Rejected'} held ${held.action} of ${held.hostname}`,
         }).catch(() => null);
         if (held.requester_email) {
-            const change = `${escapeHtml(proposed.record_type)} ${escapeHtml(held.hostname)} → ${escapeHtml(proposed.content)}`;
             await platform.asServiceRole.integrations.Core.SendEmail({
                 to: held.requester_email,
-                subject: status === 'approved' ? `Your DNS change for ${held.hostname} was approved` : `Your DNS change for ${held.hostname} was not approved`,
-                body: `<p>Your DNS change <code>${change}</code> ${status === 'approved' ? 'was approved and is now live.' : 'was reviewed and not applied.'}</p>${status === 'rejected' && note ? `<p>Reviewer note: ${escapeHtml(note)}</p>` : ''}`,
+                ...heldDnsChangeEmail({ appUrl: config.appUrl, hostname: held.hostname, recordType: proposed.record_type, content: proposed.content, approved: status === 'approved', note }),
             }).catch(() => null);
         }
         return Response.json({ success: true, status, record: applied?.record || null });

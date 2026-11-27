@@ -30,7 +30,7 @@ export default async function (req) {
                 const key = reporter.email.toLowerCase();
                 if (notified.has(key)) continue;
                 try {
-                    await platform.asServiceRole.integrations.Core.SendEmail({ to: reporter.email, subject: message.subject, body: message.body });
+                    await platform.asServiceRole.integrations.Core.SendEmail({ to: reporter.email, ...message });
                     notified.add(key);
                 }
                 catch (_) {

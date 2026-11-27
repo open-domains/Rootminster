@@ -9,7 +9,8 @@ import { disposableEmailResult } from '../lib/disposable-email.js';
 import { OAUTH_PROVIDERS, oauthProvider, providerConfigured } from '../lib/oauth-providers.js';
 import { recordUserActivity } from '../lib/inactive-accounts.js';
 import { findIdentity, IdentityError, linkIdentity, listIdentities, rememberIdentity, touchIdentity, unlinkIdentity } from '../lib/oauth-identities.js';
-import { escapeHtml } from '../lib/html.js';
+import { platformName } from '../lib/platform-name.js';
+import { passwordResetEmail, verificationEmail } from '../../shared/email-templates.js';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -97,11 +98,9 @@ export async function createSession(userId, request, reply, options = {}) {
 
 async function sendVerification(user, token) {
   const verificationUrl = `${config.appUrl}/verify-email?token=${encodeURIComponent(token)}`;
-  await sendEmail({
-    to: user.email,
-    subject: 'Verify your Open Domains account',
-    body: `<p>Hi ${escapeHtml(user.full_name)},</p><p>Confirm your email address to finish creating your Open Domains account.</p><p><a href="${verificationUrl}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#6d5dfc;color:#fff;text-decoration:none;font-weight:600">Verify email address</a></p><p>This single-use link expires in 24 hours.</p><p>If the button does not work, copy this link into your browser:<br><a href="${verificationUrl}">${verificationUrl}</a></p>`,
-  });
+  // The name typed at sign-up is left out: anyone can register any address,
+  // so a name here would let them put their own text in a stranger's inbox.
+  await sendEmail({ to: user.email, ...verificationEmail({ platform: await platformName(), verificationUrl }) });
   return verificationUrl;
 }
 
@@ -401,11 +400,8 @@ export async function registerAuthRoutes(app) {
     if (!result.rowCount) return { success: true };
     const token = randomToken(32);
     await pool.query('INSERT INTO password_resets(user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval \'1 hour\')', [result.rows[0].id, sha256(token)]);
-    await sendEmail({
-      to: email,
-      subject: 'Reset your Open Domains password',
-      body: `<p>Use the link below to reset your password. It expires in one hour.</p><p><a href="${config.appUrl}/reset-password?token=${encodeURIComponent(token)}">Reset password</a></p>`,
-    });
+    const resetUrl = `${config.appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    await sendEmail({ to: email, ...passwordResetEmail({ platform: await platformName(), resetUrl }) });
     return { success: true, ...(config.production ? {} : { development_token: token }) };
   });
 

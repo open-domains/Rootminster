@@ -1,5 +1,7 @@
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
 import { getModuleConfig } from '../core/module-settings.js';
+import { platformName } from '../lib/platform-name.js';
+import { migrationCodeEmail } from '../../shared/email-templates.js';
 export default async function (req) {
     const platform = createPlatformClientFromRequest(req);
     const user = await platform.auth.me();
@@ -41,15 +43,7 @@ export default async function (req) {
     // Send the verification code to the logged-in user's email (platform restriction: can only send to app users)
     await platform.asServiceRole.integrations.Core.SendEmail({
         to: user.email,
-        subject: 'Your Open Domains migration verification code',
-        body: `
-      <p>Hi ${user.full_name || user.email},</p>
-      <p>You requested to migrate domains registered under <strong>${normalizedEmail}</strong> to your Open Domains account.</p>
-      <p>Your verification code is:</p>
-      <h2 style="letter-spacing:4px;font-size:32px;font-family:monospace;">${code}</h2>
-      <p>This code expires in 15 minutes.</p>
-      <p>If you did not request this, you can safely ignore this email.</p>
-    `
+        ...migrationCodeEmail({ platform: await platformName(), oldEmail: normalizedEmail, code }),
     });
     return Response.json({ found: matched.length, sent: true });
 }

@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import AdminMigrateModal from '@/components/AdminMigrateModal';
+import { legacyDonorEmail } from '../../shared/email-templates.js';
 
 export default function AdminUsers() {
   const { t } = useTranslation();
@@ -147,66 +148,8 @@ export default function AdminUsers() {
         await updateUser(user.id, { legacy_donor: newVal, ns_unlocked: newVal });
 
         if (newVal) {
-          await rootminster.integrations.Core.SendEmail({
-        to: user.email,
-        subject: '🎉 You\'ve been granted Legacy Donor status on Open Domains',
-        body: `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-        <!-- Header -->
-        <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:12px 12px 0 0;padding:36px 40px;text-align:center;">
-          <div style="font-size:36px;margin-bottom:8px;">💜</div>
-          <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px;">Legacy Donor Status Granted</h1>
-          <p style="color:#c4b5fd;margin:8px 0 0;font-size:15px;">Thank you for your past support of Open Domains</p>
-        </td></tr>
-        <!-- Body -->
-        <tr><td style="background:#1e293b;padding:36px 40px;">
-          <p style="color:#e2e8f0;font-size:16px;line-height:1.6;margin:0 0 20px;">Hi ${user.full_name || user.email},</p>
-          <p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 24px;">
-            We're pleased to let you know that your account has been recognised as a <strong style="color:#a78bfa;">Legacy Donor</strong> on Open Domains. As a token of our appreciation, you've been granted full <strong style="color:#818cf8;">NS record privileges</strong> on your account.
-          </p>
-          <!-- Perks box -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;border:1px solid #334155;border-radius:10px;margin-bottom:28px;">
-            <tr><td style="padding:24px;">
-              <p style="color:#94a3b8;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin:0 0 16px;">What's unlocked</p>
-              <table cellpadding="0" cellspacing="0">
-                <tr><td style="padding:6px 0;">
-                  <span style="color:#a78bfa;font-size:18px;margin-right:10px;">✦</span>
-                  <span style="color:#e2e8f0;font-size:14px;">NS (Nameserver) record type when requesting subdomains</span>
-                </td></tr>
-                <tr><td style="padding:6px 0;">
-                  <span style="color:#a78bfa;font-size:18px;margin-right:10px;">✦</span>
-                  <span style="color:#e2e8f0;font-size:14px;">Legacy Donor badge on your account</span>
-                </td></tr>
-                <tr><td style="padding:6px 0;">
-                  <span style="color:#a78bfa;font-size:18px;margin-right:10px;">✦</span>
-                  <span style="color:#e2e8f0;font-size:14px;">Our heartfelt thanks for your continued support 💜</span>
-                </td></tr>
-              </table>
-            </td></tr>
-          </table>
-          <p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:0 0 28px;">
-            You can start using NS records immediately when submitting new subdomain requests via your dashboard.
-          </p>
-          <!-- CTA -->
-          <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-            <a href="https://open.domains/user-dashboard" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;">Go to my Dashboard →</a>
-          </td></tr></table>
-        </td></tr>
-        <!-- Footer -->
-        <tr><td style="background:#0f172a;border-radius:0 0 12px 12px;padding:24px 40px;text-align:center;border-top:1px solid #1e293b;">
-          <p style="color:#475569;font-size:13px;margin:0;">Open Domains · <a href="https://open.domains" style="color:#6366f1;text-decoration:none;">open.domains</a></p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
-          });
+          const { subject, body } = legacyDonorEmail({ appUrl: window.location.origin });
+          await rootminster.integrations.Core.SendEmail({ to: user.email, subject, body });
         }
 
         toast.success(newVal ? t('adminUsers.legacyGrantedToast') : t('adminUsers.legacyRemovedToast'));

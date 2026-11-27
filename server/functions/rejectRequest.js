@@ -1,30 +1,9 @@
 import { requestBundle, ensureRequestGroup, withRequestLock } from '../lib/request-bundles.js';
 import { requestHostname, requestRecords } from '../../shared/subdomain-requests.js';
 import { createPlatformClientFromRequest } from '../lib/platform-client.js';
-function rejectionEmailHtml(subdomain, domain, reason, reviewerName) {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;margin:0;padding:0}
-  .container{max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 20px rgba(0,0,0,.08)}
-  .header{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);padding:40px;text-align:center}
-  .header h1{color:#fff;margin:0;font-size:28px;font-weight:700}
-  .badge{display:inline-block;background:#fee2e2;color:#991b1b;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-bottom:24px}
-  .body{padding:40px}
-  .reason-box{background:#fff7f7;border:1px solid #fecaca;border-radius:8px;padding:20px;margin:20px 0}
-  .footer{text-align:center;padding:24px;color:#94a3b8;font-size:13px;border-top:1px solid #f1f5f9}
-  </style></head><body>
-  <div class="container">
-    <div class="header"><h1>Request Rejected</h1><p style="color:rgba(255,255,255,.85)">Open Domains Platform</p></div>
-    <div class="body">
-      <span class="badge">✗ REJECTED</span>
-      <h2 style="margin:0 0 8px;color:#1e293b">Your subdomain request was not approved</h2>
-      <p style="color:#64748b">Unfortunately, your request for <strong>${subdomain}.${domain}</strong> could not be approved at this time.</p>
-      ${reason ? `<div class="reason-box"><p style="margin:0 0 8px;font-weight:600;color:#991b1b">Reason</p><p style="margin:0;color:#475569">${reason}</p></div>` : ''}
-      <p style="color:#64748b">You may submit a new request with updated information. Contact support if you have questions.</p>
-      ${reviewerName ? `<p style="color:#94a3b8;font-size:13px;margin-top:24px">Reviewed by <strong>${reviewerName}</strong></p>` : ''}
-    </div>
-    <div class="footer">Open Domains · Free Subdomain Management</div>
-  </div></body></html>`;
-}
+import { config } from '../core/config.js';
+import { platformName } from '../lib/platform-name.js';
+import { requestRejectedEmail } from '../../shared/email-templates.js';
 export default async function (req) {
     if (req.method !== 'POST')
         return Response.json({ error: 'Method not allowed' }, { status: 405 });
@@ -57,8 +36,7 @@ export default async function (req) {
     try {
         await platform.asServiceRole.integrations.Core.SendEmail({
             to: r.requester_email,
-            subject: `Request Rejected: ${r.subdomain}.${r.root_domain}`,
-            body: rejectionEmailHtml(r.subdomain, r.root_domain, rejection_reason, reviewerName)
+            ...requestRejectedEmail({ platform: await platformName(), appUrl: config.appUrl, hostname: `${r.subdomain}.${r.root_domain}`, reason: rejection_reason, reviewerName })
         });
         await platform.asServiceRole.entities.EmailLog.create({
             to: r.requester_email, subject: `Request Rejected`,
